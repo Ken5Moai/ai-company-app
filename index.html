@@ -1,0 +1,1008 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#131010">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>AIカンパニー — 実務版</title>
+<style>
+/* ================================================================
+   AIカンパニー 実務版 —「指示して、押すだけ。納品まで。」
+   墨 × 朱印 × 金。コンセプトデモv2と同じ世界観の、実働アプリ。
+   ================================================================ */
+:root{
+  --sumi:#131010;
+  --sumi-2:#1c1714;
+  --sumi-3:#2a221b;
+  --kinari:#f2e9dc;
+  --hai:#8a7f72;
+  --shu:#d8432f;
+  --shu-fukai:#a52a1c;
+  --kin:#c9a24b;
+  --kin-awai:rgba(201,162,75,.28);
+  --ok:#7fae7a;
+  --mincho:"Hiragino Mincho ProN","Hiragino Mincho Pro","Yu Mincho",YuMincho,"Noto Serif JP","Noto Serif CJK JP",serif;
+  --ease:cubic-bezier(.19,1,.22,1);
+  --ease-stamp:cubic-bezier(.34,1.7,.5,1);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{
+  background:var(--sumi);color:var(--kinari);
+  font-family:var(--mincho);
+  -webkit-tap-highlight-color:transparent;
+  overscroll-behavior:none;
+  font-feature-settings:"palt";
+}
+button{font-family:var(--mincho);cursor:pointer}
+input,textarea,select{font-family:var(--mincho)}
+
+#app{
+  display:flex;flex-direction:column;
+  height:100dvh;
+  padding-top:env(safe-area-inset-top);
+}
+/* 紙肌 */
+#app::after{
+  content:"";position:fixed;inset:0;z-index:90;pointer-events:none;
+  opacity:.05;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ---------- 頭書き ---------- */
+header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 18px 12px;
+  border-bottom:1px solid var(--sumi-3);
+  flex:none;
+}
+.brand{display:flex;align-items:center;gap:10px}
+.brand .mark{
+  width:26px;height:26px;border:1.5px solid var(--kin);border-radius:6px;
+  display:grid;place-items:center;
+  color:var(--kin);font-size:12px;font-weight:600;line-height:1;
+}
+.brand .name{font-size:12px;letter-spacing:.34em;text-indent:.1em}
+.brand .name small{display:block;font-size:8px;letter-spacing:.28em;color:var(--hai);margin-top:2px}
+#tally{display:flex;gap:14px;font-variant-numeric:tabular-nums}
+#tally .t{display:flex;flex-direction:column;align-items:flex-end;gap:1px}
+#tally .t b{font-size:14px;font-weight:600;line-height:1}
+#tally .t.ai b{color:var(--kin)}
+#tally .t span{font-size:8px;letter-spacing:.22em;color:var(--hai)}
+
+/* ---------- 本文 ---------- */
+main{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:18px 18px 30px}
+.view{display:none;max-width:640px;margin:0 auto}
+.view.on{display:block}
+
+.kicker{font-size:10px;letter-spacing:.44em;color:var(--kin);margin:6px 0 14px;text-indent:.1em}
+h1.title{font-size:24px;font-weight:600;letter-spacing:.08em;line-height:1.5;text-wrap:balance}
+.lead{margin-top:10px;font-size:12px;line-height:2;color:var(--hai);letter-spacing:.1em}
+
+/* 指示入力 */
+#orderBox{
+  margin-top:20px;background:var(--sumi-2);
+  border:1px solid var(--sumi-3);border-radius:14px;padding:16px;
+}
+#orderBox .room{
+  display:flex;justify-content:space-between;font-size:9px;
+  letter-spacing:.3em;color:var(--hai);
+  padding-bottom:12px;border-bottom:1px solid var(--sumi-3);
+}
+#orderBox .room i{font-style:normal;color:var(--kin)}
+#instruction{
+  width:100%;margin-top:12px;
+  background:none;border:none;outline:none;resize:none;
+  color:var(--kinari);font-size:15px;line-height:1.9;letter-spacing:.06em;
+  min-height:72px;
+}
+#instruction::placeholder{color:rgba(138,127,114,.65)}
+.suggests{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
+.suggests button{
+  background:none;border:1px solid var(--sumi-3);border-radius:99px;
+  color:var(--hai);font-size:10px;letter-spacing:.14em;padding:7px 12px;
+}
+#execRow{display:flex;align-items:center;gap:14px;margin-top:16px}
+#execBtn{
+  flex:1;appearance:none;border:none;
+  background:linear-gradient(135deg,var(--shu),var(--shu-fukai));
+  color:#fff7ee;font-size:14px;font-weight:600;letter-spacing:.3em;text-indent:.15em;
+  padding:16px;border-radius:99px;
+  box-shadow:0 8px 26px rgba(216,67,47,.3);
+  transition:transform .15s var(--ease),opacity .2s;
+}
+#execBtn:active{transform:scale(.97)}
+#execBtn:disabled{opacity:.45;box-shadow:none}
+#modeBadge{font-size:9px;letter-spacing:.2em;color:var(--hai);text-align:center}
+#modeBadge b{color:var(--kin);font-weight:600}
+
+/* 通知バナー */
+.banner{
+  margin-top:14px;border:1px solid var(--kin-awai);border-radius:10px;
+  padding:12px 14px;font-size:11px;line-height:1.9;letter-spacing:.06em;color:var(--kinari);
+  background:rgba(201,162,75,.07);
+}
+.banner.warn{border-color:rgba(216,67,47,.4);background:rgba(216,67,47,.07)}
+.banner a{color:var(--kin)}
+.banner .x{float:right;color:var(--hai);background:none;border:none;font-size:12px;padding:0 0 4px 10px}
+
+/* ---------- 成果物カード ---------- */
+#pipeline{margin-top:26px;display:flex;flex-direction:column;gap:14px}
+.card{
+  background:var(--sumi-2);border:1px solid var(--sumi-3);
+  border-radius:14px;overflow:hidden;
+}
+.card .head{
+  display:flex;align-items:center;gap:11px;
+  padding:13px 15px;border-bottom:1px solid var(--sumi-3);
+}
+.card .dept{
+  font-size:10px;letter-spacing:.24em;color:var(--kin);
+  border:1px solid var(--kin-awai);border-radius:6px;padding:4px 8px;flex:none;
+}
+.card .ttl{font-size:13px;font-weight:600;letter-spacing:.14em;flex:1}
+.card .st{font-size:9px;letter-spacing:.2em;color:var(--hai);flex:none;display:flex;align-items:center;gap:6px}
+.card .st.run{color:var(--kin)}
+.card .st.run::before{
+  content:"";width:5px;height:5px;border-radius:50%;background:var(--kin);
+  animation:pulse 1.2s ease-in-out infinite;
+}
+.card .st.err{color:var(--shu)}
+.card .st.done{color:var(--ok)}
+@keyframes pulse{50%{opacity:.2}}
+.card .body{padding:14px 15px;min-height:40px}
+.card .body.empty{color:rgba(138,127,114,.6);font-size:11px;letter-spacing:.2em}
+
+/* 簡易マークダウン */
+.md{font-size:13px;line-height:2;letter-spacing:.04em;color:var(--kinari);word-break:break-word}
+.md h2{font-size:12px;letter-spacing:.3em;color:var(--kin);font-weight:600;margin:14px 0 6px}
+.md h2:first-child{margin-top:0}
+.md h3{font-size:12px;letter-spacing:.2em;color:var(--kinari);font-weight:600;margin:10px 0 4px}
+.md ul{list-style:none;margin:2px 0}
+.md li{padding-left:14px;position:relative}
+.md li::before{content:"・";position:absolute;left:0;color:var(--kin)}
+.md p{margin:4px 0}
+.md b{color:var(--kinari)}
+.md .amount{color:var(--kin);font-variant-numeric:tabular-nums}
+.md hr{border:none;border-top:1px solid var(--sumi-3);margin:10px 0}
+
+/* LPプレビュー */
+.lpframe{
+  width:100%;height:420px;border:1px solid var(--sumi-3);border-radius:10px;
+  background:#fff;
+}
+.lpnote{margin-top:8px;font-size:10px;color:var(--hai);letter-spacing:.12em;line-height:1.8}
+
+/* カード脚 */
+.card .foot{
+  display:flex;align-items:center;gap:8px;
+  padding:11px 15px;border-top:1px solid var(--sumi-3);
+}
+.act{
+  background:none;border:1px solid var(--sumi-3);border-radius:99px;
+  color:var(--kinari);font-size:10px;letter-spacing:.16em;padding:8px 13px;
+}
+.act:active{background:var(--sumi-3)}
+.foot .sp{flex:1}
+/* 押印欄 */
+.inkzone{width:46px;height:46px;position:relative;flex:none;cursor:pointer}
+.inkzone .guide{
+  position:absolute;inset:0;border-radius:10px;
+  border:1.5px dashed rgba(216,67,47,.55);
+  display:grid;place-items:center;
+  font-size:8px;letter-spacing:.16em;text-indent:.16em;color:var(--shu);
+  animation:beckon 1.8s ease-in-out infinite;
+}
+@keyframes beckon{50%{transform:scale(1.08);border-color:rgba(216,67,47,.95)}}
+.inkzone .impress{position:absolute;inset:-4px;opacity:0;pointer-events:none}
+.inkzone.stamped .guide{display:none}
+.inkzone.stamped .impress{animation:stampIn .55s var(--ease-stamp) both}
+@keyframes stampIn{
+  0%{opacity:0;transform:scale(2.2) rotate(-9deg)}
+  55%{opacity:1;transform:scale(.94) rotate(-3.5deg)}
+  100%{opacity:1;transform:scale(1) rotate(-4deg)}
+}
+
+/* ---------- 案件簿 ---------- */
+#stats{display:flex;gap:9px;margin-top:18px}
+.stat{
+  flex:1;background:var(--sumi-2);border:1px solid var(--sumi-3);border-radius:12px;
+  padding:13px 8px;text-align:center;
+}
+.stat span{font-size:8px;letter-spacing:.24em;color:var(--hai);display:block;margin-bottom:6px}
+.stat b{font-size:17px;font-weight:600;font-variant-numeric:tabular-nums}
+.stat.kin b{color:var(--kin)}
+#plist{margin-top:16px;display:flex;flex-direction:column;gap:10px}
+.pitem{
+  background:var(--sumi-2);border:1px solid var(--sumi-3);border-radius:12px;
+  padding:14px 15px;cursor:pointer;
+}
+.pitem .r1{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+.pitem .nm{font-size:13px;font-weight:600;letter-spacing:.08em;line-height:1.6;flex:1;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pitem .pr{font-size:13px;color:var(--kin);font-variant-numeric:tabular-nums;flex:none}
+.pitem .r2{display:flex;justify-content:space-between;align-items:center;margin-top:8px}
+.pitem .dt{font-size:9px;letter-spacing:.14em;color:var(--hai)}
+.chip{font-size:9px;letter-spacing:.18em;border-radius:99px;padding:4px 10px;border:1px solid var(--sumi-3);color:var(--hai)}
+.chip.s2{color:var(--kin);border-color:var(--kin-awai)}
+.chip.s3{color:var(--shu);border-color:rgba(216,67,47,.4)}
+.chip.s4{color:var(--ok);border-color:rgba(127,174,122,.4)}
+.pempty{margin-top:26px;text-align:center;color:var(--hai);font-size:11px;letter-spacing:.2em;line-height:2.4}
+
+/* 案件詳細の操作列 */
+#projActions{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
+
+/* ---------- 設定 ---------- */
+.field{margin-top:18px}
+.field label{font-size:10px;letter-spacing:.3em;color:var(--kin);display:block;margin-bottom:8px}
+.field input,.field select{
+  width:100%;background:var(--sumi-2);border:1px solid var(--sumi-3);border-radius:10px;
+  color:var(--kinari);font-size:13px;padding:13px 14px;outline:none;letter-spacing:.04em;
+}
+.field .hint{margin-top:7px;font-size:10px;color:var(--hai);line-height:1.9;letter-spacing:.06em}
+.field .hint b{color:var(--kinari);font-weight:600}
+.btnrow{display:flex;gap:9px;margin-top:16px}
+.btn{
+  flex:1;appearance:none;border:1px solid var(--sumi-3);background:var(--sumi-2);
+  color:var(--kinari);font-size:11px;letter-spacing:.22em;text-indent:.1em;
+  padding:13px;border-radius:99px;
+}
+.btn.primary{background:linear-gradient(135deg,var(--shu),var(--shu-fukai));border:none;color:#fff7ee;font-weight:600}
+.btn:active{transform:scale(.98)}
+#connMsg{margin-top:12px;font-size:11px;line-height:1.9;letter-spacing:.06em;color:var(--hai);min-height:1em}
+#connMsg.ok{color:var(--ok)}
+#connMsg.ng{color:var(--shu)}
+
+/* ---------- 脚ナビ ---------- */
+nav{
+  flex:none;display:flex;
+  border-top:1px solid var(--sumi-3);
+  padding-bottom:env(safe-area-inset-bottom);
+  background:rgba(19,16,16,.94);
+}
+nav button{
+  flex:1;background:none;border:none;color:var(--hai);
+  font-size:10px;letter-spacing:.3em;text-indent:.15em;
+  padding:15px 0 13px;position:relative;
+}
+nav button.on{color:var(--kin)}
+nav button.on::before{
+  content:"";position:absolute;top:0;left:50%;transform:translateX(-50%);
+  width:22px;height:2px;background:var(--kin);border-radius:2px;
+}
+
+/* ---------- トースト / 印影 ---------- */
+#toast{
+  position:fixed;left:50%;bottom:calc(86px + env(safe-area-inset-bottom));
+  transform:translateX(-50%) translateY(8px);
+  background:rgba(28,23,20,.96);border:1px solid var(--kin-awai);
+  color:var(--kinari);font-size:11px;letter-spacing:.16em;
+  padding:11px 20px;border-radius:99px;z-index:95;
+  opacity:0;transition:.3s var(--ease);pointer-events:none;
+  max-width:82vw;text-align:center;
+}
+#toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+.tapmark{
+  position:fixed;z-index:96;pointer-events:none;
+  width:40px;height:40px;margin:-20px 0 0 -20px;
+  border:1.5px solid var(--shu);border-radius:9px;
+  display:grid;place-items:center;color:var(--shu);font-size:14px;font-weight:600;
+  animation:tapfade .6s var(--ease) forwards;
+}
+@keyframes tapfade{
+  from{opacity:.85;transform:rotate(-6deg) scale(.7)}
+  to{opacity:0;transform:rotate(-6deg) scale(1.25)}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01s!important;transition-duration:.01s!important}
+}
+</style>
+</head>
+<body>
+<div id="app">
+
+<header>
+  <div class="brand">
+    <div class="mark">AI</div>
+    <div class="name">AIカンパニー<small>実務版</small></div>
+  </div>
+  <div id="tally">
+    <div class="t you"><b id="tapCount">0</b><span>あなた</span></div>
+    <div class="t ai"><b id="aiCount">0</b><span>AI</span></div>
+  </div>
+</header>
+
+<main>
+
+  <!-- ============ 社長室 ============ -->
+  <section class="view on" id="v-home">
+    <div class="kicker">社長室</div>
+    <h1 class="title">指示は、ひと言。<br>納品物まで、AIが。</h1>
+    <p class="lead">企画・LP制作・告知文・見積書・報告書。役員5名が実際に作ります。あなたは決裁の押印だけ。</p>
+
+    <div id="bannerHost"></div>
+
+    <div id="orderBox">
+      <div class="room"><span><i>●</i> 全社チャット</span><span>役員 5</span></div>
+      <textarea id="instruction" rows="3" placeholder="例: コーヒーD2Cサブスクを立ち上げて。"></textarea>
+      <div class="suggests">
+        <button data-s="コーヒーD2Cサブスクを立ち上げて。">コーヒーD2C</button>
+        <button data-s="地元のパン屋のオンライン予約サービスを立ち上げて。">パン屋予約</button>
+        <button data-s="フリーランス向けの請求書作成SaaSを立ち上げて。">請求書SaaS</button>
+        <button data-s="観葉植物の月額便サービスを立ち上げて。">観葉植物便</button>
+      </div>
+    </div>
+
+    <div id="execRow">
+      <button id="execBtn">執 行</button>
+    </div>
+    <p id="modeBadge" style="margin-top:12px"></p>
+
+    <div id="pipeline"></div>
+  </section>
+
+  <!-- ============ 案件簿 ============ -->
+  <section class="view" id="v-projects">
+    <div class="kicker">案件簿</div>
+    <h1 class="title">売上は、ここに刻む。</h1>
+    <p class="lead">成果物を納品し、入金を記帳する。それが利益になります。</p>
+    <div id="stats">
+      <div class="stat kin"><span>入金済み</span><b id="stSales">¥0</b></div>
+      <div class="stat"><span>見込み</span><b id="stPipe">¥0</b></div>
+      <div class="stat"><span>案件</span><b id="stCount">0</b></div>
+    </div>
+    <div id="plist"></div>
+  </section>
+
+  <!-- ============ 設定 ============ -->
+  <section class="view" id="v-settings">
+    <div class="kicker">設定</div>
+    <h1 class="title">接続と、体制。</h1>
+
+    <div class="field">
+      <label>ANTHROPIC API キー</label>
+      <input type="password" id="apiKey" placeholder="sk-ant-api03-..." autocomplete="off">
+      <div class="hint">
+        キーは<b>この端末のブラウザ内(localStorage)にのみ</b>保存され、送信先はAnthropic APIだけです。
+        取得: <b>platform.claude.com</b> → API Keys。共有端末では使用後に消去してください。
+      </div>
+    </div>
+
+    <div class="field">
+      <label>モデル(役員の頭脳)</label>
+      <select id="modelSel">
+        <option value="claude-opus-4-8">Claude Opus 4.8 — 品質最優先(推奨)</option>
+        <option value="claude-sonnet-5">Claude Sonnet 5 — 品質と費用の均衡</option>
+        <option value="claude-haiku-4-5">Claude Haiku 4.5 — 速度・低コスト</option>
+      </select>
+      <div class="hint">1案件の目安費用: Opus 約$0.5〜1.5 / Sonnet 約$0.2〜0.6 / Haiku 約$0.1未満。</div>
+    </div>
+
+    <div class="field">
+      <label>動作モード</label>
+      <select id="modeSel">
+        <option value="auto">自動 — キーがあれば実運用、なければデモ</option>
+        <option value="demo">デモ固定 — API を呼ばない</option>
+      </select>
+    </div>
+
+    <div class="btnrow">
+      <button class="btn primary" id="saveBtn">保存する</button>
+      <button class="btn" id="testBtn">接続を確認</button>
+    </div>
+    <p id="connMsg"></p>
+
+    <div class="field">
+      <label>運用メモ</label>
+      <div class="hint">
+        このアプリの収益モデルは<b>制作受託</b>です。①クラウドソーシング等で「LP制作+告知文セット」を受注(相場3〜10万円)
+        → ②ここで指示して成果物を生成 → ③押印決裁して納品 → ④経理の見積書で請求 → ⑤案件簿で入金を記帳。
+        成果物は必ず自分の目で検品してから納品してください。
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<nav>
+  <button data-v="home" class="on">社長室</button>
+  <button data-v="projects">案件簿</button>
+  <button data-v="settings">設定</button>
+</nav>
+
+</div>
+
+<div id="toast"></div>
+
+<!-- 印影SVG(押印欄で複製使用) -->
+<svg width="0" height="0" style="position:absolute">
+  <defs>
+    <filter id="rough" x="-20%" y="-20%" width="140%" height="140%">
+      <feTurbulence type="fractalNoise" baseFrequency="0.06" numOctaves="3" seed="7" result="n"/>
+      <feDisplacementMap in="SourceGraphic" in2="n" scale="3.2"/>
+    </filter>
+  </defs>
+</svg>
+
+<script>
+(function(){
+"use strict";
+
+/* ================= 状態 ================= */
+var LS = {
+  key:"aic_key", model:"aic_model", mode:"aic_mode",
+  projects:"aic_projects", banner:"aic_banner_closed"
+};
+var S = {
+  key: localStorage.getItem(LS.key) || "",
+  model: localStorage.getItem(LS.model) || "claude-opus-4-8",
+  mode: localStorage.getItem(LS.mode) || "auto",
+  projects: [],
+  current: null,     // 表示中の案件
+  running: false,
+  taps: 0, ai: 0,
+  netBlocked: false  // CSP等でAPIに到達できない環境
+};
+try{ S.projects = JSON.parse(localStorage.getItem(LS.projects) || "[]"); }catch(e){ S.projects = []; }
+
+var $ = function(id){ return document.getElementById(id); };
+var save = function(){ localStorage.setItem(LS.projects, JSON.stringify(S.projects)); };
+var esc = function(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); };
+var yen = function(n){ return "¥" + (n||0).toLocaleString("ja-JP"); };
+
+function isDemo(){
+  return S.mode === "demo" || !S.key || S.netBlocked;
+}
+
+/* ================= 役員(工程)定義 ================= */
+var STEPS = [
+  { k:"kikaku",  dept:"企画", ttl:"事業ブリーフ",     file:"brief.md" },
+  { k:"kaihatsu",dept:"開発", ttl:"ランディングページ", file:"index.html" },
+  { k:"kouhou",  dept:"広報", ttl:"告知文セット",     file:"sns.md" },
+  { k:"keiri",   dept:"経理", ttl:"見積書",           file:"mitsumori.md" },
+  { k:"hisho",   dept:"秘書", ttl:"業務報告書",       file:"houkoku.md" }
+];
+var SYSTEM = "あなたは一人社長を支えるAI役員チーム「AIカンパニー」の一員。出力は日本語。挨拶・前置き・後書きは一切書かず、成果物本体のみを出力する。品質は納品水準。";
+
+function prompts(step, p){
+  var inst = "社長の指示:「" + p.instruction + "」";
+  var brief = p.deliverables.kikaku ? "\n\n事業ブリーフ:\n" + p.deliverables.kikaku : "";
+  switch(step.k){
+    case "kikaku": return { max: 2500, user:
+      inst + "\n\nこの指示をもとに事業ブリーフを作成せよ。構成は次の見出しで:\n## 事業コンセプト\n## ターゲット\n## 商品・価格\n## 差別化\n## 最初の一手\n各項目は簡潔に、確信を持って書く。「最初の一手」は今週実行できる具体策を3つ。" };
+    case "kaihatsu": return { max: 16000, user:
+      inst + brief + "\n\nこの事業のランディングページを単一のHTMLファイルとして完成させよ。要件:\n- スマホ最適化(モバイルファースト)。PC でも崩れない\n- 外部リソース禁止: CDN・画像URL・Webフォント不可。CSS/JSはすべてインライン。画像の代わりにCSS/絵文字/SVGで表現\n- 構成: ヒーロー(強いコピー) / 選ばれる理由3つ / 商品と価格 / お客様の声 / FAQ / 申込CTA(フォームはsubmitでalert)\n- 和の気品あるデザイン。明朝系(Hiragino Mincho ProN等のローカルフォント指定)\n- 文言はすべてこの事業の実内容で書く。ダミー文字禁止\n出力は```html フェンスの中にHTML全文のみ。説明文は書かない。" };
+    case "kouhou": return { max: 2000, user:
+      inst + brief + "\n\nローンチ告知文を作成せよ。構成:\n## X投稿(3案)\n各140字以内。絵文字は各案1つまで。3案はトーンを変える(共感型/実利型/物語型)。\n## Instagramキャプション\n改行を活かした1本。ハッシュタグ5つ。\n## LINE配信文\n友だち向けの1通。冒頭にお得情報。" };
+    case "keiri": return { max: 1600, user:
+      inst + brief + "\n\nこの成果物一式(LP制作・告知文セット・企画ブリーフ)を制作会社として顧客に納品する場合の見積書を作成せよ。構成:\n## 見積書\n宛名: ____________ 御中\n発行日と有効期限(発行から30日)。\n品目ごとに「- 品目名 … ¥金額」の形式で3〜5行(LP設計・実装 / 告知文セット / 企画費 など)。相場: LP制作は3〜10万円。\n小計・消費税(10%)を明記し、最後に必ず単独行で「合計: ¥NN,NNN」と書く。\n## 備考\n納品形態(HTMLファイル+テキスト)と修正対応(2回まで無償)を記す。" };
+    case "hisho": return { max: 1600, user:
+      inst + brief + "\n\n本日の業務報告書を作成せよ。構成:\n## 完了した業務\n## 成果物一覧\n(事業ブリーフ / LP(HTML) / 告知文セット / 見積書)\n## 決裁をお願いしたい事項\n## 次のアクション\n社長が明日やるべきことを3つ、具体的に。" };
+  }
+}
+
+/* ================= デモ成果物 ================= */
+var DEMO = {
+  kikaku: "## 事業コンセプト\n「毎朝の一杯が、旅になる。」産地直送のスペシャルティコーヒーを、焙煎後48時間以内に届ける月額サブスク。\n\n## ターゲット\n在宅ワーク中心の30〜40代。1杯あたり100円台の贅沢に価値を感じ、豆の物語を楽しめる層。\n\n## 商品・価格\n- 基本便(200g・月1回): ¥1,980\n- 飲み比べ便(100g×3種): ¥2,780\n- 初回50%OFF・いつでも解約可\n\n## 差別化\n焙煎日を袋に手書き。毎月「産地の便り」カードを同梱し、開封体験で継続率を作る。\n\n## 最初の一手\n- LPを公開し、SNSで先行100名の初回半額を告知\n- 焙煎所2軒と仕入れ条件を合意\n- β購入者10名に開封動画の投稿を依頼",
+  kaihatsu: "```html\n<!DOCTYPE html>\n<html lang=\"ja\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><title>豆びより — 毎朝の一杯が、旅になる。</title><style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:\"Hiragino Mincho ProN\",\"Yu Mincho\",serif;color:#2b2320;background:#faf6ef;line-height:1.9}header{padding:64px 24px 48px;text-align:center;background:linear-gradient(180deg,#f3ead9,#faf6ef)}h1{font-size:30px;letter-spacing:.1em;line-height:1.6}.sub{margin-top:14px;color:#8a7460;font-size:13px;letter-spacing:.14em}.cta{display:inline-block;margin-top:28px;background:#b23a26;color:#fff;padding:16px 38px;border-radius:99px;text-decoration:none;letter-spacing:.2em;font-size:14px}section{padding:44px 24px;max-width:560px;margin:0 auto}h2{font-size:14px;letter-spacing:.4em;color:#b23a26;text-align:center;margin-bottom:22px}.f{background:#fff;border:1px solid #e8dcc8;border-radius:12px;padding:18px;margin-bottom:12px}.f b{display:block;margin-bottom:6px}.price{text-align:center;font-size:26px}.price small{font-size:12px;color:#8a7460}form{display:flex;gap:8px;margin-top:18px}input{flex:1;padding:14px;border:1px solid #d8c9ae;border-radius:99px;font-size:13px}button{background:#b23a26;color:#fff;border:none;border-radius:99px;padding:14px 22px;letter-spacing:.1em}footer{text-align:center;padding:30px;color:#8a7460;font-size:10px;letter-spacing:.2em}</style></head><body><header><h1>毎朝の一杯が、<br>旅になる。</h1><p class=\"sub\">焙煎後48時間以内。産地直送の月額コーヒー便</p><a class=\"cta\" href=\"#join\">初回半額ではじめる</a></header><section><h2>選ばれる理由</h2><div class=\"f\"><b>☕ 鮮度がちがう</b>焙煎日を袋に手書き。48時間以内にポストへ。</div><div class=\"f\"><b>🌍 毎月ちがう産地</b>エチオピア、ブラジル、限定ゲイシャ。産地の便りを同梱。</div><div class=\"f\"><b>📮 しばりなし</b>いつでも解約OK。ポスト投函で受け取りも自由。</div></section><section><h2>価格</h2><p class=\"price\">月額 ¥1,980<br><small>初回50%OFF ¥990 / 200g・約14杯分</small></p></section><section id=\"join\"><h2>先行100名募集</h2><form onsubmit=\"alert('ありがとうございます。ご登録を受け付けました。');return false\"><input type=\"email\" placeholder=\"メールアドレス\" required><button>申込む</button></form></section><footer>MAMEBIYORI COFFEE</footer></body></html>\n```",
+  kouhou: "## X投稿(3案)\n1. 在宅の朝、いちばんの贅沢は「挽きたての香り」でした。焙煎48時間以内の豆が毎月届く #豆びより、先行100名は初回半額です ☕\n2. コーヒー代を計算したらカフェ月8,000円。豆びよりなら月1,980円で毎朝14杯。鮮度は焙煎48時間以内、解約はいつでも。\n3. エチオピアの農園から、あなたのポストまで。豆と一緒に「産地の便り」が届きます。今月はナチュラル精製の浅煎り。\n\n## Instagramキャプション\n毎朝の一杯が、旅になる。\n\n焙煎日は、袋に手書きしています。\n48時間以内にポストへ。\n今月の産地は、エチオピア・イルガチェフェ。\n\n先行100名さま、初回半額ではじめられます。\nプロフィールのリンクからどうぞ。\n\n#コーヒーのある暮らし #スペシャルティコーヒー #豆びより #朝時間 #コーヒー好きな人と繋がりたい\n\n## LINE配信文\n【先行100名・初回50%OFF】\n豆びより、はじまります☕\n焙煎48時間以内のスペシャルティコーヒーを、毎月ポストにお届け。月額1,980円が初回990円、しばりなし。\n▼30秒で申込む\nhttps://example.com",
+  keiri: "## 見積書\n____________ 御中\n発行日: 2026年7月17日 / 有効期限: 発行から30日\n\n- LP設計・実装(スマホ最適化・単一HTML) … ¥50,000\n- ローンチ告知文セット(X3案・Instagram・LINE) … ¥15,000\n- 事業ブリーフ・企画費 … ¥10,000\n\n小計: ¥75,000\n消費税(10%): ¥7,500\n合計: ¥82,500\n\n## 備考\n納品形態: HTMLファイル一式+テキストデータ。\n修正対応: 納品後2回まで無償。3回目以降は¥5,000/回。",
+  hisho: "## 完了した業務\n企画の事業ブリーフ策定、LPの設計・実装・検収、ローンチ告知文3媒体分の執筆、顧客提出用見積書の作成。\n\n## 成果物一覧\n- 事業ブリーフ(brief.md)\n- ランディングページ(index.html)\n- 告知文セット(sns.md)\n- 見積書(mitsumori.md)\n\n## 決裁をお願いしたい事項\n各成果物の押印(承認)。承認後、そのまま納品可能な状態です。\n\n## 次のアクション\n- LPを公開し、X告知1案目を本日中に投稿する\n- クラウドソーシングに「LP制作 ¥50,000〜」で出品し、この成果物をポートフォリオにする\n- 見積書の宛名を入れて、見込み客1社に送付する"
+};
+
+/* ================= カウンター/演出 ================= */
+function bumpTap(x,y){
+  S.taps++; $("tapCount").textContent = S.taps.toLocaleString("ja-JP");
+  if(x!=null){
+    var m=document.createElement("div");
+    m.className="tapmark"; m.textContent="決";
+    m.style.left=x+"px"; m.style.top=y+"px";
+    document.body.appendChild(m);
+    setTimeout(function(){m.remove();},650);
+  }
+}
+function bumpAi(n){
+  S.ai += (n||1); $("aiCount").textContent = S.ai.toLocaleString("ja-JP");
+}
+var toastT=null;
+function toast(msg){
+  var t=$("toast"); t.textContent=msg; t.classList.add("on");
+  clearTimeout(toastT); toastT=setTimeout(function(){t.classList.remove("on");},2400);
+}
+
+/* ================= Claude API ================= */
+function apiError(status, body){
+  try{
+    var j = JSON.parse(body);
+    if(j.error && j.error.message) return j.error.message;
+  }catch(e){}
+  return "HTTP " + status;
+}
+
+async function callClaude(step, p, onDelta){
+  var pr = prompts(step, p);
+  var body = {
+    model: S.model,
+    max_tokens: pr.max,
+    stream: true,
+    system: SYSTEM,
+    messages: [{ role:"user", content: pr.user }]
+  };
+  // Opus/Sonnet は adaptive thinking。Haiku 4.5 は adaptive 非対応のため省略(=思考なし)。
+  if (S.model.indexOf("haiku") === -1) body.thinking = { type:"adaptive" };
+
+  var res;
+  try{
+    res = await fetch("https://api.anthropic.com/v1/messages", {
+      method:"POST",
+      headers:{
+        "content-type":"application/json",
+        "x-api-key": S.key,
+        "anthropic-version":"2023-06-01",
+        "anthropic-dangerous-direct-browser-access":"true"
+      },
+      body: JSON.stringify(body)
+    });
+  }catch(e){
+    // ネットワーク層で失敗 = CSP遮断 or オフライン
+    S.netBlocked = true;
+    throw new Error("__NETBLOCK__");
+  }
+  if(!res.ok){
+    var txt = await res.text();
+    if(res.status===401) throw new Error("APIキーが無効です。設定を確認してください。");
+    if(res.status===429) throw new Error("レート制限です。少し待って再実行してください。");
+    if(res.status===529) throw new Error("APIが混雑しています。少し待って再実行してください。");
+    throw new Error(apiError(res.status, txt));
+  }
+
+  var reader = res.body.getReader();
+  var dec = new TextDecoder();
+  var buf = "", text = "", stop = null;
+  while(true){
+    var r = await reader.read();
+    if(r.done) break;
+    buf += dec.decode(r.value, {stream:true});
+    var parts = buf.split("\n\n");
+    buf = parts.pop();
+    for(var i=0;i<parts.length;i++){
+      var lines = parts[i].split("\n");
+      for(var L=0; L<lines.length; L++){
+        var line = lines[L];
+        if(line.indexOf("data:") !== 0) continue;
+        var payload = line.slice(5).trim();
+        if(!payload || payload === "[DONE]") continue;
+        var ev; try{ ev = JSON.parse(payload); }catch(e){ continue; }
+        if(ev.type === "content_block_delta" && ev.delta && ev.delta.type === "text_delta"){
+          text += ev.delta.text;
+          bumpAi(1);
+          onDelta(text);
+        } else if(ev.type === "message_delta" && ev.delta && ev.delta.stop_reason){
+          stop = ev.delta.stop_reason;
+        } else if(ev.type === "error"){
+          throw new Error(ev.error && ev.error.message || "stream error");
+        }
+      }
+    }
+  }
+  if(stop === "refusal") throw new Error("この指示はAIの利用方針により実行できませんでした。表現を変えてください。");
+  if(stop === "max_tokens") text += "\n\n(出力上限に達しました。再実行で続きを生成できます)";
+  return text;
+}
+
+/* デモ実行(タイプ演出) */
+function runDemo(step, onDelta){
+  return new Promise(function(resolve){
+    var full = DEMO[step.k];
+    var pos = 0;
+    var iv = setInterval(function(){
+      pos = Math.min(full.length, pos + 24 + Math.floor(Math.random()*30));
+      bumpAi(1);
+      onDelta(full.slice(0,pos));
+      if(pos >= full.length){ clearInterval(iv); resolve(full); }
+    }, 40);
+  });
+}
+
+/* ================= レンダリング ================= */
+function mdRender(src){
+  var out = [], lines = String(src).split("\n"), inUl = false;
+  function closeUl(){ if(inUl){ out.push("</ul>"); inUl=false; } }
+  for(var i=0;i<lines.length;i++){
+    var ln = lines[i];
+    if(/^###\s+/.test(ln)){ closeUl(); out.push("<h3>"+inline(ln.replace(/^###\s+/,""))+"</h3>"); }
+    else if(/^##\s+/.test(ln)){ closeUl(); out.push("<h2>"+inline(ln.replace(/^##\s+/,""))+"</h2>"); }
+    else if(/^[-・]\s+/.test(ln)){ if(!inUl){ out.push("<ul>"); inUl=true; } out.push("<li>"+inline(ln.replace(/^[-・]\s+/,""))+"</li>"); }
+    else if(/^\s*---+\s*$/.test(ln)){ closeUl(); out.push("<hr>"); }
+    else if(ln.trim()===""){ closeUl(); }
+    else { closeUl(); out.push("<p>"+inline(ln)+"</p>"); }
+  }
+  closeUl();
+  return out.join("");
+  function inline(s){
+    s = esc(s);
+    s = s.replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>");
+    s = s.replace(/(¥[\d,]+)/g, '<span class="amount">$1</span>');
+    return s;
+  }
+}
+function extractHtml(text){
+  var m = text.match(/```html\s*([\s\S]*?)```/);
+  if(m) return m[1].trim();
+  m = text.match(/```\s*(<!DOCTYPE[\s\S]*?)```/i);
+  if(m) return m[1].trim();
+  if(/^\s*<!DOCTYPE/i.test(text)) return text.trim();
+  return null;
+}
+
+function cardEl(step){ return document.querySelector('.card[data-k="'+step.k+'"]'); }
+
+function renderPipeline(p){
+  var host = $("pipeline");
+  host.innerHTML = "";
+  if(!p) return;
+  STEPS.forEach(function(step){
+    var card = document.createElement("div");
+    card.className = "card"; card.dataset.k = step.k;
+    card.innerHTML =
+      '<div class="head"><span class="dept">'+step.dept+'</span>' +
+      '<span class="ttl">'+step.ttl+'</span><span class="st" data-r="st"></span></div>' +
+      '<div class="body empty" data-r="body">待機中</div>' +
+      '<div class="foot" style="display:none" data-r="foot"></div>';
+    host.appendChild(card);
+    var text = p.deliverables[step.k];
+    if(text) fillCard(p, step, text, true);
+  });
+}
+
+function fillCard(p, step, text, done){
+  var card = cardEl(step);
+  var body = card.querySelector('[data-r="body"]');
+  var st = card.querySelector('[data-r="st"]');
+  body.classList.remove("empty");
+  if(step.k === "kaihatsu"){
+    var html = extractHtml(text);
+    if(html && done){
+      body.innerHTML = '<iframe class="lpframe" sandbox="allow-scripts"></iframe>' +
+        '<div class="lpnote">実際に納品できるHTMLです。「保存」でファイルとしてダウンロードできます。</div>';
+      body.querySelector("iframe").srcdoc = html;
+    } else {
+      // 生成途中はコード量で進捗表示
+      body.innerHTML = '<div class="md"><p>実装中… <span class="amount">'+text.length.toLocaleString("ja-JP")+'</span> 文字</p></div>';
+    }
+  } else {
+    body.innerHTML = '<div class="md">' + mdRender(text) + "</div>";
+  }
+  if(done){
+    st.textContent = "完了"; st.className = "st done";
+    renderFoot(p, step);
+  } else {
+    st.textContent = "執行中"; st.className = "st run";
+  }
+}
+
+function renderFoot(p, step){
+  var card = cardEl(step);
+  var foot = card.querySelector('[data-r="foot"]');
+  foot.style.display = "flex";
+  foot.innerHTML = "";
+  var text = p.deliverables[step.k] || "";
+  var isLp = step.k === "kaihatsu";
+  var lpHtml = isLp ? extractHtml(text) : null;
+  var payload = isLp && lpHtml ? lpHtml : text;
+
+  var bCopy = mkAct("コピー", function(){ copyText(payload); });
+  var bSave = mkAct("保存", function(){
+    download(step.file, payload, isLp ? "text/html" : "text/markdown");
+  });
+  foot.appendChild(bCopy); foot.appendChild(bSave);
+  if(navigator.share && !isLp){
+    foot.appendChild(mkAct("共有", function(){
+      navigator.share({ text: payload }).catch(function(){});
+    }));
+  }
+  var sp = document.createElement("span"); sp.className="sp"; foot.appendChild(sp);
+
+  var zone = document.createElement("div");
+  zone.className = "inkzone" + (p.approvals[step.k] ? " stamped" : "");
+  zone.setAttribute("role","button");
+  zone.setAttribute("aria-label","押印して承認");
+  zone.innerHTML =
+    '<div class="guide">押印</div>' +
+    '<div class="impress"><svg viewBox="0 0 100 100" width="100%" height="100%">' +
+    '<g filter="url(#rough)"><rect x="8" y="8" width="84" height="84" rx="15" fill="none" stroke="#d8432f" stroke-width="6"/>' +
+    '<text x="50" y="50" text-anchor="middle" dominant-baseline="central" font-family="\'Hiragino Mincho ProN\',serif" font-size="46" font-weight="600" fill="#d8432f">承</text></g></svg></div>';
+  zone.addEventListener("click", function(ev){
+    if(p.approvals[step.k]) return;
+    p.approvals[step.k] = true;
+    zone.classList.add("stamped");
+    bumpTap(ev.clientX, ev.clientY);
+    if(navigator.vibrate) navigator.vibrate(16);
+    var all = STEPS.every(function(s){ return p.approvals[s.k]; });
+    if(all && p.status === "承認待ち"){ p.status = "承認済み"; toast("全決裁完了 — 納品できます"); }
+    save(); renderProjects();
+  });
+  foot.appendChild(zone);
+}
+function mkAct(label, fn){
+  var b = document.createElement("button");
+  b.className = "act"; b.textContent = label;
+  b.addEventListener("click", fn);
+  return b;
+}
+
+function copyText(t){
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(t).then(function(){ toast("コピーしました"); },
+      function(){ legacyCopy(t); });
+  } else legacyCopy(t);
+}
+function legacyCopy(t){
+  var ta = document.createElement("textarea");
+  ta.value = t; document.body.appendChild(ta); ta.select();
+  try{ document.execCommand("copy"); toast("コピーしました"); }catch(e){ toast("コピーできませんでした"); }
+  ta.remove();
+}
+function download(name, content, mime){
+  var blob = new Blob([content], { type: (mime||"text/plain") + ";charset=utf-8" });
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 400);
+  toast(name + " を保存しました");
+}
+
+/* ================= パイプライン実行 ================= */
+async function execStep(p, step){
+  var card = cardEl(step);
+  var st = card.querySelector('[data-r="st"]');
+  st.textContent = "執行中"; st.className = "st run";
+  var lastPaint = 0;
+  var onDelta = function(text){
+    var now = Date.now();
+    if(now - lastPaint < 80) return;
+    lastPaint = now;
+    fillCard(p, step, text, false);
+  };
+  try{
+    var text = isDemo() ? await runDemo(step, onDelta) : await callClaude(step, p, onDelta);
+    p.deliverables[step.k] = text;
+    save();
+    fillCard(p, step, text, true);
+    return text;
+  }catch(e){
+    if(e.message === "__NETBLOCK__"){
+      showNetBanner();
+      st.textContent = "デモに切替"; st.className = "st err";
+      var text2 = await runDemo(step, onDelta);
+      p.deliverables[step.k] = text2; p.demo = true;
+      save(); fillCard(p, step, text2, true);
+      return text2;
+    }
+    st.textContent = "エラー"; st.className = "st err";
+    var body = card.querySelector('[data-r="body"]');
+    body.classList.remove("empty");
+    body.innerHTML = '<div class="md"><p>'+esc(e.message)+'</p></div>';
+    var foot = card.querySelector('[data-r="foot"]');
+    foot.style.display = "flex"; foot.innerHTML = "";
+    foot.appendChild(mkAct("再実行", function(){ execStep(p, step); }));
+    throw e;
+  }
+}
+
+async function runPipeline(p){
+  if(S.running) return;
+  S.running = true;
+  $("execBtn").disabled = true;
+  $("execBtn").textContent = "執行中…";
+  try{
+    await execStep(p, STEPS[0]);                       // 企画
+    var mid = [STEPS[1], STEPS[2], STEPS[3]].map(function(s){   // 開発/広報/経理 並列
+      return execStep(p, s).catch(function(){ return null; });
+    });
+    await Promise.all(mid);
+    if(p.deliverables.keiri){
+      var m = p.deliverables.keiri.match(/合計[::]\s*¥?([\d,]+)/);
+      if(m) p.price = parseInt(m[1].replace(/,/g,""), 10) || 0;
+    }
+    await execStep(p, STEPS[4]);                       // 秘書
+    p.status = "承認待ち";
+    save(); renderProjects();
+    toast(isDemo() ? "デモ納品物が揃いました — 押印してください" : "納品物が揃いました — 押印してください");
+  }catch(e){
+    toast("一部の工程でエラーが発生しました");
+  }finally{
+    S.running = false;
+    $("execBtn").disabled = false;
+    $("execBtn").textContent = "執 行";
+  }
+}
+
+/* ================= 案件簿 ================= */
+var STATUS_CLS = { "制作中":"", "承認待ち":"s3", "承認済み":"s2", "納品済み":"s2", "入金済み":"s4" };
+var NEXT_STATUS = { "承認済み":"納品済み", "納品済み":"入金済み" };
+
+function renderProjects(){
+  var sales=0, pipe=0;
+  S.projects.forEach(function(p){
+    if(p.status==="入金済み") sales += (p.price||0);
+    else pipe += (p.price||0);
+  });
+  $("stSales").textContent = yen(sales);
+  $("stPipe").textContent = yen(pipe);
+  $("stCount").textContent = S.projects.length;
+
+  var host = $("plist");
+  host.innerHTML = "";
+  if(!S.projects.length){
+    host.innerHTML = '<div class="pempty">案件はまだありません。<br>社長室で最初の指示を出してください。</div>';
+    return;
+  }
+  S.projects.slice().reverse().forEach(function(p){
+    var el = document.createElement("div");
+    el.className = "pitem";
+    el.innerHTML =
+      '<div class="r1"><span class="nm">'+esc(p.instruction)+'</span><span class="pr">'+yen(p.price)+'</span></div>' +
+      '<div class="r2"><span class="dt">'+p.date+(p.demo?" ・ デモ":"")+'</span>' +
+      '<span class="chip '+(STATUS_CLS[p.status]||"")+'">'+p.status+"</span></div>";
+    el.addEventListener("click", function(){ openProject(p); });
+    host.appendChild(el);
+  });
+}
+
+function openProject(p){
+  S.current = p;
+  $("instruction").value = p.instruction;
+  renderPipeline(p);
+  switchView("home");
+  // 案件操作列
+  var host = $("pipeline");
+  var row = document.createElement("div");
+  row.id = "projActions";
+  var nxt = NEXT_STATUS[p.status];
+  if(nxt){
+    row.appendChild(mkAct(nxt==="納品済み" ? "納品済みにする" : "入金を記帳する", function(ev){
+      p.status = nxt; bumpTap(ev.clientX, ev.clientY); save(); renderProjects(); openProject(p);
+      toast(nxt==="入金済み" ? yen(p.price)+" を売上に記帳しました" : "納品済みにしました");
+    }));
+  }
+  row.appendChild(mkAct("金額を変更", function(){
+    var v = prompt("この案件の請求額(数字のみ)", p.price||0);
+    if(v===null) return;
+    p.price = parseInt(String(v).replace(/[^\d]/g,""),10)||0;
+    save(); renderProjects(); openProject(p);
+  }));
+  row.appendChild(mkAct("案件を削除", function(){
+    if(!confirm("この案件を削除しますか?")) return;
+    S.projects = S.projects.filter(function(x){ return x.id!==p.id; });
+    S.current = null; save(); renderProjects();
+    $("pipeline").innerHTML=""; $("instruction").value="";
+    toast("削除しました");
+  }));
+  host.appendChild(row);
+}
+
+/* ================= バナー ================= */
+function showNetBanner(){
+  var host = $("bannerHost");
+  if(host.querySelector(".banner")) return;
+  var d = document.createElement("div");
+  d.className = "banner warn";
+  d.innerHTML = '<button class="x">×</button>この閲覧環境は外部API通信が遮断されています(プレビュー環境等)。フローは<b>デモモード</b>で体験できます。実運用するには、このHTMLファイルを保存してブラウザで直接開くか、自分のWebサーバー(GitHub Pages等)に置いてください。';
+  d.querySelector(".x").addEventListener("click", function(){ d.remove(); });
+  host.appendChild(d);
+}
+function refreshModeBadge(){
+  var b = $("modeBadge");
+  if(isDemo()){
+    b.innerHTML = '現在 <b>デモモード</b>' + (S.key ? "" : ' — 設定でAPIキーを登録すると実運用できます');
+  }else{
+    b.innerHTML = '実運用モード ・ <b>' + esc(S.model.replace("claude-","").toUpperCase()) + "</b>";
+  }
+}
+
+/* ================= 画面遷移 ================= */
+function switchView(v){
+  ["home","projects","settings"].forEach(function(k){
+    $("v-"+k).classList.toggle("on", k===v);
+  });
+  document.querySelectorAll("nav button").forEach(function(b){
+    b.classList.toggle("on", b.dataset.v===v);
+  });
+  if(v==="projects") renderProjects();
+}
+document.querySelectorAll("nav button").forEach(function(b){
+  b.addEventListener("click", function(){ switchView(b.dataset.v); });
+});
+
+/* ================= イベント ================= */
+document.querySelectorAll(".suggests button").forEach(function(b){
+  b.addEventListener("click", function(){ $("instruction").value = b.dataset.s; });
+});
+
+$("execBtn").addEventListener("click", function(ev){
+  var inst = $("instruction").value.trim();
+  if(!inst){ toast("指示を入力してください"); return; }
+  bumpTap(ev.clientX, ev.clientY);
+  var p = {
+    id: Date.now(),
+    instruction: inst,
+    date: new Date().toLocaleDateString("ja-JP"),
+    status: "制作中",
+    price: 0,
+    demo: isDemo(),
+    deliverables: {},
+    approvals: {}
+  };
+  S.projects.push(p);
+  S.current = p;
+  save();
+  renderPipeline(p);
+  setTimeout(function(){
+    $("pipeline").scrollIntoView({ behavior:"smooth", block:"start" });
+  }, 150);
+  runPipeline(p);
+});
+
+/* 設定 */
+$("apiKey").value = S.key;
+$("modelSel").value = S.model;
+$("modeSel").value = S.mode;
+$("saveBtn").addEventListener("click", function(ev){
+  S.key = $("apiKey").value.trim();
+  S.model = $("modelSel").value;
+  S.mode = $("modeSel").value;
+  localStorage.setItem(LS.key, S.key);
+  localStorage.setItem(LS.model, S.model);
+  localStorage.setItem(LS.mode, S.mode);
+  bumpTap(ev.clientX, ev.clientY);
+  refreshModeBadge();
+  toast("保存しました");
+});
+$("testBtn").addEventListener("click", async function(){
+  var msg = $("connMsg");
+  var key = $("apiKey").value.trim();
+  if(!key){ msg.textContent="APIキーを入力してください。"; msg.className="ng"; return; }
+  msg.textContent = "確認中…"; msg.className = "";
+  try{
+    var res = await fetch("https://api.anthropic.com/v1/messages", {
+      method:"POST",
+      headers:{
+        "content-type":"application/json",
+        "x-api-key": key,
+        "anthropic-version":"2023-06-01",
+        "anthropic-dangerous-direct-browser-access":"true"
+      },
+      body: JSON.stringify({ model:$("modelSel").value, max_tokens:1, messages:[{role:"user",content:"ping"}] })
+    });
+    if(res.ok){ msg.textContent = "接続成功。実運用できます。"; msg.className = "ok"; S.netBlocked=false; }
+    else{
+      var t = await res.text();
+      msg.textContent = "接続失敗: " + apiError(res.status, t); msg.className = "ng";
+    }
+  }catch(e){
+    S.netBlocked = true;
+    msg.textContent = "この環境からAPIに到達できません(通信遮断)。ファイルを保存してブラウザで直接開いてください。";
+    msg.className = "ng";
+    showNetBanner();
+  }
+  refreshModeBadge();
+});
+
+/* ================= 起動 ================= */
+refreshModeBadge();
+renderProjects();
+if(!S.key && !localStorage.getItem(LS.banner)){
+  var host = $("bannerHost");
+  var d = document.createElement("div");
+  d.className = "banner";
+  d.innerHTML = '<button class="x">×</button>はじめまして。いまは<b>デモモード</b>です。まず「執行」でフローを体験し、実運用するときは設定からAnthropic APIキーを登録してください。';
+  d.querySelector(".x").addEventListener("click", function(){ d.remove(); localStorage.setItem(LS.banner,"1"); });
+  host.appendChild(d);
+}
+})();
+</script>
+</body>
+</html>
