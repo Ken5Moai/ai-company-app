@@ -104,6 +104,21 @@ h1.title{font-size:24px;font-weight:600;letter-spacing:.08em;line-height:1.5;tex
   background:none;border:1px solid var(--sumi-3);border-radius:99px;
   color:var(--hai);font-size:10px;letter-spacing:.14em;padding:7px 12px;
 }
+/* モード切替 */
+#modeTabs{
+  display:flex;gap:8px;margin-top:20px;
+}
+#modeTabs button{
+  flex:1;background:none;border:1px solid var(--sumi-3);border-radius:99px;
+  color:var(--hai);font-size:11px;letter-spacing:.24em;text-indent:.12em;
+  padding:11px;
+}
+#modeTabs button.on{
+  color:var(--kin);border-color:var(--kin-awai);
+  background:rgba(201,162,75,.07);
+}
+#modeTabs + #orderBox{margin-top:12px}
+
 /* 参考画像の添付 */
 #attachRow{display:flex;align-items:center;gap:9px;margin-top:12px;flex-wrap:wrap}
 #attachBtn{
@@ -345,8 +360,13 @@ nav button.on::before{
 
     <div id="bannerHost"></div>
 
+    <div id="modeTabs">
+      <button data-m="biz" class="on">新規事業</button>
+      <button data-m="job">受注応募</button>
+    </div>
+
     <div id="orderBox">
-      <div class="room"><span><i>●</i> 全社チャット</span><span>役員 5</span></div>
+      <div class="room"><span><i>●</i> 全社チャット</span><span id="roomInfo">役員 5</span></div>
       <textarea id="instruction" rows="3" placeholder="例: コーヒーD2Cサブスクを立ち上げて。"></textarea>
       <div class="suggests">
         <button data-s="コーヒーD2Cサブスクを立ち上げて。">コーヒーD2C</button>
@@ -484,13 +504,20 @@ function isDemo(){
 }
 
 /* ================= 役員(工程)定義 ================= */
-var STEPS = [
+var BIZ_STEPS = [
   { k:"kikaku",  dept:"企画", ttl:"事業ブリーフ",     file:"brief.md" },
-  { k:"kaihatsu",dept:"開発", ttl:"ランディングページ", file:"index.html" },
+  { k:"kaihatsu",dept:"開発", ttl:"ランディングページ", file:"index.html", vision:true },
   { k:"kouhou",  dept:"広報", ttl:"告知文セット",     file:"sns.md" },
   { k:"keiri",   dept:"経理", ttl:"見積書",           file:"mitsumori.md" },
   { k:"hisho",   dept:"秘書", ttl:"業務報告書",       file:"houkoku.md" }
 ];
+var JOB_STEPS = [
+  { k:"bunseki", dept:"営業", ttl:"案件分析",       file:"bunseki.md", vision:true },
+  { k:"oubo",    dept:"営業", ttl:"応募文",         file:"oubo.md" },
+  { k:"mihon",   dept:"制作", ttl:"見本成果物",     file:"mihon.md", vision:true },
+  { k:"dandori", dept:"秘書", ttl:"受注後の段取り", file:"dandori.md" }
+];
+function stepsFor(p){ return (p && p.mode === "job") ? JOB_STEPS : BIZ_STEPS; }
 var SYSTEM = "あなたは一人社長を支えるAI役員チーム「AIカンパニー」の一員。出力は日本語。挨拶・前置き・後書きは一切書かず、成果物本体のみを出力する。品質は納品水準。";
 
 function redoBlock(redo){
@@ -517,6 +544,23 @@ function prompts(step, p){
     case "hisho": return { max: 1600, user:
       inst + brief + "\n\n本日の業務報告書を作成せよ。構成:\n## 完了した業務\n## 成果物一覧\n(事業ブリーフ / LP(HTML) / 告知文セット / 見積書)\n## 決裁をお願いしたい事項\n## 次のアクション\n社長が明日やるべきことを3つ、具体的に。" };
   }
+  // ---- 受注応募モード ----
+  var note = p.instruction ? "社長からの補足:「" + p.instruction + "」" : "";
+  var bunseki = p.deliverables.bunseki ? "\n\n案件分析:\n" + p.deliverables.bunseki : "";
+  switch(step.k){
+    case "bunseki": return { max: 3000, user:
+      "添付は、応募を検討している募集案件ページのスクリーンショット。" + note +
+      "\n\n記載内容を正確に読み取り、次の構成で案件分析を作成せよ:\n## 案件サマリー\n発注内容・納品物・本数/分量・報酬・応募期限・応募条件・応募方法を箇条書きで。読み取れない項目は「記載なし」と書く(推測で埋めない)\n## 発注者の狙い\n明示されていない意図・重視ポイントの推測\n## 採算判定\n作業時間の見積り、時給換算、受けるべきかの率直な判定。応募条件に合致しない項目(属性条件等)があれば明確に警告する\n## 受注戦略\nこの案件で選ばれる提案のポイント3つ\n最後に必ず単独行で「想定受注額: ¥NN,NNN」(初回契約で現実的に見込める金額)。" };
+    case "oubo": return { max: 1800, user:
+      note + bunseki +
+      "\n\nこの案件への応募文(提案文)を作成せよ。募集の「応募方法」の指定があればそれに従う。\n構成: 発注者の目的への共感を1行 → 簡潔な自己紹介 → この案件でできること(納品物の具体イメージ。見本を用意済みで添付できる旨を必ず入れる) → 対応可能なペース → 方向性を確認する質問1つ → 締め。\n全体300〜500字・敬体・絵文字は最大1つ。募集文中の言葉を1箇所引用して「ちゃんと読んだ感」を出す。テンプレ臭のある定型句(「ご覧いただきありがとうございます」等)は避ける。\n【厳守】事実でない実績・経歴・属性は書かない。応募条件に合致しない点があっても偽らない。" };
+    case "mihon": return { max: 16000, user:
+      note + bunseki +
+      "\n\nこの案件で求められている納品物の「見本(初稿)」を、応募時に添付して営業力になる品質で1点作成せよ。形式は案件内容から判断:\n- Instagram投稿系: 投稿3案。各案 = 表紙のフック文言 / カルーセル構成(枚数と各枚のテキスト) / キャプション(本文) / ハッシュタグ10個 / Canvaで再現するための配色・フォント・レイアウト指示\n- LP・Webページ系: スマホ最適化の単一HTML(外部リソース禁止・インラインCSS)を```htmlフェンスで出力\n- 記事・ライティング系: タイトル案3つ+見出し構成+リード文+本文冒頭500字\n- その他: 募集の指定形式に忠実に\nターゲットと発注者の狙いに正確に合わせる。ダミー文字禁止。" };
+    case "dandori": return { max: 1800, user:
+      note + bunseki +
+      "\n\n受注が決まった直後の段取りを作成せよ。構成:\n## 初回メッセージ\n発注者への挨拶+最初に確認すべき事項3つ(コピペで送れる文面)\n## 制作スケジュール\n納期から逆算した工程\n## 納品チェックリスト\n## 継続受注につなげる一手\n単価アップ・継続契約に向けた具体策。" };
+  }
 }
 
 /* ================= デモ成果物 ================= */
@@ -527,6 +571,12 @@ var DEMO = {
   kouhou: "## X投稿(3案)\n1. 在宅の朝、いちばんの贅沢は「挽きたての香り」でした。焙煎48時間以内の豆が毎月届く #豆びより、先行100名は初回半額です ☕\n2. コーヒー代を計算したらカフェ月8,000円。豆びよりなら月1,980円で毎朝14杯。鮮度は焙煎48時間以内、解約はいつでも。\n3. エチオピアの農園から、あなたのポストまで。豆と一緒に「産地の便り」が届きます。今月はナチュラル精製の浅煎り。\n\n## Instagramキャプション\n毎朝の一杯が、旅になる。\n\n焙煎日は、袋に手書きしています。\n48時間以内にポストへ。\n今月の産地は、エチオピア・イルガチェフェ。\n\n先行100名さま、初回半額ではじめられます。\nプロフィールのリンクからどうぞ。\n\n#コーヒーのある暮らし #スペシャルティコーヒー #豆びより #朝時間 #コーヒー好きな人と繋がりたい\n\n## LINE配信文\n【先行100名・初回50%OFF】\n豆びより、はじまります☕\n焙煎48時間以内のスペシャルティコーヒーを、毎月ポストにお届け。月額1,980円が初回990円、しばりなし。\n▼30秒で申込む\nhttps://example.com",
   keiri: "## 見積書\n____________ 御中\n発行日: 2026年7月17日 / 有効期限: 発行から30日\n\n- LP設計・実装(スマホ最適化・単一HTML) … ¥50,000\n- ローンチ告知文セット(X3案・Instagram・LINE) … ¥15,000\n- 事業ブリーフ・企画費 … ¥10,000\n\n小計: ¥75,000\n消費税(10%): ¥7,500\n合計: ¥82,500\n\n## 備考\n納品形態: HTMLファイル一式+テキストデータ。\n修正対応: 納品後2回まで無償。3回目以降は¥5,000/回。",
   hisho: "## 完了した業務\n企画の事業ブリーフ策定、LPの設計・実装・検収、ローンチ告知文3媒体分の執筆、顧客提出用見積書の作成。\n\n## 成果物一覧\n- 事業ブリーフ(brief.md)\n- ランディングページ(index.html)\n- 告知文セット(sns.md)\n- 見積書(mitsumori.md)\n\n## 決裁をお願いしたい事項\n各成果物の押印(承認)。承認後、そのまま納品可能な状態です。\n\n## 次のアクション\n- LPを公開し、X告知1案目を本日中に投稿する\n- クラウドソーシングに「LP制作 ¥50,000〜」で出品し、この成果物をポートフォリオにする\n- 見積書の宛名を入れて、見込み客1社に送付する"
+};
+var JOB_DEMO = {
+  bunseki: "## 案件サマリー\n- 発注内容: 韓国コスメ・美容情報を紹介するInstagram投稿の作成\n- 納品物: 投稿(カルーセル画像+キャプション)。Canva無料版で制作可\n- 報酬: 1投稿 2,000円(継続依頼あり・単価アップ相談可)\n- 契約金額(目安): 30,000円〜50,000円\n- 応募期限: 2026年7月19日\n- 応募条件: 20代女性 / オンラインMTG(カメラオン)参加可 / PC所持\n- 応募方法: 自己紹介+応募理由をひとこと\n\n## 発注者の狙い\n自社の美容系アカウントを継続運用できる「中の人」を安く確保したい。デザインの完成度より、ターゲット(20代女性)の感覚に合う言葉選びと継続力を重視している。\n\n## 採算判定\n1投稿あたりの作業時間はテンプレ化後で約40〜60分 → 時給換算 2,000〜3,000円。初月10〜15本で2〜3万円。単価は市場の中央値だが、**継続案件かつテンプレ化で時給が上がる型**なので、実績づくりを兼ねるなら受けてよい。\n⚠ 応募条件に「20代女性の方」とあります。条件に合致しない場合は応募を見送るか、正直に伝えた上で判断を仰いでください。\n\n## 受注戦略\n- 応募文に「見本投稿」を添付し、トンマナ理解を先に証明する\n- 「保存される投稿」の設計(チェックリスト型・比較型)を語れることを示す\n- 継続前提の制作ペース(週N本)を明示する\n\n想定受注額: ¥30,000",
+  oubo: "はじめまして。「保存してあとで見返したい!」と思ってもらえる投稿づくり、というコンセプトに強く共感してご応募しました。\n\n普段から韓国コスメの新作情報を追いかけており、CICA・PDRNなど成分系の話題も好きです。貴アカウントのターゲットである20代女性が「これ気になる!」と手を止める瞬間は、①悩みの言語化 ②Before/Afterの想像 ③保存したくなる一覧性、の3つで作れると考えています。\n\nイメージを掴んでいただくため、御社向けに投稿見本(表紙フック+カルーセル構成+キャプション+ハッシュタグ)を1案作成済みです。添付いたしますのでトンマナをご確認ください。\n\n制作ペースは週3本まで対応可能です。ひとつ質問ですが、紹介するコスメは指定リストからでしょうか、それとも提案型でしょうか?\n\nご縁がありましたら、丁寧に長くお手伝いさせてください。よろしくお願いいたします。",
+  mihon: "## 見本投稿A「CICAで迷ったらこれ」\n\n### 表紙フック(1枚目)\n「CICA、結局どれ買えばいい?」\n→ 迷子さん向け・保存推奨の比較まとめ\n\n### カルーセル構成(6枚)\n1. 表紙: フック文言+「保存して見返してね」\n2. CICAとは?30字解説+こんな肌悩みの人向け\n3. プチプラ代表(〜1,500円): 特徴と向き不向き\n4. 中間帯(〜3,000円): 特徴と向き不向き\n5. デパコス級: ご褒美枠として紹介\n6. まとめ表(1枚で全比較)+「他の成分も知りたい人はフォロー」\n\n### キャプション\nCICAアイテム、種類が多すぎて迷いますよね🌿\n今回は価格帯別に「どんな肌の日に使うか」で選び方をまとめました。\n6枚目の比較表だけでも保存がおすすめです。\n「これ使ってる!」があればコメントで教えてください。\n\n### ハッシュタグ\n#韓国コスメ #韓国スキンケア #CICA #シカクリーム #スキンケアマニア #コスメ好きさんと繋がりたい #美容垢 #毛穴ケア #敏感肌スキンケア #プチプラコスメ\n\n### Canva再現指示\n- 配色: アイボリー背景(#F7F3EE)+セージグリーン(#9CAF97)+文字は濃茶(#3E332C)\n- フォント: 見出し「しっぽり明朝」/ 本文「Noto Sans JP」\n- レイアウト: 表紙は中央大文字+余白広め。比較枚は上1/3に商品名、下2/3に3行ポイント。全枚右下に小さくアカウント名",
+  dandori: "## 初回メッセージ\nこの度はご縁をいただきありがとうございます。早速ですが、制作開始にあたり3点確認させてください。\n1. 初回に紹介するコスメの指定はありますか?(なければ2案ご提案します)\n2. アカウントの既存トンマナ(配色・フォント)の指定はありますか?\n3. 初回納品の希望日はいつでしょうか?\nMTGも今週でしたら◯曜・◯曜の夜が可能です。よろしくお願いいたします。\n\n## 制作スケジュール\n- Day1: MTGで方向性確認 → 構成案を当日中に共有\n- Day2: 初稿納品(表紙+カルーセル+キャプション)\n- Day3: 修正反映 → 納品確定\n- 以降: 週3本ペースで曜日固定納品\n\n## 納品チェックリスト\n- 表紙のフックが8文字前後で目を引くか\n- 誤字・成分名の表記ゆれがないか\n- ハッシュタグ10個(大中小の検索規模を混在)\n- 保存を促す一言が入っているか\n\n## 継続受注につなげる一手\n10本納品時点で保存率・リーチの実測を簡易レポートにまとめて提出し、「分析つき運用」として単価2,500〜3,000円への改定を提案する。"
 };
 
 /* ================= カウンター/演出 ================= */
@@ -585,11 +635,11 @@ function renderThumbs(){
     });
     host.appendChild(d);
   });
-  $("attachBtn").style.display = attachedImages.length >= 3 ? "none" : "";
+  $("attachBtn").style.display = attachedImages.length >= 4 ? "none" : "";
 }
 $("attachBtn").addEventListener("click", function(){ $("imgInput").click(); });
 $("imgInput").addEventListener("change", async function(){
-  var files = [].slice.call(this.files).slice(0, 3 - attachedImages.length);
+  var files = [].slice.call(this.files).slice(0, 4 - attachedImages.length);
   this.value = "";
   for(var i=0;i<files.length;i++){
     try{ attachedImages.push(await compressImage(files[i])); }
@@ -611,15 +661,16 @@ async function callClaude(step, p, onDelta, redo){
   var pr = prompts(step, p);
   var userText = pr.user + redoBlock(redo);
   var content = userText;
-  // 開発工程のみ: 参考画像をvision入力として添付
+  // vision対応工程: 添付画像を入力に含める
   var imgs = RUNTIME_IMGS[p.id] || [];
-  if(step.k === "kaihatsu" && imgs.length){
+  if(step.vision && imgs.length){
+    var caption = (p.mode === "job")
+      ? "\n\n【添付画像について】添付は募集案件ページのスクリーンショット。記載内容を正確に読み取って使うこと。"
+      : "\n\n【添付画像について】添付は社長からの参考資料(参考にしたいサイトのスクショ / 手書きラフ / 既存のチラシ等)。レイアウト構成・配色・雰囲気の意図を汲み取り、この事業の内容に最適化して再構成せよ。文言や商標の丸写しはしない。";
     content = imgs.map(function(im){
       return { type:"image", source:{ type:"base64", media_type: im.media, data: im.data } };
     });
-    content.push({ type:"text", text: userText +
-      "\n\n【添付画像について】添付は社長からの参考資料(参考にしたいサイトのスクショ / 手書きラフ / 既存のチラシ等)。" +
-      "レイアウト構成・配色・雰囲気の意図を汲み取り、この事業の内容に最適化して再構成せよ。文言や商標の丸写しはしない。" });
+    content.push({ type:"text", text: userText + caption });
   }
   var body = {
     model: S.model,
@@ -691,9 +742,9 @@ async function callClaude(step, p, onDelta, redo){
 }
 
 /* デモ実行(タイプ演出) */
-function runDemo(step, onDelta){
+function runDemo(p, step, onDelta){
   return new Promise(function(resolve){
-    var full = DEMO[step.k];
+    var full = (p && p.mode === "job" ? JOB_DEMO : DEMO)[step.k] || "";
     var pos = 0;
     var iv = setInterval(function(){
       var stepN = Math.max(30, Math.ceil(full.length / 70));
@@ -742,7 +793,7 @@ function renderPipeline(p){
   var host = $("pipeline");
   host.innerHTML = "";
   if(!p) return;
-  STEPS.forEach(function(step){
+  stepsFor(p).forEach(function(step){
     var card = document.createElement("div");
     card.className = "card"; card.dataset.k = step.k;
     card.innerHTML =
@@ -761,15 +812,18 @@ function fillCard(p, step, text, done){
   var body = card.querySelector('[data-r="body"]');
   var st = card.querySelector('[data-r="st"]');
   body.classList.remove("empty");
-  if(step.k === "kaihatsu"){
+  var lpish = step.k === "kaihatsu" || (step.k === "mihon" && extractHtml(text));
+  if(lpish){
     var html = extractHtml(text);
     if(html && done){
       body.innerHTML = '<iframe class="lpframe" sandbox="allow-scripts"></iframe>' +
         '<div class="lpnote">実際に納品できるHTMLです。「保存」でファイルとしてダウンロードできます。</div>';
       body.querySelector("iframe").srcdoc = html;
-    } else {
+    } else if(step.k === "kaihatsu"){
       // 生成途中はコード量で進捗表示
       body.innerHTML = '<div class="md"><p>実装中… <span class="amount">'+text.length.toLocaleString("ja-JP")+'</span> 文字</p></div>';
+    } else {
+      body.innerHTML = '<div class="md">' + mdRender(text) + "</div>";
     }
   } else {
     body.innerHTML = '<div class="md">' + mdRender(text) + "</div>";
@@ -788,13 +842,14 @@ function renderFoot(p, step){
   foot.style.display = "flex";
   foot.innerHTML = "";
   var text = p.deliverables[step.k] || "";
-  var isLp = step.k === "kaihatsu";
-  var lpHtml = isLp ? extractHtml(text) : null;
-  var payload = isLp && lpHtml ? lpHtml : text;
+  var lpHtml = (step.k === "kaihatsu" || step.k === "mihon") ? extractHtml(text) : null;
+  var isLp = !!lpHtml || step.k === "kaihatsu";
+  var payload = lpHtml || text;
+  var fname = lpHtml ? (step.k === "mihon" ? "mihon.html" : step.file) : step.file;
 
   var bCopy = mkAct("コピー", function(){ copyText(payload); });
   var bSave = mkAct("保存", function(){
-    download(step.file, payload, isLp ? "text/html" : "text/markdown");
+    download(fname, payload, lpHtml ? "text/html" : "text/markdown");
   });
   foot.appendChild(bCopy); foot.appendChild(bSave);
   if(navigator.share && !isLp){
@@ -822,7 +877,7 @@ function renderFoot(p, step){
     zone.classList.add("stamped");
     bumpTap(ev.clientX, ev.clientY);
     if(navigator.vibrate) navigator.vibrate(16);
-    var all = STEPS.every(function(s){ return p.approvals[s.k]; });
+    var all = stepsFor(p).every(function(s){ return p.approvals[s.k]; });
     if(all && p.status === "承認待ち"){ p.status = "承認済み"; toast("全決裁完了 — 納品できます"); }
     save(); renderProjects();
   });
@@ -869,7 +924,7 @@ async function execStep(p, step, redo){
     fillCard(p, step, text, false);
   };
   try{
-    var text = isDemo() ? await runDemo(step, onDelta) : await callClaude(step, p, onDelta, redo);
+    var text = isDemo() ? await runDemo(p, step, onDelta) : await callClaude(step, p, onDelta, redo);
     p.deliverables[step.k] = text;
     save();
     fillCard(p, step, text, true);
@@ -878,7 +933,7 @@ async function execStep(p, step, redo){
     if(e.message === "__NETBLOCK__"){
       showNetBanner();
       st.textContent = "デモに切替"; st.className = "st err";
-      var text2 = await runDemo(step, onDelta);
+      var text2 = await runDemo(p, step, onDelta);
       p.deliverables[step.k] = text2; p.demo = true;
       save(); fillCard(p, step, text2, true);
       return text2;
@@ -900,8 +955,8 @@ async function redoStep(p, step){
   var comment = prompt("差し戻しの理由(空欄でもOK)\n例: もっと高級感を。価格は据え置きで。", "");
   if(comment === null) return; // キャンセル
   var redo = { prev: p.deliverables[step.k] || "", comment: comment.trim() };
-  if(step.k === "kaihatsu" && p.imgCount && !(RUNTIME_IMGS[p.id] || []).length){
-    toast("参考画像は端末に保存されないため、今回は文章指示のみで作り直します");
+  if(step.vision && p.imgCount && !(RUNTIME_IMGS[p.id] || []).length){
+    toast("添付画像は端末に保存されないため、今回は文章指示のみで作り直します");
   }
   p.approvals[step.k] = false;
   if(p.status === "承認済み") p.status = "承認待ち";
@@ -930,16 +985,24 @@ async function runPipeline(p){
   $("execBtn").disabled = true;
   $("execBtn").textContent = "執行中…";
   try{
-    await execStep(p, STEPS[0]);                       // 企画
-    var mid = [STEPS[1], STEPS[2], STEPS[3]].map(function(s){   // 開発/広報/経理 並列
+    var SS = stepsFor(p);
+    await execStep(p, SS[0]);                          // 企画 / 案件分析
+    var mid = SS.slice(1, 4).map(function(s){ // 残り中間工程は並列
       return execStep(p, s).catch(function(){ return null; });
     });
     await Promise.all(mid);
-    if(p.deliverables.keiri){
-      var m = p.deliverables.keiri.match(/合計[::]\s*¥?([\d,]+)/);
-      if(m) p.price = parseInt(m[1].replace(/,/g,""), 10) || 0;
+    if(p.mode === "job"){
+      if(p.deliverables.bunseki){
+        var mj = p.deliverables.bunseki.match(/想定受注額[::]\s*¥?([\d,]+)/);
+        if(mj) p.price = parseInt(mj[1].replace(/,/g,""), 10) || 0;
+      }
+    } else {
+      if(p.deliverables.keiri){
+        var m = p.deliverables.keiri.match(/合計[::]\s*¥?([\d,]+)/);
+        if(m) p.price = parseInt(m[1].replace(/,/g,""), 10) || 0;
+      }
+      await execStep(p, SS[4]);                        // 秘書
     }
-    await execStep(p, STEPS[4]);                       // 秘書
     p.status = "承認待ち";
     save(); renderProjects();
     toast(isDemo() ? "デモ納品物が揃いました — 押印してください" : "納品物が揃いました — 押印してください");
@@ -977,7 +1040,7 @@ function renderProjects(){
     el.className = "pitem";
     el.innerHTML =
       '<div class="r1"><span class="nm">'+esc(p.instruction)+'</span><span class="pr">'+yen(p.price)+'</span></div>' +
-      '<div class="r2"><span class="dt">'+p.date+(p.demo?" ・ デモ":"")+'</span>' +
+      '<div class="r2"><span class="dt">'+p.date+(p.mode==="job"?" ・ 受注応募":"")+(p.demo?" ・ デモ":"")+'</span>' +
       '<span class="chip '+(STATUS_CLS[p.status]||"")+'">'+p.status+"</span></div>";
     el.addEventListener("click", function(){ openProject(p); });
     host.appendChild(el);
@@ -1054,12 +1117,43 @@ document.querySelectorAll(".suggests button").forEach(function(b){
   b.addEventListener("click", function(){ $("instruction").value = b.dataset.s; });
 });
 
+/* モード切替 */
+S.uiMode = "biz";
+function applyMode(){
+  document.querySelectorAll("#modeTabs button").forEach(function(b){
+    b.classList.toggle("on", b.dataset.m === S.uiMode);
+  });
+  var job = S.uiMode === "job";
+  document.querySelector(".suggests").style.display = job ? "none" : "";
+  $("roomInfo").textContent = job ? "営業・制作・秘書" : "役員 5";
+  $("instruction").placeholder = job
+    ? "補足があれば(任意) 例: 実績は2件あり / 週3本まで対応可 / 単価交渉したい"
+    : "例: コーヒーD2Cサブスクを立ち上げて。";
+  $("attachHint").textContent = job
+    ? "募集案件ページのスクリーンショットを添付してください(必須・最大4枚)。案件分析→応募文→見本成果物→受注後の段取りを作ります"
+    : "参考にしたいサイトのスクショ・手書きラフ・チラシ等を添付すると、開発がLPデザインに反映します(任意・最大4枚)";
+}
+document.querySelectorAll("#modeTabs button").forEach(function(b){
+  b.addEventListener("click", function(){
+    S.uiMode = b.dataset.m; applyMode();
+  });
+});
+applyMode();
+
 $("execBtn").addEventListener("click", function(ev){
   var inst = $("instruction").value.trim();
-  if(!inst){ toast("指示を入力してください"); return; }
+  if(S.uiMode === "job"){
+    if(!attachedImages.length && !isDemo()){
+      toast("募集ページのスクショを添付してください"); return;
+    }
+    if(!inst) inst = "(補足なし)";
+  } else if(!inst){
+    toast("指示を入力してください"); return;
+  }
   bumpTap(ev.clientX, ev.clientY);
   var p = {
     id: Date.now(),
+    mode: S.uiMode,
     instruction: inst,
     date: new Date().toLocaleDateString("ja-JP"),
     status: "制作中",
