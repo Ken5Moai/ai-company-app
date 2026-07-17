@@ -177,7 +177,7 @@ h1.title{font-size:24px;font-weight:600;letter-spacing:.08em;line-height:1.5;tex
 
 /* カード脚 */
 .card .foot{
-  display:flex;align-items:center;gap:8px;
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
   padding:11px 15px;border-top:1px solid var(--sumi-3);
 }
 .act{
@@ -185,6 +185,8 @@ h1.title{font-size:24px;font-weight:600;letter-spacing:.08em;line-height:1.5;tex
   color:var(--kinari);font-size:10px;letter-spacing:.16em;padding:8px 13px;
 }
 .act:active{background:var(--sumi-3)}
+.act.redo{color:var(--shu);border-color:rgba(216,67,47,.45)}
+.act:disabled{opacity:.4}
 .foot .sp{flex:1}
 /* 押印欄 */
 .inkzone{width:46px;height:46px;position:relative;flex:none;cursor:pointer}
@@ -466,6 +468,15 @@ var STEPS = [
 ];
 var SYSTEM = "あなたは一人社長を支えるAI役員チーム「AIカンパニー」の一員。出力は日本語。挨拶・前置き・後書きは一切書かず、成果物本体のみを出力する。品質は納品水準。";
 
+function redoBlock(redo){
+  if(!redo || !redo.prev) return "";
+  var prev = String(redo.prev);
+  if(prev.length > 12000) prev = prev.slice(0, 12000) + "\n…(以下略)";
+  return "\n\n【重要 — これは再提出依頼】前回の成果物は社長により差し戻された。" +
+    (redo.comment ? "差し戻し理由:「" + redo.comment + "」\nこの理由を最優先で反映し、" : "") +
+    "前回とは明確に異なる切り口で、より質の高い成果物を最初から作り直せ。\n\n--- 差し戻された前回の成果物 ---\n" + prev;
+}
+
 function prompts(step, p){
   var inst = "社長の指示:「" + p.instruction + "」";
   var brief = p.deliverables.kikaku ? "\n\n事業ブリーフ:\n" + p.deliverables.kikaku : "";
@@ -522,14 +533,14 @@ function apiError(status, body){
   return "HTTP " + status;
 }
 
-async function callClaude(step, p, onDelta){
+async function callClaude(step, p, onDelta, redo){
   var pr = prompts(step, p);
   var body = {
     model: S.model,
     max_tokens: pr.max,
     stream: true,
     system: SYSTEM,
-    messages: [{ role:"user", content: pr.user }]
+    messages: [{ role:"user", content: pr.user + redoBlock(redo) }]
   };
   // Opus/Sonnet は adaptive thinking。Haiku 4.5 は adaptive 非対応のため省略(=思考なし)。
   if (S.model.indexOf("haiku") === -1) body.thinking = { type:"adaptive" };
@@ -705,6 +716,9 @@ function renderFoot(p, step){
       navigator.share({ text: payload }).catch(function(){});
     }));
   }
+  var bRedo = mkAct("再提出", function(){ redoStep(p, step); });
+  bRedo.classList.add("redo");
+  foot.appendChild(bRedo);
   var sp = document.createElement("span"); sp.className="sp"; foot.appendChild(sp);
 
   var zone = document.createElement("div");
@@ -757,10 +771,10 @@ function download(name, content, mime){
 }
 
 /* ================= パイプライン実行 ================= */
-async function execStep(p, step){
+async function execStep(p, step, redo){
   var card = cardEl(step);
   var st = card.querySelector('[data-r="st"]');
-  st.textContent = "執行中"; st.className = "st run";
+  st.textContent = redo ? "作り直し中" : "執行中"; st.className = "st run";
   var lastPaint = 0;
   var onDelta = function(text){
     var now = Date.now();
@@ -769,7 +783,7 @@ async function execStep(p, step){
     fillCard(p, step, text, false);
   };
   try{
-    var text = isDemo() ? await runDemo(step, onDelta) : await callClaude(step, p, onDelta);
+    var text = isDemo() ? await runDemo(step, onDelta) : await callClaude(step, p, onDelta, redo);
     p.deliverables[step.k] = text;
     save();
     fillCard(p, step, text, true);
@@ -789,8 +803,35 @@ async function execStep(p, step){
     body.innerHTML = '<div class="md"><p>'+esc(e.message)+'</p></div>';
     var foot = card.querySelector('[data-r="foot"]');
     foot.style.display = "flex"; foot.innerHTML = "";
-    foot.appendChild(mkAct("再実行", function(){ execStep(p, step); }));
+    foot.appendChild(mkAct("再実行", function(){ execStep(p, step, redo); }));
     throw e;
+  }
+}
+
+/* 再提出(差し戻し) */
+async function redoStep(p, step){
+  if(S.running){ toast("執行中です。完了までお待ちください"); return; }
+  var comment = prompt("差し戻しの理由(空欄でもOK)\n例: もっと高級感を。価格は据え置きで。", "");
+  if(comment === null) return; // キャンセル
+  var redo = { prev: p.deliverables[step.k] || "", comment: comment.trim() };
+  p.approvals[step.k] = false;
+  if(p.status === "承認済み") p.status = "承認待ち";
+  save(); renderProjects();
+  renderFoot(p, step); // 印影を即時解除
+  S.running = true;
+  $("execBtn").disabled = true;
+  try{
+    await execStep(p, step, redo);
+    if(isDemo()){
+      toast("デモモードのため同じ見本を再提出しました");
+    } else {
+      toast(step.ttl + " を作り直しました — ご確認ください");
+    }
+  }catch(e){
+    /* エラー表示は execStep 内 */
+  }finally{
+    S.running = false;
+    $("execBtn").disabled = false;
   }
 }
 
