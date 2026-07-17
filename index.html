@@ -104,6 +104,25 @@ h1.title{font-size:24px;font-weight:600;letter-spacing:.08em;line-height:1.5;tex
   background:none;border:1px solid var(--sumi-3);border-radius:99px;
   color:var(--hai);font-size:10px;letter-spacing:.14em;padding:7px 12px;
 }
+/* 参考画像の添付 */
+#attachRow{display:flex;align-items:center;gap:9px;margin-top:12px;flex-wrap:wrap}
+#attachBtn{
+  background:none;border:1px dashed var(--kin-awai);border-radius:99px;
+  color:var(--kin);font-size:10px;letter-spacing:.14em;padding:8px 14px;
+}
+#thumbs{display:flex;gap:8px}
+.thumb{
+  position:relative;width:44px;height:44px;border-radius:8px;overflow:hidden;
+  border:1px solid var(--kin-awai);
+}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.thumb .rm{
+  position:absolute;top:0;right:0;width:16px;height:16px;
+  background:rgba(19,16,16,.85);color:var(--shu);border:none;
+  font-size:10px;line-height:1;padding:0;border-radius:0 0 0 7px;
+}
+#attachHint{margin-top:9px;font-size:9.5px;line-height:1.8;letter-spacing:.06em;color:rgba(138,127,114,.85)}
+
 #execRow{display:flex;align-items:center;gap:14px;margin-top:16px}
 #execBtn{
   flex:1;appearance:none;border:none;
@@ -335,6 +354,12 @@ nav button.on::before{
         <button data-s="フリーランス向けの請求書作成SaaSを立ち上げて。">請求書SaaS</button>
         <button data-s="観葉植物の月額便サービスを立ち上げて。">観葉植物便</button>
       </div>
+      <div id="attachRow">
+        <button id="attachBtn" type="button">📷 参考画像</button>
+        <div id="thumbs"></div>
+        <input type="file" id="imgInput" accept="image/*" multiple hidden>
+      </div>
+      <p id="attachHint">参考にしたいサイトのスクショ・手書きラフ・チラシ等を添付すると、開発がLPデザインに反映します(任意・最大3枚)</p>
     </div>
 
     <div id="execRow">
@@ -524,6 +549,55 @@ function toast(msg){
   clearTimeout(toastT); toastT=setTimeout(function(){t.classList.remove("on");},2400);
 }
 
+/* ================= 参考画像(スキャン) ================= */
+var attachedImages = [];   // 入力欄の添付 {media, data, url}
+var RUNTIME_IMGS = {};     // 案件IDごとの実行時画像(localStorageには保存しない)
+
+function compressImage(file){
+  return new Promise(function(resolve, reject){
+    var url = URL.createObjectURL(file);
+    var img = new Image();
+    img.onload = function(){
+      var MAX = 1400;
+      var w = img.naturalWidth, h = img.naturalHeight;
+      var sc = Math.min(1, MAX / Math.max(w, h));
+      var cv = document.createElement("canvas");
+      cv.width = Math.round(w * sc); cv.height = Math.round(h * sc);
+      cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+      URL.revokeObjectURL(url);
+      var dataUrl = cv.toDataURL("image/jpeg", 0.85);
+      resolve({ media:"image/jpeg", data: dataUrl.split(",")[1], url: dataUrl });
+    };
+    img.onerror = function(){ URL.revokeObjectURL(url); reject(new Error("bad image")); };
+    img.src = url;
+  });
+}
+function renderThumbs(){
+  var host = $("thumbs");
+  host.innerHTML = "";
+  attachedImages.forEach(function(im, i){
+    var d = document.createElement("div");
+    d.className = "thumb";
+    d.innerHTML = '<img alt="参考画像'+(i+1)+'"><button class="rm" aria-label="削除">×</button>';
+    d.querySelector("img").src = im.url;
+    d.querySelector(".rm").addEventListener("click", function(){
+      attachedImages.splice(i,1); renderThumbs();
+    });
+    host.appendChild(d);
+  });
+  $("attachBtn").style.display = attachedImages.length >= 3 ? "none" : "";
+}
+$("attachBtn").addEventListener("click", function(){ $("imgInput").click(); });
+$("imgInput").addEventListener("change", async function(){
+  var files = [].slice.call(this.files).slice(0, 3 - attachedImages.length);
+  this.value = "";
+  for(var i=0;i<files.length;i++){
+    try{ attachedImages.push(await compressImage(files[i])); }
+    catch(e){ toast("この画像は読み込めませんでした"); }
+  }
+  renderThumbs();
+});
+
 /* ================= Claude API ================= */
 function apiError(status, body){
   try{
@@ -535,12 +609,24 @@ function apiError(status, body){
 
 async function callClaude(step, p, onDelta, redo){
   var pr = prompts(step, p);
+  var userText = pr.user + redoBlock(redo);
+  var content = userText;
+  // 開発工程のみ: 参考画像をvision入力として添付
+  var imgs = RUNTIME_IMGS[p.id] || [];
+  if(step.k === "kaihatsu" && imgs.length){
+    content = imgs.map(function(im){
+      return { type:"image", source:{ type:"base64", media_type: im.media, data: im.data } };
+    });
+    content.push({ type:"text", text: userText +
+      "\n\n【添付画像について】添付は社長からの参考資料(参考にしたいサイトのスクショ / 手書きラフ / 既存のチラシ等)。" +
+      "レイアウト構成・配色・雰囲気の意図を汲み取り、この事業の内容に最適化して再構成せよ。文言や商標の丸写しはしない。" });
+  }
   var body = {
     model: S.model,
     max_tokens: pr.max,
     stream: true,
     system: SYSTEM,
-    messages: [{ role:"user", content: pr.user + redoBlock(redo) }]
+    messages: [{ role:"user", content: content }]
   };
   // Opus/Sonnet は adaptive thinking。Haiku 4.5 は adaptive 非対応のため省略(=思考なし)。
   if (S.model.indexOf("haiku") === -1) body.thinking = { type:"adaptive" };
@@ -814,6 +900,9 @@ async function redoStep(p, step){
   var comment = prompt("差し戻しの理由(空欄でもOK)\n例: もっと高級感を。価格は据え置きで。", "");
   if(comment === null) return; // キャンセル
   var redo = { prev: p.deliverables[step.k] || "", comment: comment.trim() };
+  if(step.k === "kaihatsu" && p.imgCount && !(RUNTIME_IMGS[p.id] || []).length){
+    toast("参考画像は端末に保存されないため、今回は文章指示のみで作り直します");
+  }
   p.approvals[step.k] = false;
   if(p.status === "承認済み") p.status = "承認待ち";
   save(); renderProjects();
@@ -976,9 +1065,15 @@ $("execBtn").addEventListener("click", function(ev){
     status: "制作中",
     price: 0,
     demo: isDemo(),
+    imgCount: attachedImages.length,
     deliverables: {},
     approvals: {}
   };
+  if(attachedImages.length){
+    RUNTIME_IMGS[p.id] = attachedImages.slice(); // 再提出でも使えるよう実行時保持
+    attachedImages = []; renderThumbs();
+    if(isDemo()) toast("デモモードでは参考画像は使われません");
+  }
   S.projects.push(p);
   S.current = p;
   save();
