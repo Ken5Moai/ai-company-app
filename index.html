@@ -310,6 +310,33 @@ nav button.on::before{
   width:22px;height:2px;background:var(--kin);border-radius:2px;
 }
 
+/* ---------- 差し戻しシート ---------- */
+#redoSheet{
+  position:fixed;inset:0;z-index:80;display:none;
+}
+#redoSheet.on{display:block}
+#redoSheet .dim{position:absolute;inset:0;background:rgba(0,0,0,.6)}
+#redoSheet .sheet{
+  position:absolute;left:0;right:0;bottom:0;
+  background:var(--sumi-2);border-top:1px solid var(--kin-awai);
+  border-radius:18px 18px 0 0;
+  padding:20px 18px calc(18px + env(safe-area-inset-bottom));
+  max-width:640px;margin:0 auto;
+}
+#redoSheet h3{font-size:13px;font-weight:600;letter-spacing:.2em;color:var(--shu);margin-bottom:4px}
+#redoSheet .note{font-size:10px;color:var(--hai);letter-spacing:.08em;line-height:1.8;margin-bottom:12px}
+#redoReason{
+  width:100%;background:var(--sumi);border:1px solid var(--sumi-3);border-radius:10px;
+  color:var(--kinari);font-size:13px;line-height:1.9;padding:12px;outline:none;resize:none;
+}
+#redoAttachWrap{display:flex;align-items:center;gap:9px;margin-top:12px;flex-wrap:wrap}
+#redoAttachBtn{
+  background:none;border:1px dashed var(--kin-awai);border-radius:99px;
+  color:var(--kin);font-size:10px;letter-spacing:.14em;padding:8px 14px;
+}
+#redoThumbs{display:flex;gap:8px;flex-wrap:wrap}
+#redoSheet .btns{display:flex;gap:9px;margin-top:16px}
+
 /* ---------- トースト / 印影 ---------- */
 #toast{
   position:fixed;left:50%;bottom:calc(86px + env(safe-area-inset-bottom));
@@ -460,6 +487,24 @@ nav button.on::before{
   <button data-v="settings">設定</button>
 </nav>
 
+</div>
+
+<div id="redoSheet">
+  <div class="dim"></div>
+  <div class="sheet">
+    <h3 id="redoTitle">差し戻し</h3>
+    <p class="note">気になる点を書いてください(空欄でもOK)。書くほど狙い通りに直ります。</p>
+    <textarea id="redoReason" rows="3" placeholder="例: もっと高級感を。価格は据え置きで。"></textarea>
+    <div id="redoAttachWrap">
+      <button id="redoAttachBtn" type="button">📷 参考写真を追加</button>
+      <div id="redoThumbs"></div>
+      <input type="file" id="redoImgInput" accept="image/*" multiple hidden>
+    </div>
+    <div class="btns">
+      <button class="btn" id="redoCancel">キャンセル</button>
+      <button class="btn primary" id="redoSubmit">再提出させる</button>
+    </div>
+  </div>
 </div>
 
 <div id="toast"></div>
@@ -636,11 +681,11 @@ function renderThumbs(){
     });
     host.appendChild(d);
   });
-  $("attachBtn").style.display = attachedImages.length >= 4 ? "none" : "";
+  $("attachBtn").style.display = attachedImages.length >= 6 ? "none" : "";
 }
 $("attachBtn").addEventListener("click", function(){ $("imgInput").click(); });
 $("imgInput").addEventListener("change", async function(){
-  var files = [].slice.call(this.files).slice(0, 4 - attachedImages.length);
+  var files = [].slice.call(this.files).slice(0, 6 - attachedImages.length);
   this.value = "";
   for(var i=0;i<files.length;i++){
     try{ attachedImages.push(await compressImage(files[i])); }
@@ -964,12 +1009,66 @@ async function execStep(p, step, redo){
   }
 }
 
+/* 差し戻しシート */
+var redoImgs = [], redoResolve = null;
+function renderRedoThumbs(){
+  var host = $("redoThumbs");
+  host.innerHTML = "";
+  redoImgs.forEach(function(im, i){
+    var d = document.createElement("div");
+    d.className = "thumb";
+    d.innerHTML = '<img alt="追加写真'+(i+1)+'"><button class="rm" aria-label="削除">×</button>';
+    d.querySelector("img").src = im.url;
+    d.querySelector(".rm").addEventListener("click", function(){
+      redoImgs.splice(i,1); renderRedoThumbs();
+    });
+    host.appendChild(d);
+  });
+  $("redoAttachBtn").style.display = redoImgs.length >= 3 ? "none" : "";
+}
+function openRedoSheet(step){
+  return new Promise(function(res){
+    redoResolve = res;
+    redoImgs = [];
+    $("redoReason").value = "";
+    $("redoTitle").textContent = step.ttl + " を差し戻す";
+    $("redoAttachWrap").style.display = step.vision ? "" : "none";
+    renderRedoThumbs();
+    $("redoSheet").classList.add("on");
+  });
+}
+function closeRedoSheet(result){
+  $("redoSheet").classList.remove("on");
+  if(redoResolve){ var r = redoResolve; redoResolve = null; r(result); }
+}
+$("redoAttachBtn").addEventListener("click", function(){ $("redoImgInput").click(); });
+$("redoImgInput").addEventListener("change", async function(){
+  var files = [].slice.call(this.files).slice(0, 3 - redoImgs.length);
+  this.value = "";
+  for(var i=0;i<files.length;i++){
+    try{ redoImgs.push(await compressImage(files[i])); }
+    catch(e){ toast("この画像は読み込めませんでした"); }
+  }
+  renderRedoThumbs();
+});
+$("redoCancel").addEventListener("click", function(){ closeRedoSheet(null); });
+document.querySelector("#redoSheet .dim").addEventListener("click", function(){ closeRedoSheet(null); });
+$("redoSubmit").addEventListener("click", function(){
+  closeRedoSheet({ comment: $("redoReason").value.trim(), images: redoImgs.slice() });
+});
+
 /* 再提出(差し戻し) */
 async function redoStep(p, step){
   if(S.running){ toast("執行中です。完了までお待ちください"); return; }
-  var comment = prompt("差し戻しの理由(空欄でもOK)\n例: もっと高級感を。価格は据え置きで。", "");
-  if(comment === null) return; // キャンセル
-  var redo = { prev: p.deliverables[step.k] || "", comment: comment.trim() };
+  var r = await openRedoSheet(step);
+  if(!r) return; // キャンセル
+  if(r.images.length){
+    var arr = RUNTIME_IMGS[p.id] || (RUNTIME_IMGS[p.id] = []);
+    r.images.forEach(function(im){ if(arr.length < 6) arr.push(im); });
+    p.imgCount = arr.length;
+    if(isDemo()) toast("デモモードでは追加写真は使われません");
+  }
+  var redo = { prev: p.deliverables[step.k] || "", comment: r.comment };
   if(step.vision && p.imgCount && !(RUNTIME_IMGS[p.id] || []).length){
     toast("添付画像は端末に保存されないため、今回は文章指示のみで作り直します");
   }
@@ -1157,8 +1256,8 @@ function applyMode(){
     ? "補足があれば(任意) 例: 実績は2件あり / 週3本まで対応可 / 単価交渉したい"
     : "例: コーヒーD2Cサブスクを立ち上げて。";
   $("attachHint").textContent = job
-    ? "募集案件ページのスクリーンショットを添付してください(必須・最大4枚)。案件分析→応募文→見本成果物→受注後の段取りを作ります"
-    : "参考にしたいサイトのスクショ・手書きラフ・チラシ等を添付すると、開発がLPデザインに反映します(任意・最大4枚)";
+    ? "募集案件ページのスクリーンショットを添付してください(必須・最大6枚)。案件分析→応募文→見本成果物→受注後の段取りを作ります"
+    : "参考にしたいサイトのスクショ・手書きラフ・チラシ等を添付すると、開発がLPデザインに反映します(任意・最大6枚)";
 }
 document.querySelectorAll("#modeTabs button").forEach(function(b){
   b.addEventListener("click", function(){
