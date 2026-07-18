@@ -262,6 +262,7 @@ h1.title{font-size:24px;font-weight:600;letter-spacing:.08em;line-height:1.5;tex
 .pitem .r2{display:flex;justify-content:space-between;align-items:center;margin-top:8px}
 .pitem .dt{font-size:9px;letter-spacing:.14em;color:var(--hai)}
 .chip{font-size:9px;letter-spacing:.18em;border-radius:99px;padding:4px 10px;border:1px solid var(--sumi-3);color:var(--hai)}
+.pdel{background:none;border:1px solid rgba(216,67,47,.4);border-radius:99px;color:var(--shu);font-size:9px;letter-spacing:.14em;padding:4px 10px}
 .chip.s2{color:var(--kin);border-color:var(--kin-awai)}
 .chip.s3{color:var(--shu);border-color:rgba(216,67,47,.4)}
 .chip.s4{color:var(--ok);border-color:rgba(127,174,122,.4)}
@@ -573,7 +574,7 @@ var DEMO = {
   hisho: "## 完了した業務\n企画の事業ブリーフ策定、LPの設計・実装・検収、ローンチ告知文3媒体分の執筆、顧客提出用見積書の作成。\n\n## 成果物一覧\n- 事業ブリーフ(brief.md)\n- ランディングページ(index.html)\n- 告知文セット(sns.md)\n- 見積書(mitsumori.md)\n\n## 決裁をお願いしたい事項\n各成果物の押印(承認)。承認後、そのまま納品可能な状態です。\n\n## 次のアクション\n- LPを公開し、X告知1案目を本日中に投稿する\n- クラウドソーシングに「LP制作 ¥50,000〜」で出品し、この成果物をポートフォリオにする\n- 見積書の宛名を入れて、見込み客1社に送付する"
 };
 var JOB_DEMO = {
-  bunseki: "## 案件サマリー\n- 発注内容: 韓国コスメ・美容情報を紹介するInstagram投稿の作成\n- 納品物: 投稿(カルーセル画像+キャプション)。Canva無料版で制作可\n- 報酬: 1投稿 2,000円(継続依頼あり・単価アップ相談可)\n- 契約金額(目安): 30,000円〜50,000円\n- 応募期限: 2026年7月19日\n- 応募条件: 20代女性 / オンラインMTG(カメラオン)参加可 / PC所持\n- 応募方法: 自己紹介+応募理由をひとこと\n\n## 発注者の狙い\n自社の美容系アカウントを継続運用できる「中の人」を安く確保したい。デザインの完成度より、ターゲット(20代女性)の感覚に合う言葉選びと継続力を重視している。\n\n## 採算判定\n1投稿あたりの作業時間はテンプレ化後で約40〜60分 → 時給換算 2,000〜3,000円。初月10〜15本で2〜3万円。単価は市場の中央値だが、**継続案件かつテンプレ化で時給が上がる型**なので、実績づくりを兼ねるなら受けてよい。\n⚠ 応募条件に「20代女性の方」とあります。条件に合致しない場合は応募を見送るか、正直に伝えた上で判断を仰いでください。\n\n## 受注戦略\n- 応募文に「見本投稿」を添付し、トンマナ理解を先に証明する\n- 「保存される投稿」の設計(チェックリスト型・比較型)を語れることを示す\n- 継続前提の制作ペース(週N本)を明示する\n\n想定受注額: ¥30,000",
+  bunseki: "※これはデモ用の見本(韓国コスメ案件の例)です。添付スクショは読み取っていません。\n\n## 案件サマリー\n- 発注内容: 韓国コスメ・美容情報を紹介するInstagram投稿の作成\n- 納品物: 投稿(カルーセル画像+キャプション)。Canva無料版で制作可\n- 報酬: 1投稿 2,000円(継続依頼あり・単価アップ相談可)\n- 契約金額(目安): 30,000円〜50,000円\n- 応募期限: 2026年7月19日\n- 応募条件: 20代女性 / オンラインMTG(カメラオン)参加可 / PC所持\n- 応募方法: 自己紹介+応募理由をひとこと\n\n## 発注者の狙い\n自社の美容系アカウントを継続運用できる「中の人」を安く確保したい。デザインの完成度より、ターゲット(20代女性)の感覚に合う言葉選びと継続力を重視している。\n\n## 採算判定\n1投稿あたりの作業時間はテンプレ化後で約40〜60分 → 時給換算 2,000〜3,000円。初月10〜15本で2〜3万円。単価は市場の中央値だが、**継続案件かつテンプレ化で時給が上がる型**なので、実績づくりを兼ねるなら受けてよい。\n⚠ 応募条件に「20代女性の方」とあります。条件に合致しない場合は応募を見送るか、正直に伝えた上で判断を仰いでください。\n\n## 受注戦略\n- 応募文に「見本投稿」を添付し、トンマナ理解を先に証明する\n- 「保存される投稿」の設計(チェックリスト型・比較型)を語れることを示す\n- 継続前提の制作ペース(週N本)を明示する\n\n想定受注額: ¥30,000",
   oubo: "はじめまして。「保存してあとで見返したい!」と思ってもらえる投稿づくり、というコンセプトに強く共感してご応募しました。\n\n普段から韓国コスメの新作情報を追いかけており、CICA・PDRNなど成分系の話題も好きです。貴アカウントのターゲットである20代女性が「これ気になる!」と手を止める瞬間は、①悩みの言語化 ②Before/Afterの想像 ③保存したくなる一覧性、の3つで作れると考えています。\n\nイメージを掴んでいただくため、御社向けに投稿見本(表紙フック+カルーセル構成+キャプション+ハッシュタグ)を1案作成済みです。添付いたしますのでトンマナをご確認ください。\n\n制作ペースは週3本まで対応可能です。ひとつ質問ですが、紹介するコスメは指定リストからでしょうか、それとも提案型でしょうか?\n\nご縁がありましたら、丁寧に長くお手伝いさせてください。よろしくお願いいたします。",
   mihon: "## 見本投稿A「CICAで迷ったらこれ」\n\n### 表紙フック(1枚目)\n「CICA、結局どれ買えばいい?」\n→ 迷子さん向け・保存推奨の比較まとめ\n\n### カルーセル構成(6枚)\n1. 表紙: フック文言+「保存して見返してね」\n2. CICAとは?30字解説+こんな肌悩みの人向け\n3. プチプラ代表(〜1,500円): 特徴と向き不向き\n4. 中間帯(〜3,000円): 特徴と向き不向き\n5. デパコス級: ご褒美枠として紹介\n6. まとめ表(1枚で全比較)+「他の成分も知りたい人はフォロー」\n\n### キャプション\nCICAアイテム、種類が多すぎて迷いますよね🌿\n今回は価格帯別に「どんな肌の日に使うか」で選び方をまとめました。\n6枚目の比較表だけでも保存がおすすめです。\n「これ使ってる!」があればコメントで教えてください。\n\n### ハッシュタグ\n#韓国コスメ #韓国スキンケア #CICA #シカクリーム #スキンケアマニア #コスメ好きさんと繋がりたい #美容垢 #毛穴ケア #敏感肌スキンケア #プチプラコスメ\n\n### Canva再現指示\n- 配色: アイボリー背景(#F7F3EE)+セージグリーン(#9CAF97)+文字は濃茶(#3E332C)\n- フォント: 見出し「しっぽり明朝」/ 本文「Noto Sans JP」\n- レイアウト: 表紙は中央大文字+余白広め。比較枚は上1/3に商品名、下2/3に3行ポイント。全枚右下に小さくアカウント名",
   dandori: "## 初回メッセージ\nこの度はご縁をいただきありがとうございます。早速ですが、制作開始にあたり3点確認させてください。\n1. 初回に紹介するコスメの指定はありますか?(なければ2案ご提案します)\n2. アカウントの既存トンマナ(配色・フォント)の指定はありますか?\n3. 初回納品の希望日はいつでしょうか?\nMTGも今週でしたら◯曜・◯曜の夜が可能です。よろしくお願いいたします。\n\n## 制作スケジュール\n- Day1: MTGで方向性確認 → 構成案を当日中に共有\n- Day2: 初稿納品(表紙+カルーセル+キャプション)\n- Day3: 修正反映 → 納品確定\n- 以降: 週3本ペースで曜日固定納品\n\n## 納品チェックリスト\n- 表紙のフックが8文字前後で目を引くか\n- 誤字・成分名の表記ゆれがないか\n- ハッシュタグ10個(大中小の検索規模を混在)\n- 保存を促す一言が入っているか\n\n## 継続受注につなげる一手\n10本納品時点で保存率・リーチの実測を簡易レポートにまとめて提出し、「分析つき運用」として単価2,500〜3,000円への改定を提案する。"
@@ -789,10 +790,21 @@ function extractHtml(text){
 
 function cardEl(step){ return document.querySelector('.card[data-k="'+step.k+'"]'); }
 
+function demoBannerEl(){
+  var d = document.createElement("div");
+  d.className = "banner warn";
+  d.id = "demoBanner";
+  d.innerHTML = '⚠ <b>これはデモの見本です。</b>添付画像・指示内容は読み取られていません。' +
+    '実運用するには、この端末で 設定 → APIキー登録 → 接続を確認、を行ってください。 ' +
+    '<button class="act" id="goSettings" style="margin-top:8px">設定を開く</button>';
+  d.querySelector("#goSettings").addEventListener("click", function(){ switchView("settings"); });
+  return d;
+}
 function renderPipeline(p){
   var host = $("pipeline");
   host.innerHTML = "";
   if(!p) return;
+  if(p.demo) host.appendChild(demoBannerEl());
   stepsFor(p).forEach(function(step){
     var card = document.createElement("div");
     card.className = "card"; card.dataset.k = step.k;
@@ -932,6 +944,9 @@ async function execStep(p, step, redo){
   }catch(e){
     if(e.message === "__NETBLOCK__"){
       showNetBanner();
+      if(!document.getElementById("demoBanner")){
+        var pl = $("pipeline"); pl.insertBefore(demoBannerEl(), pl.firstChild);
+      }
       st.textContent = "デモに切替"; st.className = "st err";
       var text2 = await runDemo(p, step, onDelta);
       p.deliverables[step.k] = text2; p.demo = true;
@@ -1041,8 +1056,20 @@ function renderProjects(){
     el.innerHTML =
       '<div class="r1"><span class="nm">'+esc(p.instruction)+'</span><span class="pr">'+yen(p.price)+'</span></div>' +
       '<div class="r2"><span class="dt">'+p.date+(p.mode==="job"?" ・ 受注応募":"")+(p.demo?" ・ デモ":"")+'</span>' +
-      '<span class="chip '+(STATUS_CLS[p.status]||"")+'">'+p.status+"</span></div>";
+      '<span style="display:flex;gap:8px;align-items:center">' +
+      '<button class="pdel">削除</button>' +
+      '<span class="chip '+(STATUS_CLS[p.status]||"")+'">'+p.status+"</span></span></div>";
     el.addEventListener("click", function(){ openProject(p); });
+    el.querySelector(".pdel").addEventListener("click", function(ev){
+      ev.stopPropagation();
+      if(!confirm("この案件を削除しますか?\n「"+p.instruction.slice(0,24)+"…」")) return;
+      S.projects = S.projects.filter(function(x){ return x.id !== p.id; });
+      if(S.current && S.current.id === p.id){
+        S.current = null;
+        $("pipeline").innerHTML = ""; $("instruction").value = "";
+      }
+      save(); renderProjects(); toast("削除しました");
+    });
     host.appendChild(el);
   });
 }
@@ -1151,6 +1178,7 @@ $("execBtn").addEventListener("click", function(ev){
     toast("指示を入力してください"); return;
   }
   bumpTap(ev.clientX, ev.clientY);
+  S.netBlocked = false; // 前回の通信失敗を引きずらず、毎回実運用を再試行
   var p = {
     id: Date.now(),
     mode: S.uiMode,
