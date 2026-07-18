@@ -755,9 +755,7 @@ async function callClaude(step, p, onDelta, redo){
       body: JSON.stringify(body)
     });
   }catch(e){
-    // ネットワーク層で失敗 = CSP遮断 or オフライン
-    S.netBlocked = true;
-    throw new Error("__NETBLOCK__");
+    throw new Error("__NETERR__");
   }
   if(!res.ok){
     var txt = await res.text();
@@ -771,7 +769,9 @@ async function callClaude(step, p, onDelta, redo){
   var dec = new TextDecoder();
   var buf = "", text = "", stop = null;
   while(true){
-    var r = await reader.read();
+    var r;
+    try{ r = await reader.read(); }
+    catch(e){ throw new Error("__NETERR__"); } // 画面ロック・電波切れ等で切断
     if(r.done) break;
     buf += dec.decode(r.value, {stream:true});
     var parts = buf.split("\n\n");
@@ -798,6 +798,7 @@ async function callClaude(step, p, onDelta, redo){
   }
   if(stop === "refusal") throw new Error("この指示はAIの利用方針により実行できませんでした。表現を変えてください。");
   if(stop === "pause_turn") throw new Error("ページの解析が長引き中断しました。「再実行」を押してください。");
+  S.everConnected = true; // 実接続に一度でも成功 → 以後の通信断はデモに落とさず必ずリトライ
   if(stop === "max_tokens") text += "\n\n(出力上限に達しました。再実行で続きを生成できます)";
   return text;
 }
@@ -983,7 +984,31 @@ function download(name, content, mime){
   toast(name + " を保存しました");
 }
 
+/* ================= 画面ロック防止 ================= */
+var wakeLock = null;
+async function keepAwake(on){
+  try{
+    if(on){
+      if(!wakeLock && navigator.wakeLock){
+        wakeLock = await navigator.wakeLock.request("screen");
+        wakeLock.addEventListener("release", function(){ wakeLock = null; });
+      }
+    } else if(wakeLock){
+      wakeLock.release(); wakeLock = null;
+    }
+  }catch(e){ /* 非対応・省電力モード時は黙って諦める */ }
+}
+document.addEventListener("visibilitychange", function(){
+  if(document.visibilityState === "visible" && S.running) keepAwake(true);
+});
+
 /* ================= パイプライン実行 ================= */
+function friendlyErr(msg){
+  if(/__NETERR__|__STREAM_DROP__|Load failed|Failed to fetch|NetworkError|network|abort/i.test(msg)){
+    return "通信が途中で切れました(画面ロックやアプリ切替が主な原因です)。画面を点けたまま「再実行」してください。";
+  }
+  return msg;
+}
 async function execStep(p, step, redo){
   var card = cardEl(step);
   var st = card.querySelector('[data-r="st"]');
@@ -995,32 +1020,49 @@ async function execStep(p, step, redo){
     lastPaint = now;
     fillCard(p, step, text, false);
   };
-  try{
-    var text = isDemo() ? await runDemo(p, step, onDelta) : await callClaude(step, p, onDelta, redo);
-    p.deliverables[step.k] = text;
-    save();
-    fillCard(p, step, text, true);
-    return text;
-  }catch(e){
-    if(e.message === "__NETBLOCK__"){
-      showNetBanner();
-      if(!document.getElementById("demoBanner")){
-        var pl = $("pipeline"); pl.insertBefore(demoBannerEl(), pl.firstChild);
+  var MAX_RETRY = 3;
+  var attempts = 0;
+  while(true){
+    try{
+      var text = isDemo() ? await runDemo(p, step, onDelta) : await callClaude(step, p, onDelta, redo);
+      p.deliverables[step.k] = text;
+      save();
+      fillCard(p, step, text, true);
+      return text;
+    }catch(e){
+      var m = e.message;
+      // 通信エラーは自動で再接続(指数バックオフ)
+      if(m === "__NETERR__" && attempts < MAX_RETRY){
+        attempts++;
+        st.textContent = "再接続 " + attempts + "/" + MAX_RETRY; st.className = "st run";
+        // 途中まで出た本文が残っていると崩れるので毎回リセット
+        var b0 = card.querySelector('[data-r="body"]');
+        b0.className = "body empty"; b0.textContent = "再接続中…";
+        await new Promise(function(r){ setTimeout(r, 1000 * attempts); });
+        continue;
       }
-      st.textContent = "デモに切替"; st.className = "st err";
-      var text2 = await runDemo(p, step, onDelta);
-      p.deliverables[step.k] = text2; p.demo = true;
-      save(); fillCard(p, step, text2, true);
-      return text2;
+      if(m === "__NETERR__" && !S.everConnected){
+        // 一度も実接続できていない = プレビュー環境等の遮断。デモへ切替
+        S.netBlocked = true;
+        showNetBanner();
+        if(!document.getElementById("demoBanner")){
+          var pl = $("pipeline"); pl.insertBefore(demoBannerEl(), pl.firstChild);
+        }
+        st.textContent = "デモに切替"; st.className = "st err";
+        var text2 = await runDemo(p, step, onDelta);
+        p.deliverables[step.k] = text2; p.demo = true;
+        save(); fillCard(p, step, text2, true);
+        return text2;
+      }
+      st.textContent = "エラー"; st.className = "st err";
+      var body = card.querySelector('[data-r="body"]');
+      body.classList.remove("empty");
+      body.innerHTML = '<div class="md"><p>'+esc(friendlyErr(m))+'</p></div>';
+      var foot = card.querySelector('[data-r="foot"]');
+      foot.style.display = "flex"; foot.innerHTML = "";
+      foot.appendChild(mkAct("再実行", function(){ execStep(p, step, redo); }));
+      throw e;
     }
-    st.textContent = "エラー"; st.className = "st err";
-    var body = card.querySelector('[data-r="body"]');
-    body.classList.remove("empty");
-    body.innerHTML = '<div class="md"><p>'+esc(e.message)+'</p></div>';
-    var foot = card.querySelector('[data-r="foot"]');
-    foot.style.display = "flex"; foot.innerHTML = "";
-    foot.appendChild(mkAct("再実行", function(){ execStep(p, step, redo); }));
-    throw e;
   }
 }
 
@@ -1092,6 +1134,7 @@ async function redoStep(p, step){
   save(); renderProjects();
   renderFoot(p, step); // 印影を即時解除
   S.running = true;
+  keepAwake(true);
   $("execBtn").disabled = true;
   try{
     await execStep(p, step, redo);
@@ -1104,6 +1147,7 @@ async function redoStep(p, step){
     /* エラー表示は execStep 内 */
   }finally{
     S.running = false;
+    keepAwake(false);
     $("execBtn").disabled = false;
   }
 }
@@ -1111,21 +1155,27 @@ async function redoStep(p, step){
 async function runPipeline(p){
   if(S.running) return;
   S.running = true;
+  keepAwake(true);
   $("execBtn").disabled = true;
   $("execBtn").textContent = "執行中…";
   try{
     var SS = stepsFor(p);
     await execStep(p, SS[0]);                          // 企画 / 案件分析
-    var mid = SS.slice(1, 4).map(function(s){ // 残り中間工程は並列
-      return execStep(p, s).catch(function(){ return null; });
-    });
-    await Promise.all(mid);
     if(p.mode === "job"){
+      // 軽い工程を並列 → 重い見本は単独で帯域を確保(モバイル通信対策)
+      await Promise.all([SS[1], SS[3]].map(function(s){
+        return execStep(p, s).catch(function(){ return null; });
+      }));
+      await execStep(p, SS[2]).catch(function(){ return null; }); // 見本成果物
       if(p.deliverables.bunseki){
         var mj = p.deliverables.bunseki.match(/想定受注額[::]\s*¥?([\d,]+)/);
         if(mj) p.price = parseInt(mj[1].replace(/,/g,""), 10) || 0;
       }
     } else {
+      await Promise.all([SS[2], SS[3]].map(function(s){ // 広報・経理を並列
+        return execStep(p, s).catch(function(){ return null; });
+      }));
+      await execStep(p, SS[1]).catch(function(){ return null; }); // LPは単独
       if(p.deliverables.keiri){
         var m = p.deliverables.keiri.match(/合計[::]\s*¥?([\d,]+)/);
         if(m) p.price = parseInt(m[1].replace(/,/g,""), 10) || 0;
@@ -1139,6 +1189,7 @@ async function runPipeline(p){
     toast("一部の工程でエラーが発生しました");
   }finally{
     S.running = false;
+    keepAwake(false);
     $("execBtn").disabled = false;
     $("execBtn").textContent = "執 行";
   }
