@@ -99,6 +99,12 @@ h1.title{font-size:24px;font-weight:600;letter-spacing:.08em;line-height:1.5;tex
   min-height:72px;
 }
 #instruction::placeholder{color:rgba(138,127,114,.65)}
+#jobUrl{
+  width:100%;margin-top:12px;
+  background:var(--sumi);border:1px solid var(--kin-awai);border-radius:10px;
+  color:var(--kin);font-size:12px;letter-spacing:.02em;padding:12px 13px;outline:none;
+}
+#jobUrl::placeholder{color:rgba(138,127,114,.65)}
 .suggests{display:flex;flex-wrap:wrap;gap:7px;margin-top:10px}
 .suggests button{
   background:none;border:1px solid var(--sumi-3);border-radius:99px;
@@ -395,6 +401,7 @@ nav button.on::before{
 
     <div id="orderBox">
       <div class="room"><span><i>●</i> 全社チャット</span><span id="roomInfo">役員 5</span></div>
+      <input type="url" id="jobUrl" placeholder="募集ページのURLを貼る(例: https://crowdworks.jp/public/jobs/...)" style="display:none">
       <textarea id="instruction" rows="3" placeholder="例: コーヒーD2Cサブスクを立ち上げて。"></textarea>
       <div class="suggests">
         <button data-s="コーヒーD2Cサブスクを立ち上げて。">コーヒーD2C</button>
@@ -594,8 +601,10 @@ function prompts(step, p){
   var note = p.instruction ? "社長からの補足:「" + p.instruction + "」" : "";
   var bunseki = p.deliverables.bunseki ? "\n\n案件分析:\n" + p.deliverables.bunseki : "";
   switch(step.k){
-    case "bunseki": return { max: 3000, user:
-      "添付は、応募を検討している募集案件ページのスクリーンショット。" + note +
+    case "bunseki": return { max: 4000, user:
+      (p.url
+        ? "応募を検討している募集案件のURL: " + p.url + "\nこのURLをweb_fetchで取得し、募集内容を正確に読み取れ。取得できない・本文が不十分な場合は、分析の冒頭に「⚠ URLから内容を取得できませんでした。募集ページのスクリーンショットを添付して再提出してください」と明記し、読み取れた範囲だけで分析する。"
+        : "添付は、応募を検討している募集案件ページのスクリーンショット。") + note +
       "\n\n記載内容を正確に読み取り、次の構成で案件分析を作成せよ:\n## 案件サマリー\n発注内容・納品物・本数/分量・報酬・応募期限・応募条件・応募方法を箇条書きで。読み取れない項目は「記載なし」と書く(推測で埋めない)\n## 発注者の狙い\n明示されていない意図・重視ポイントの推測\n## 採算判定\n作業時間の見積り、時給換算、受けるべきかの率直な判定。応募条件に合致しない項目(属性条件等)があれば明確に警告する\n## 受注戦略\nこの案件で選ばれる提案のポイント3つ\n最後に必ず単独行で「想定受注額: ¥NN,NNN」(初回契約で現実的に見込める金額)。" };
     case "oubo": return { max: 1800, user:
       note + bunseki +
@@ -725,6 +734,11 @@ async function callClaude(step, p, onDelta, redo){
     system: SYSTEM,
     messages: [{ role:"user", content: content }]
   };
+  // 案件URLがある場合: サーバーサイドのweb_fetchツールでページを取得・読解
+  if(step.k === "bunseki" && p.url){
+    var fetchType = S.model.indexOf("haiku") !== -1 ? "web_fetch_20250910" : "web_fetch_20260209";
+    body.tools = [{ type: fetchType, name: "web_fetch", max_uses: 3 }];
+  }
   // Opus/Sonnet は adaptive thinking。Haiku 4.5 は adaptive 非対応のため省略(=思考なし)。
   if (S.model.indexOf("haiku") === -1) body.thinking = { type:"adaptive" };
 
@@ -783,6 +797,7 @@ async function callClaude(step, p, onDelta, redo){
     }
   }
   if(stop === "refusal") throw new Error("この指示はAIの利用方針により実行できませんでした。表現を変えてください。");
+  if(stop === "pause_turn") throw new Error("ページの解析が長引き中断しました。「再実行」を押してください。");
   if(stop === "max_tokens") text += "\n\n(出力上限に達しました。再実行で続きを生成できます)";
   return text;
 }
@@ -1250,13 +1265,14 @@ function applyMode(){
     b.classList.toggle("on", b.dataset.m === S.uiMode);
   });
   var job = S.uiMode === "job";
+  $("jobUrl").style.display = job ? "" : "none";
   document.querySelector(".suggests").style.display = job ? "none" : "";
   $("roomInfo").textContent = job ? "営業・制作・秘書" : "役員 5";
   $("instruction").placeholder = job
     ? "補足があれば(任意) 例: 実績は2件あり / 週3本まで対応可 / 単価交渉したい"
     : "例: コーヒーD2Cサブスクを立ち上げて。";
   $("attachHint").textContent = job
-    ? "募集案件ページのスクリーンショットを添付してください(必須・最大6枚)。案件分析→応募文→見本成果物→受注後の段取りを作ります"
+    ? "募集ページのURLを貼るか、スクリーンショットを添付(どちらか必須・併用可)。案件分析→応募文→見本成果物→受注後の段取りを作ります。ログインが必要なページはURLで読めないことがあるため、その場合はスクショが確実です"
     : "参考にしたいサイトのスクショ・手書きラフ・チラシ等を添付すると、開発がLPデザインに反映します(任意・最大6枚)";
 }
 document.querySelectorAll("#modeTabs button").forEach(function(b){
@@ -1268,11 +1284,16 @@ applyMode();
 
 $("execBtn").addEventListener("click", function(ev){
   var inst = $("instruction").value.trim();
+  var jobUrl = "";
   if(S.uiMode === "job"){
-    if(!attachedImages.length && !isDemo()){
-      toast("募集ページのスクショを添付してください"); return;
+    jobUrl = $("jobUrl").value.trim();
+    if(jobUrl && !/^https?:\/\//.test(jobUrl)){
+      toast("URLは https:// から貼ってください"); return;
     }
-    if(!inst) inst = "(補足なし)";
+    if(!jobUrl && !attachedImages.length && !isDemo()){
+      toast("募集ページのURLを貼るか、スクショを添付してください"); return;
+    }
+    if(!inst) inst = jobUrl ? jobUrl.replace(/^https?:\/\//,"").slice(0,60) : "(補足なし)";
   } else if(!inst){
     toast("指示を入力してください"); return;
   }
@@ -1281,6 +1302,7 @@ $("execBtn").addEventListener("click", function(ev){
   var p = {
     id: Date.now(),
     mode: S.uiMode,
+    url: jobUrl || "",
     instruction: inst,
     date: new Date().toLocaleDateString("ja-JP"),
     status: "制作中",
@@ -1294,6 +1316,10 @@ $("execBtn").addEventListener("click", function(ev){
     RUNTIME_IMGS[p.id] = attachedImages.slice(); // 再提出でも使えるよう実行時保持
     attachedImages = []; renderThumbs();
     if(isDemo()) toast("デモモードでは参考画像は使われません");
+  }
+  if(jobUrl){
+    $("jobUrl").value = "";
+    if(isDemo()) toast("デモモードではURLは読み込まれません");
   }
   S.projects.push(p);
   S.current = p;
