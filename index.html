@@ -343,6 +343,21 @@ nav button.on::before{
 #redoThumbs{display:flex;gap:8px;flex-wrap:wrap}
 #redoSheet .btns{display:flex;gap:9px;margin-top:16px}
 
+/* ---------- 全画面ビューア ---------- */
+#viewer{
+  position:fixed;inset:0;z-index:88;display:none;flex-direction:column;
+  background:var(--sumi);
+}
+#viewer.on{display:flex}
+#viewer .vbar{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:calc(10px + env(safe-area-inset-top)) 14px 10px;
+  border-bottom:1px solid var(--sumi-3);flex:none;
+}
+#viewer .vbar span{font-size:12px;letter-spacing:.2em;color:var(--kin)}
+#viewer .vbtns{display:flex;gap:8px}
+#viewerFrame{flex:1;width:100%;border:none;background:#fff}
+
 /* ---------- トースト / 印影 ---------- */
 #toast{
   position:fixed;left:50%;bottom:calc(86px + env(safe-area-inset-bottom));
@@ -514,6 +529,17 @@ nav button.on::before{
   </div>
 </div>
 
+<div id="viewer">
+  <div class="vbar">
+    <span id="viewerTitle">完成見本</span>
+    <div class="vbtns">
+      <button class="act" id="viewerImg">画像で保存</button>
+      <button class="act" id="viewerClose">閉じる</button>
+    </div>
+  </div>
+  <iframe id="viewerFrame" sandbox="allow-scripts allow-same-origin"></iframe>
+</div>
+
 <div id="toast"></div>
 
 <!-- 印影SVG(押印欄で複製使用) -->
@@ -611,7 +637,7 @@ function prompts(step, p){
       "\n\nこの案件への応募文(提案文)を作成せよ。募集の「応募方法」の指定があればそれに従う。\n構成: 発注者の目的への共感を1行 → 簡潔な自己紹介 → この案件でできること(納品物の具体イメージ。見本を用意済みで添付できる旨を必ず入れる) → 対応可能なペース → 方向性を確認する質問1つ → 締め。\n全体300〜500字・敬体・絵文字は最大1つ。募集文中の言葉を1箇所引用して「ちゃんと読んだ感」を出す。テンプレ臭のある定型句(「ご覧いただきありがとうございます」等)は避ける。\n【厳守】事実でない実績・経歴・属性は書かない。応募条件に合致しない点があっても偽らない。" };
     case "mihon": return { max: 16000, user:
       note + bunseki +
-      "\n\nこの案件で求められている納品物の「見本(初稿)」を、応募時に添付して営業力になる品質で1点作成せよ。形式は案件内容から判断:\n- Instagram投稿系: 投稿3案。各案 = 表紙のフック文言 / カルーセル構成(枚数と各枚のテキスト) / キャプション(本文) / ハッシュタグ10個 / Canvaで再現するための配色・フォント・レイアウト指示\n- LP・Webページ系: スマホ最適化の単一HTML(外部リソース禁止・インラインCSS)を```htmlフェンスで出力\n- 記事・ライティング系: タイトル案3つ+見出し構成+リード文+本文冒頭500字\n- その他: 募集の指定形式に忠実に\nターゲットと発注者の狙いに正確に合わせる。ダミー文字禁止。" };
+      "\n\nこの案件の納品物の『完成見本』を、そのままクライアントに提出できる状態で作成せよ。\n重要: 設計図・説明・箇条書きではなく、『実物が視覚的に完成した状態』 を単一の自己完結HTMLとして描くこと(応募時に画像として添付し、営業力になる品質)。\n\n形式は案件内容から判断:\n- Instagram/SNS投稿: 各スライドを『実際の投稿画像』として描画する。1スライド=縦横比4:5前後のカードで、背景・見出し・本文・装飾を作り込み本物の投稿に見せる。カルーセル全枚を縦に積み、各案の最下部に『キャプション』と『ハッシュタグ(10個)』のパネルを付ける。これを3案(3セット)。各案の冒頭に『案①』等の小見出し\n- LP/Webページ: スマホ最適化のLP本体\n- 記事/ライティング: 記事が組版・装飾された完成ページ\n\n【デザイン】この案件のターゲット(想定読者)に刺さる配色・フォント・余白。ダミー文字禁止、実内容で作る。外部リソース禁止(CDN・画像URL・Webフォント不可)、CSS/JSは全てインライン、写真の代わりはCSSグラデ/絵文字/インラインSVGで表現。スマホ幅で崩れないこと。\n【重要】画像として保存・提出するため、スクロール連動アニメや初期状態opacity:0などは使わず、全要素が最初から表示された静的な完成状態にすること。JavaScriptは原則不要。\n出力は```htmlフェンスの中にHTML全文のみ。説明文は書かない。" };
     case "dandori": return { max: 1800, user:
       note + bunseki +
       "\n\n受注が決まった直後の段取りを作成せよ。構成:\n## 初回メッセージ\n発注者への挨拶+最初に確認すべき事項3つ(コピペで送れる文面)\n## 制作スケジュール\n納期から逆算した工程\n## 納品チェックリスト\n## 継続受注につなげる一手\n単価アップ・継続契約に向けた具体策。" };
@@ -630,7 +656,7 @@ var DEMO = {
 var JOB_DEMO = {
   bunseki: "※これはデモ用の見本(韓国コスメ案件の例)です。添付スクショは読み取っていません。\n\n## 案件サマリー\n- 発注内容: 韓国コスメ・美容情報を紹介するInstagram投稿の作成\n- 納品物: 投稿(カルーセル画像+キャプション)。Canva無料版で制作可\n- 報酬: 1投稿 2,000円(継続依頼あり・単価アップ相談可)\n- 契約金額(目安): 30,000円〜50,000円\n- 応募期限: 2026年7月19日\n- 応募条件: 20代女性 / オンラインMTG(カメラオン)参加可 / PC所持\n- 応募方法: 自己紹介+応募理由をひとこと\n\n## 発注者の狙い\n自社の美容系アカウントを継続運用できる「中の人」を安く確保したい。デザインの完成度より、ターゲット(20代女性)の感覚に合う言葉選びと継続力を重視している。\n\n## 採算判定\n1投稿あたりの作業時間はテンプレ化後で約40〜60分 → 時給換算 2,000〜3,000円。初月10〜15本で2〜3万円。単価は市場の中央値だが、**継続案件かつテンプレ化で時給が上がる型**なので、実績づくりを兼ねるなら受けてよい。\n⚠ 応募条件に「20代女性の方」とあります。条件に合致しない場合は応募を見送るか、正直に伝えた上で判断を仰いでください。\n\n## 受注戦略\n- 応募文に「見本投稿」を添付し、トンマナ理解を先に証明する\n- 「保存される投稿」の設計(チェックリスト型・比較型)を語れることを示す\n- 継続前提の制作ペース(週N本)を明示する\n\n想定受注額: ¥30,000",
   oubo: "はじめまして。「保存してあとで見返したい!」と思ってもらえる投稿づくり、というコンセプトに強く共感してご応募しました。\n\n普段から韓国コスメの新作情報を追いかけており、CICA・PDRNなど成分系の話題も好きです。貴アカウントのターゲットである20代女性が「これ気になる!」と手を止める瞬間は、①悩みの言語化 ②Before/Afterの想像 ③保存したくなる一覧性、の3つで作れると考えています。\n\nイメージを掴んでいただくため、御社向けに投稿見本(表紙フック+カルーセル構成+キャプション+ハッシュタグ)を1案作成済みです。添付いたしますのでトンマナをご確認ください。\n\n制作ペースは週3本まで対応可能です。ひとつ質問ですが、紹介するコスメは指定リストからでしょうか、それとも提案型でしょうか?\n\nご縁がありましたら、丁寧に長くお手伝いさせてください。よろしくお願いいたします。",
-  mihon: "## 見本投稿A「CICAで迷ったらこれ」\n\n### 表紙フック(1枚目)\n「CICA、結局どれ買えばいい?」\n→ 迷子さん向け・保存推奨の比較まとめ\n\n### カルーセル構成(6枚)\n1. 表紙: フック文言+「保存して見返してね」\n2. CICAとは?30字解説+こんな肌悩みの人向け\n3. プチプラ代表(〜1,500円): 特徴と向き不向き\n4. 中間帯(〜3,000円): 特徴と向き不向き\n5. デパコス級: ご褒美枠として紹介\n6. まとめ表(1枚で全比較)+「他の成分も知りたい人はフォロー」\n\n### キャプション\nCICAアイテム、種類が多すぎて迷いますよね🌿\n今回は価格帯別に「どんな肌の日に使うか」で選び方をまとめました。\n6枚目の比較表だけでも保存がおすすめです。\n「これ使ってる!」があればコメントで教えてください。\n\n### ハッシュタグ\n#韓国コスメ #韓国スキンケア #CICA #シカクリーム #スキンケアマニア #コスメ好きさんと繋がりたい #美容垢 #毛穴ケア #敏感肌スキンケア #プチプラコスメ\n\n### Canva再現指示\n- 配色: アイボリー背景(#F7F3EE)+セージグリーン(#9CAF97)+文字は濃茶(#3E332C)\n- フォント: 見出し「しっぽり明朝」/ 本文「Noto Sans JP」\n- レイアウト: 表紙は中央大文字+余白広め。比較枚は上1/3に商品名、下2/3に3行ポイント。全枚右下に小さくアカウント名",
+  mihon: "```html\n<!DOCTYPE html>\n<html lang=\"ja\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>完成見本 — 韓国コスメIG投稿<\/title>\n<style>\n*{margin:0;padding:0;box-sizing:border-box}\nbody{font-family:\"Hiragino Kaku Gothic ProN\",\"Hiragino Sans\",\"Yu Gothic\",sans-serif;background:#efe7dc;color:#3e332c;line-height:1.7;padding:18px 14px 40px}\n.wrap{max-width:440px;margin:0 auto}\n.casehd{font-family:\"Hiragino Mincho ProN\",serif;font-size:15px;letter-spacing:.16em;color:#8a6a4f;margin:24px 4px 12px;padding-left:10px;border-left:3px solid #b98c5a}\n.casehd.first{margin-top:4px}\n.post{background:#fff;border-radius:16px;overflow:hidden;margin-bottom:12px;box-shadow:0 3px 14px rgba(80,55,30,.10)}\n.pbar{display:flex;align-items:center;gap:9px;padding:10px 12px}\n.pav{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#c9a27a,#8a6a4f);display:grid;place-items:center;color:#fff;font-size:12px;font-family:\"Hiragino Mincho ProN\",serif}\n.pname{font-size:12px;font-weight:700}.pname small{display:block;font-weight:400;color:#9c8a75;font-size:10px}\n.slide{aspect-ratio:4/5;position:relative;display:flex;flex-direction:column;justify-content:center;padding:26px 24px;text-align:center;overflow:hidden}\n.tag{position:absolute;top:14px;right:14px;font-size:10px;letter-spacing:.1em;background:rgba(255,255,255,.85);color:#8a6a4f;border-radius:99px;padding:4px 10px}\n.pageno{position:absolute;bottom:12px;right:16px;font-size:11px;color:rgba(0,0,0,.35)}\n.s1{background:linear-gradient(160deg,#a9bfa2,#8aa77f);color:#fff}\n.s1 .k{font-family:\"Hiragino Mincho ProN\",serif;font-size:30px;font-weight:700;line-height:1.5;letter-spacing:.03em;text-shadow:0 1px 6px rgba(0,0,0,.12)}\n.s1 .sub{margin-top:14px;font-size:13px;letter-spacing:.08em;opacity:.95}\n.s1 .save{position:absolute;bottom:20px;left:0;right:0;font-size:11px;letter-spacing:.12em;opacity:.9}\n.s2{background:#fbf7f0}\n.s2 .q{font-family:\"Hiragino Mincho ProN\",serif;font-size:22px;color:#5a4a3a;line-height:1.6}\n.s2 .a{margin-top:14px;font-size:13px;color:#6d5c4a;text-align:left;background:#fff;border:1px solid #ece0cd;border-radius:12px;padding:14px}\n.s3{background:#f4ede2}\n.s3 .ttl{font-family:\"Hiragino Mincho ProN\",serif;font-size:17px;color:#8a6a4f;margin-bottom:14px}\n.row{display:flex;align-items:center;gap:10px;background:#fff;border-radius:12px;padding:11px 13px;margin-bottom:9px;text-align:left;box-shadow:0 1px 4px rgba(80,55,30,.06)}\n.row .dot{width:34px;height:34px;border-radius:8px;flex:none;display:grid;place-items:center;font-size:16px}\n.row b{font-size:12.5px}.row p{font-size:11px;color:#8a7a68}\n.px1{background:#eaf2e6}.px2{background:#fdf1e0}.px3{background:#f3e6ef}\n.s4{background:linear-gradient(160deg,#3e332c,#5a4636);color:#f3ead9}\n.s4 .ttl{font-family:\"Hiragino Mincho ProN\",serif;font-size:18px;letter-spacing:.1em;margin-bottom:16px}\n.tbl{width:100%;border-collapse:collapse;font-size:11.5px}\n.tbl td{border-bottom:1px solid rgba(243,234,217,.2);padding:9px 6px;text-align:left}\n.tbl td:last-child{text-align:right;color:#e6c98a;white-space:nowrap}\n.picons{display:flex;gap:16px;padding:10px 14px 4px;font-size:17px;color:#3e332c}\n.picons .sp{flex:1}\n.cap{padding:4px 14px 16px}\n.cap .likes{font-size:12px;font-weight:700;margin-bottom:6px}\n.cap .body{font-size:12.5px;line-height:1.9;white-space:pre-line}\n.cap .tags{margin-top:8px;font-size:12px;color:#3f6fb0;line-height:1.8}\n.note{text-align:center;font-size:11px;color:#9c8a75;letter-spacing:.08em;margin-top:6px;padding:12px;border:1px dashed #cbb797;border-radius:12px}\n<\/style><\/head><body><div class=\"wrap\">\n\n<div class=\"casehd first\">案① 迷子さん向け・保存される比較まとめ<\/div>\n<div class=\"post\">\n  <div class=\"pbar\"><div class=\"pav\">豆<\/div><div class=\"pname\">korea_beauty_days<small>スポンサー<\/small><\/div><\/div>\n  <div class=\"slide s1\"><span class=\"tag\">保存推奨<\/span><div class=\"k\">CICA、結局<br>どれ買えばいい?<\/div><div class=\"sub\">価格帯別・肌悩み別にまとめました<\/div><div class=\"save\">スワイプして比べる ／ 保存してね<\/div><span class=\"pageno\">1 / 4<\/span><\/div>\n  <div class=\"slide s2\"><div class=\"q\">そもそもCICAって?<\/div><div class=\"a\">ツボクサエキス配合の鎮静ケア成分。<b>ゆらぎ肌・赤み・毛穴のほてり<\/b>が気になる日の\"お守りコスメ\"として人気です。刺激が少なく、季節の変わり目に◎<\/div><span class=\"pageno\">2 / 4<\/span><\/div>\n  <div class=\"slide s3\"><div class=\"ttl\">価格帯で選ぶ3タイプ<\/div>\n    <div class=\"row\"><div class=\"dot px1\">🌿<\/div><div><b>プチプラ(〜1,500円)<\/b><p>毎日たっぷり使いたい人。まず試すならここから<\/p><\/div><\/div>\n    <div class=\"row\"><div class=\"dot px2\">🧴<\/div><div><b>中間帯(〜3,000円)<\/b><p>テクスチャ重視。しっとり×べたつかない両立<\/p><\/div><\/div>\n    <div class=\"row\"><div class=\"dot px3\">💎<\/div><div><b>デパコス級<\/b><p>揺らぎがひどい日のご褒美・集中ケアに<\/p><\/div><\/div>\n    <span class=\"pageno\">3 / 4<\/span><\/div>\n  <div class=\"slide s4\"><div class=\"ttl\">ひと目で比較<\/div>\n    <table class=\"tbl\"><tr><td>とにかく安く続けたい<\/td><td>プチプラ<\/td><\/tr><tr><td>使い心地で選びたい<\/td><td>中間帯<\/td><\/tr><tr><td>今すぐ鎮静したい<\/td><td>デパコス級<\/td><\/tr><tr><td>敏感肌で不安<\/td><td>まず低刺激から<\/td><\/tr><\/table>\n    <div style=\"margin-top:16px;font-size:12px;opacity:.9\">保存して、次の買い物で見返してね<br>他の成分も知りたい人はフォローを<\/div><span class=\"pageno\">4 / 4<\/span><\/div>\n  <div class=\"picons\"><span>&#9825;<\/span><span>&#128172;<\/span><span>&#10148;<\/span><span class=\"sp\"><\/span><span>&#128278;<\/span><\/div>\n  <div class=\"cap\"><div class=\"likes\">いいね! 1,240件<\/div><div class=\"body\">CICAアイテム、種類が多すぎて迷いますよね🌿\n今回は価格帯別に「どんな肌の日に使うか」で選び方をまとめました。\n4枚目の比較表だけでも保存がおすすめです◎\n「これ使ってる!」があればコメントで教えてください💬<\/div>\n  <div class=\"tags\">#韓国コスメ #韓国スキンケア #CICA #シカクリーム #スキンケアマニア #コスメ好きさんと繋がりたい #美容垢 #毛穴ケア #敏感肌スキンケア #プチプラコスメ<\/div><\/div>\n<\/div>\n\n<div class=\"casehd\">案② 新作レビュー型(Before→After)<\/div>\n<div class=\"post\"><div class=\"pbar\"><div class=\"pav\">豆<\/div><div class=\"pname\">korea_beauty_days<small>スポンサー<\/small><\/div><\/div>\n  <div class=\"slide s2\" style=\"background:linear-gradient(160deg,#fdf1e0,#f8e6d0)\"><span class=\"tag\">7日間レポ<\/span><div class=\"q\" style=\"color:#a86a3a\">毛穴、7日でここまで。<\/div><div class=\"a\">話題の「PDRNトナーパッド」を1週間。<b>ザラつき→つるん<\/b>の変化を、盛らずに正直レビューします。合わなかった点も◎<\/div><span class=\"pageno\">1 / 3<\/span><\/div>\n  <div class=\"picons\"><span>&#9825;<\/span><span>&#128172;<\/span><span>&#10148;<\/span><span class=\"sp\"><\/span><span>&#128278;<\/span><\/div>\n  <div class=\"cap\"><div class=\"likes\">いいね! 980件<\/div><div class=\"body\">正直レビュー、いきます🫧 7日間の記録を4枚目にまとめました。<\/div><div class=\"tags\">#PDRN #トナーパッド #毛穴ケア #韓国コスメ好きさんと繋がりたい<\/div><\/div>\n<\/div>\n\n<div class=\"note\">案③(成分やさしく解説型)も同じ品質・同一トンマナで納品します。<br>ご希望のテーマ・紹介コスメを指定いただければ差し替えます。<\/div>\n\n<\/div><\/body><\/html>\n```",
   dandori: "## 初回メッセージ\nこの度はご縁をいただきありがとうございます。早速ですが、制作開始にあたり3点確認させてください。\n1. 初回に紹介するコスメの指定はありますか?(なければ2案ご提案します)\n2. アカウントの既存トンマナ(配色・フォント)の指定はありますか?\n3. 初回納品の希望日はいつでしょうか?\nMTGも今週でしたら◯曜・◯曜の夜が可能です。よろしくお願いいたします。\n\n## 制作スケジュール\n- Day1: MTGで方向性確認 → 構成案を当日中に共有\n- Day2: 初稿納品(表紙+カルーセル+キャプション)\n- Day3: 修正反映 → 納品確定\n- 以降: 週3本ペースで曜日固定納品\n\n## 納品チェックリスト\n- 表紙のフックが8文字前後で目を引くか\n- 誤字・成分名の表記ゆれがないか\n- ハッシュタグ10個(大中小の検索規模を混在)\n- 保存を促す一言が入っているか\n\n## 継続受注につなげる一手\n10本納品時点で保存率・リーチの実測を簡易レポートにまとめて提出し、「分析つき運用」として単価2,500〜3,000円への改定を提案する。"
 };
 
@@ -851,6 +877,74 @@ function extractHtml(text){
 
 function cardEl(step){ return document.querySelector('.card[data-k="'+step.k+'"]'); }
 
+/* ================= 全画面ビューア / 画像保存 ================= */
+var viewerHtml = "";
+function openViewer(html, title){
+  viewerHtml = html;
+  $("viewerTitle").textContent = title || "完成見本";
+  $("viewerFrame").srcdoc = html;
+  $("viewer").classList.add("on");
+}
+$("viewerClose").addEventListener("click", function(){
+  $("viewer").classList.remove("on");
+  $("viewerFrame").srcdoc = "about:blank";
+});
+$("viewerImg").addEventListener("click", function(){ saveAsImage(viewerHtml); });
+
+/* HTMLをPNG画像として保存(SVG foreignObject方式・非対応時はスクショ案内) */
+function saveAsImage(html){
+  toast("画像を生成中…");
+  // scriptを除去した静的スナップショットを作る
+  var doc = new DOMParser().parseFromString(html, "text/html");
+  Array.prototype.forEach.call(doc.querySelectorAll("script"), function(s){ s.remove(); });
+  var root = doc.documentElement;
+  root.setAttribute("xmlns", "http://www.w3.org/1999/xhtml");
+  // 幅は端末幅、高さは実測(いったん不可視iframeで測る)
+  var probe = document.createElement("iframe");
+  probe.setAttribute("sandbox", "allow-same-origin");
+  probe.style.cssText = "position:fixed;left:-9999px;top:0;width:440px;height:100px;border:0;visibility:hidden";
+  document.body.appendChild(probe);
+  probe.srcdoc = "<!DOCTYPE html>" + new XMLSerializer().serializeToString(root);
+  probe.onload = function(){
+    var W = 440;
+    var H = 0;
+    try{ H = Math.max(probe.contentDocument.body.scrollHeight, probe.contentDocument.documentElement.scrollHeight); }catch(e){}
+    if(!H){ probe.remove(); return imgFallback(); }
+    var xml = new XMLSerializer().serializeToString(root);
+    var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="'+W+'" height="'+H+'">' +
+              '<foreignObject x="0" y="0" width="'+W+'" height="'+H+'">' + xml + '</foreignObject></svg>';
+    var img = new Image();
+    img.onload = function(){
+      try{
+        var scale = 2;
+        var cv = document.createElement("canvas");
+        cv.width = W*scale; cv.height = H*scale;
+        var ctx = cv.getContext("2d");
+        ctx.fillStyle = "#ffffff"; ctx.fillRect(0,0,cv.width,cv.height);
+        ctx.setTransform(scale,0,0,scale,0,0);
+        ctx.drawImage(img,0,0);
+        cv.toBlob(function(b){
+          probe.remove();
+          if(!b) return imgFallback();
+          var a = document.createElement("a");
+          a.href = URL.createObjectURL(b); a.download = "mihon.png";
+          document.body.appendChild(a); a.click();
+          setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 400);
+          toast("画像を保存しました");
+        }, "image/png");
+      }catch(e){ probe.remove(); imgFallback(); }
+    };
+    img.onerror = function(){ probe.remove(); imgFallback(); };
+    img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
+  };
+}
+function imgFallback(){
+  if(!$("viewer").classList.contains("on")){
+    openViewer(viewerHtml, "完成見本");
+  }
+  toast("この端末では画像化に非対応です。全画面をスクリーンショットして保存してください");
+}
+
 function demoBannerEl(){
   var d = document.createElement("div");
   d.className = "banner warn";
@@ -885,18 +979,23 @@ function fillCard(p, step, text, done){
   var body = card.querySelector('[data-r="body"]');
   var st = card.querySelector('[data-r="st"]');
   body.classList.remove("empty");
-  var lpish = step.k === "kaihatsu" || (step.k === "mihon" && extractHtml(text));
-  if(lpish){
+  var htmlStep = step.k === "kaihatsu" || step.k === "mihon";
+  if(htmlStep){
     var html = extractHtml(text);
-    if(html && done){
+    if(done && html){
+      var note = step.k === "mihon"
+        ? '完成見本です。「全画面」で拡大、「画像で保存」で提出用の画像を保存できます。'
+        : '実際に納品できるHTMLです。「全画面」で確認、「保存」でファイル保存できます。';
       body.innerHTML = '<iframe class="lpframe" sandbox="allow-scripts"></iframe>' +
-        '<div class="lpnote">実際に納品できるHTMLです。「保存」でファイルとしてダウンロードできます。</div>';
+        '<div class="lpnote">' + note + '</div>';
       body.querySelector("iframe").srcdoc = html;
-    } else if(step.k === "kaihatsu"){
-      // 生成途中はコード量で進捗表示
-      body.innerHTML = '<div class="md"><p>実装中… <span class="amount">'+text.length.toLocaleString("ja-JP")+'</span> 文字</p></div>';
-    } else {
+    } else if(done){
+      // フェンスが無かった場合はテキストとして表示(フォールバック)
       body.innerHTML = '<div class="md">' + mdRender(text) + "</div>";
+    } else {
+      // 生成途中は進捗のみ(コード羅列を見せない)
+      var label = step.k === "mihon" ? "完成見本を制作中" : "実装中";
+      body.innerHTML = '<div class="md"><p>'+label+'… <span class="amount">'+text.length.toLocaleString("ja-JP")+'</span> 文字</p></div>';
     }
   } else {
     body.innerHTML = '<div class="md">' + mdRender(text) + "</div>";
@@ -920,15 +1019,21 @@ function renderFoot(p, step){
   var payload = lpHtml || text;
   var fname = lpHtml ? (step.k === "mihon" ? "mihon.html" : step.file) : step.file;
 
-  var bCopy = mkAct("コピー", function(){ copyText(payload); });
-  var bSave = mkAct("保存", function(){
-    download(fname, payload, lpHtml ? "text/html" : "text/markdown");
-  });
-  foot.appendChild(bCopy); foot.appendChild(bSave);
-  if(navigator.share && !isLp){
-    foot.appendChild(mkAct("共有", function(){
-      navigator.share({ text: payload }).catch(function(){});
-    }));
+  if(lpHtml){
+    // ビジュアル成果物: 全画面・画像保存を前面に
+    foot.appendChild(mkAct("全画面", function(){ openViewer(lpHtml, step.ttl); }));
+    var bImg = mkAct("画像で保存", function(){ saveAsImage(lpHtml); });
+    bImg.style.color = "var(--kin)"; bImg.style.borderColor = "var(--kin-awai)";
+    foot.appendChild(bImg);
+    foot.appendChild(mkAct("HTML保存", function(){ download(fname, lpHtml, "text/html"); }));
+  } else {
+    foot.appendChild(mkAct("コピー", function(){ copyText(payload); }));
+    foot.appendChild(mkAct("保存", function(){ download(fname, payload, "text/markdown"); }));
+    if(navigator.share){
+      foot.appendChild(mkAct("共有", function(){
+        navigator.share({ text: payload }).catch(function(){});
+      }));
+    }
   }
   var bRedo = mkAct("再提出", function(){ redoStep(p, step); });
   bRedo.classList.add("redo");
