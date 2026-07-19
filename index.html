@@ -785,10 +785,14 @@ async function callClaude(step, p, onDelta, redo){
   }
   if(!res.ok){
     var txt = await res.text();
+    var amsg = apiError(res.status, txt);
+    if(/credit balance is too low|insufficient.*credit|billing/i.test(amsg)){
+      throw new Error("__BILLING__");
+    }
     if(res.status===401) throw new Error("APIキーが無効です。設定を確認してください。");
     if(res.status===429) throw new Error("レート制限です。少し待って再実行してください。");
     if(res.status===529) throw new Error("APIが混雑しています。少し待って再実行してください。");
-    throw new Error(apiError(res.status, txt));
+    throw new Error(amsg);
   }
 
   var reader = res.body.getReader();
@@ -1162,9 +1166,22 @@ async function execStep(p, step, redo){
       st.textContent = "エラー"; st.className = "st err";
       var body = card.querySelector('[data-r="body"]');
       body.classList.remove("empty");
-      body.innerHTML = '<div class="md"><p>'+esc(friendlyErr(m))+'</p></div>';
       var foot = card.querySelector('[data-r="foot"]');
       foot.style.display = "flex"; foot.innerHTML = "";
+      if(m === "__BILLING__"){
+        // Anthropicアカウントの残高不足(アプリの不具合ではない)
+        body.innerHTML = '<div class="md">' +
+          '<p><b>Anthropicアカウントの残高が不足しています。</b></p>' +
+          '<p>これはアプリの不具合ではなく、AI利用料の残高(クレジット)が0になっている状態です。以下でチャージすれば、すぐに再開できます。</p>' +
+          '<hr><p>① <b>console.anthropic.com</b> を開く<br>② 左メニュー <b>Plans &amp; Billing</b><br>③ <b>Add credits</b> でクレジットを購入(例: $5〜)</p>' +
+          '<p style="color:var(--hai)">目安: 1案件あたり数十円〜。$5チャージで数十件ぶん動きます。</p></div>';
+        foot.appendChild(mkAct("課金ページを開く", function(){
+          window.open("https://console.anthropic.com/settings/billing", "_blank");
+        }));
+        foot.appendChild(mkAct("チャージ後に再実行", function(){ execStep(p, step, redo); }));
+        throw e;
+      }
+      body.innerHTML = '<div class="md"><p>'+esc(friendlyErr(m))+'</p></div>';
       foot.appendChild(mkAct("再実行", function(){ execStep(p, step, redo); }));
       throw e;
     }
