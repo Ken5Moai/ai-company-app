@@ -377,28 +377,78 @@ var ITEMS = {
   orb:    {n:"かぜのオーブ",   k:"key", price:0, d:"かぜの ちからを ひめた たま"}
 };
 
-/* ---------- 呪文・特技 ---------- */
+/* ---------- 呪文・特技 ----------
+   k: atk 攻撃 / heal 回復 / rev 蘇生 / cure 状態回復 / buff 味方強化 /
+      pguard 全体軽減 / weak 敵弱体 / sleep 眠り / death 即死 /
+      drain HP吸収 / mdrain MP吸収 / multi 連続攻撃 / break 守備崩し /
+      phys 全体物理 / charge ためる / stun ひるませる / cover かばう / warp 移動系
+   ------------------------------------------------------------------ */
 var SPELL = {
-  mera:   {n:"メラ",       mp:4,  k:"atk",  el:"fire",   tgt:"one",   pow:16, r:0.55},
-  merami: {n:"メラミ",     mp:10, k:"atk",  el:"fire",   tgt:"one",   pow:40, r:0.95},
-  gira:   {n:"ギラ",       mp:7,  k:"atk",  el:"fire",   tgt:"allE",  pow:12, r:0.40},
-  hyado:  {n:"ヒャド",     mp:6,  k:"atk",  el:"ice",    tgt:"one",   pow:24, r:0.70},
-  hyadaru:{n:"ヒャダルコ", mp:12, k:"atk",  el:"ice",    tgt:"allE",  pow:26, r:0.62},
-  bagi:   {n:"バギ",       mp:6,  k:"atk",  el:"wind",   tgt:"allE",  pow:14, r:0.45},
-  iora:   {n:"イオラ",     mp:15, k:"atk",  el:"blast",  tgt:"allE",  pow:34, r:0.72},
-  raidein:{n:"ライデイン", mp:17, k:"atk",  el:"thunder",tgt:"allE",  pow:40, r:0.85},
-  hoimi:  {n:"ホイミ",     mp:3,  k:"heal", tgt:"ally",  pow:30, r:0.70, field:1},
-  behoimi:{n:"ベホイミ",   mp:8,  k:"heal", tgt:"ally",  pow:85, r:1.10, field:1},
-  behoma: {n:"ベホマ",     mp:15, k:"heal", tgt:"ally",  pow:9999, field:1},
-  behoim: {n:"ベホイム",   mp:20, k:"heal", tgt:"allA",  pow:70, r:0.9, field:1},
-  zaoral: {n:"ザオラル",   mp:14, k:"rev",  tgt:"dead",  rate:0.62, field:1},
-  scult:  {n:"スクルト",   mp:4,  k:"buff", stat:"def",  tgt:"allA"},
-  baiki:  {n:"バイキルト", mp:7,  k:"buff", stat:"atk",  tgt:"ally"},
-  rariho: {n:"ラリホー",   mp:5,  k:"sleep",tgt:"one",   rate:0.55},
+  /* --- 攻撃じゅもん --- */
+  mera:    {n:"メラ",         mp:4,  k:"atk", el:"fire",   tgt:"one",  pow:16, r:0.55},
+  merami:  {n:"メラミ",       mp:10, k:"atk", el:"fire",   tgt:"one",  pow:40, r:0.95},
+  merazoma:{n:"メラゾーマ",   mp:20, k:"atk", el:"fire",   tgt:"one",  pow:92, r:1.35},
+  gira:    {n:"ギラ",         mp:7,  k:"atk", el:"fire",   tgt:"allE", pow:12, r:0.40},
+  begirama:{n:"ベギラマ",     mp:14, k:"atk", el:"fire",   tgt:"allE", pow:30, r:0.65},
+  hyado:   {n:"ヒャド",       mp:6,  k:"atk", el:"ice",    tgt:"one",  pow:24, r:0.70},
+  hyadaru: {n:"ヒャダルコ",   mp:12, k:"atk", el:"ice",    tgt:"allE", pow:26, r:0.62},
+  mahyado: {n:"マヒャド",     mp:22, k:"atk", el:"ice",    tgt:"allE", pow:52, r:0.95},
+  bagi:    {n:"バギ",         mp:6,  k:"atk", el:"wind",   tgt:"allE", pow:14, r:0.45},
+  bagima:  {n:"バギマ",       mp:12, k:"atk", el:"wind",   tgt:"allE", pow:30, r:0.70},
+  bagikuro:{n:"バギクロス",   mp:20, k:"atk", el:"wind",   tgt:"allE", pow:54, r:1.00},
+  io:      {n:"イオ",         mp:8,  k:"atk", el:"blast",  tgt:"allE", pow:18, r:0.50},
+  iora:    {n:"イオラ",       mp:15, k:"atk", el:"blast",  tgt:"allE", pow:34, r:0.72},
+  ionazun: {n:"イオナズン",   mp:30, k:"atk", el:"blast",  tgt:"allE", pow:78, r:1.15},
+  raidein: {n:"ライデイン",   mp:17, k:"atk", el:"thunder",tgt:"allE", pow:40, r:0.85},
+  gigadein:{n:"ギガデイン",   mp:32, k:"atk", el:"thunder",tgt:"allE", pow:84, r:1.20},
+  doruma:  {n:"ドルマ",       mp:6,  k:"atk", el:"dark",   tgt:"one",  pow:22, r:0.60},
+  dorukuma:{n:"ドルクマ",     mp:14, k:"atk", el:"dark",   tgt:"one",  pow:48, r:1.00},
+  drain:   {n:"ドレイン",     mp:9,  k:"drain", el:"dark", tgt:"one",  pow:26, r:0.62, back:0.5},
+  mahotora:{n:"マホトラ",     mp:0,  k:"mdrain", tgt:"one", pow:14, r:0.12},
+  zaki:    {n:"ザキ",         mp:8,  k:"death", tgt:"one",  rate:0.34},
+  zaraki:  {n:"ザラキ",       mp:18, k:"death", tgt:"allE", rate:0.22},
 
-  midare: {n:"みだれぎり", mp:0,  k:"multi", tgt:"one", hits:3, r:0.55, sk:1},
-  kabuto: {n:"かぶとわり", mp:0,  k:"break", tgt:"one", r:1.0, sk:1},
-  shinku: {n:"しんくうぎり", mp:0, k:"phys", tgt:"allE", r:0.75, sk:1}
+  /* --- 回復・蘇生 --- */
+  hoimi:   {n:"ホイミ",       mp:3,  k:"heal", tgt:"ally", pow:30,   r:0.70, field:1},
+  behoimi: {n:"ベホイミ",     mp:8,  k:"heal", tgt:"ally", pow:85,   r:1.10, field:1},
+  behoma:  {n:"ベホマ",       mp:15, k:"heal", tgt:"ally", pow:9999, field:1},
+  behomara:{n:"ベホマラー",   mp:20, k:"heal", tgt:"allA", pow:70,   r:0.90, field:1},
+  zaoral:  {n:"ザオラル",     mp:14, k:"rev",  tgt:"dead", rate:0.62, field:1},
+  zaoriku: {n:"ザオリク",     mp:28, k:"rev",  tgt:"dead", rate:1.00, full:1, field:1},
+  kiari:   {n:"キアリー",     mp:2,  k:"cure", cure:"poison", tgt:"ally", field:1},
+  kiarima: {n:"キアリク",     mp:5,  k:"cure", cure:"any",    tgt:"ally", field:1},
+
+  /* --- 味方の強化 --- */
+  sukara:  {n:"スカラ",       mp:3,  k:"buff", stat:"def", tgt:"ally"},
+  scult:   {n:"スクルト",     mp:6,  k:"buff", stat:"def", tgt:"allA"},
+  baiki:   {n:"バイキルト",   mp:7,  k:"buff", stat:"atk", tgt:"ally"},
+  piorimu: {n:"ピオリム",     mp:6,  k:"buff", stat:"spd", tgt:"allA"},
+  fubaha:  {n:"フバーハ",     mp:12, k:"pguard", guard:"breath"},
+  mabaria: {n:"マジックバリア", mp:14, k:"pguard", guard:"spell"},
+
+  /* --- 敵の弱体 --- */
+  rukani:  {n:"ルカニ",       mp:4,  k:"weak", stat:"def", tgt:"one",  rate:0.80},
+  henatosu:{n:"ヘナトス",     mp:5,  k:"weak", stat:"atk", tgt:"one",  rate:0.72},
+  manusa:  {n:"マヌーサ",     mp:5,  k:"weak", stat:"acc", tgt:"one",  rate:0.70},
+  mahoton: {n:"マホトーン",   mp:6,  k:"weak", stat:"mp",  tgt:"one",  rate:0.62},
+  rariho:  {n:"ラリホー",     mp:5,  k:"sleep", tgt:"one",  rate:0.55},
+  rarihoma:{n:"ラリホーマ",   mp:12, k:"sleep", tgt:"allE", rate:0.45},
+
+  /* --- 移動じゅもん(フィールド専用) --- */
+  rura:    {n:"ルーラ",       mp:8,  k:"warp", warp:"town",   field:1, only:1},
+  riremito:{n:"リレミト",     mp:6,  k:"warp", warp:"escape", field:1, only:1},
+  toherosu:{n:"トヘロス",     mp:4,  k:"warp", warp:"repel",  field:1, only:1},
+
+  /* --- とくぎ(MP不要・ガイ専用) --- */
+  tameru:  {n:"ためる",       mp:0, k:"charge", sk:1},
+  midare:  {n:"みだれぎり",   mp:0, k:"multi", tgt:"one",  hits:3, r:0.55, sk:1},
+  mawashi: {n:"まわしげり",   mp:0, k:"phys",  tgt:"allE", r:0.55, sk:1},
+  kabuto:  {n:"かぶとわり",   mp:0, k:"break", tgt:"one",  r:1.00, sk:1},
+  otakebi: {n:"おたけび",     mp:0, k:"stun",  tgt:"allE", rate:0.50, sk:1},
+  shinku:  {n:"しんくうぎり", mp:0, k:"phys",  tgt:"allE", r:0.80, sk:1},
+  kabau:   {n:"かばう",       mp:0, k:"cover", tgt:"ally", sk:1},
+  seiken:  {n:"せいけんづき", mp:0, k:"multi", tgt:"one",  hits:1, r:1.75, miss:0.25, crit:0.4, sk:1},
+  sutemi:  {n:"すてみ",       mp:0, k:"multi", tgt:"one",  hits:1, r:1.95, reckless:1, sk:1}
 };
 
 /* ---------- 仲間 ---------- */
@@ -407,25 +457,25 @@ var CHARS = [
    pal:{skin:"#f0c39a",hair:"#4a3a2a",cloth:"#2f6de0"},
    base:{hp:26,mp:6, atk:13,def:11,mag:8, spd:11},
    grow:{hp:8.4,mp:3.0,atk:3.3,def:2.7,mag:2.3,spd:2.5},
-   learn:[[3,"hoimi"],[6,"mera"],[9,"baiki"],[13,"behoimi"],[17,"raidein"],[22,"behoma"]],
+   learn:[[3,"hoimi"],[5,"mera"],[8,"sukara"],[10,"rura"],[12,"baiki"],[15,"behoimi"],[18,"raidein"],[21,"fubaha"],[24,"behoma"],[28,"gigadein"]],
    eqStart:{weapon:"stick",armor:"cloth"}},
   {id:"gai", n:"ガイ", cls:"せんし",
    pal:{skin:"#e6b088",hair:"#8a3d20",cloth:"#b6542c"},
    base:{hp:32,mp:0, atk:16,def:13,mag:2, spd:9},
    grow:{hp:10.2,mp:0,atk:4.1,def:3.4,mag:0.4,spd:2.1},
-   learn:[[5,"midare"],[11,"kabuto"],[16,"shinku"]],
+   learn:[[2,"tameru"],[5,"midare"],[8,"mawashi"],[11,"kabuto"],[14,"otakebi"],[17,"shinku"],[20,"kabau"],[23,"seiken"],[27,"sutemi"]],
    eqStart:{weapon:"club",armor:"cloth"}},
   {id:"mina", n:"ミナ", cls:"そうりょ",
    pal:{skin:"#f5d0b0",hair:"#d8b34a",cloth:"#e8e2d2"},
    base:{hp:22,mp:13,atk:9, def:10,mag:13,spd:10},
    grow:{hp:6.4,mp:4.3,atk:2.2,def:2.5,mag:3.5,spd:2.2},
-   learn:[[1,"hoimi"],[4,"scult"],[7,"rariho"],[10,"behoimi"],[14,"zaoral"],[19,"behoim"],[24,"behoma"]],
+   learn:[[1,"hoimi"],[3,"kiari"],[5,"scult"],[7,"rariho"],[9,"rukani"],[11,"behoimi"],[13,"piorimu"],[15,"zaoral"],[17,"manusa"],[19,"kiarima"],[21,"behomara"],[23,"henatosu"],[25,"mahoton"],[27,"behoma"],[29,"mabaria"],[31,"zaoriku"]],
    eqStart:{weapon:"oak",armor:"cloth"}},
   {id:"lino", n:"リノ", cls:"まほうつかい",
    pal:{skin:"#f7d8bd",hair:"#6f4bd8",cloth:"#5b3fb0"},
    base:{hp:18,mp:15,atk:7, def:8, mag:15,spd:12},
    grow:{hp:5.2,mp:4.8,atk:1.7,def:1.9,mag:4.1,spd:2.7},
-   learn:[[1,"mera"],[4,"hyado"],[8,"bagi"],[12,"merami"],[16,"iora"],[20,"hyadaru"]],
+   learn:[[1,"mera"],[3,"gira"],[4,"hyado"],[6,"bagi"],[7,"riremito"],[9,"io"],[10,"merami"],[12,"doruma"],[13,"mahotora"],[14,"hyadaru"],[15,"begirama"],[16,"drain"],[17,"toherosu"],[19,"iora"],[20,"bagima"],[22,"zaki"],[23,"dorukuma"],[25,"mahyado"],[26,"rarihoma"],[27,"merazoma"],[29,"bagikuro"],[31,"zaraki"],[33,"ionazun"]],
    eqStart:{weapon:"stick",armor:"cloth"}}
 ];
 CHARS[0].pal.hair = "#4a3a2a";
@@ -650,6 +700,7 @@ MAPS.cave1 = {
   name:"風の洞窟 B1", kind:"cave", bgm:"cave", w:32, h:26, dark:1,
   gen:{seed:20260810, walks:5, len:80, room:0.08, floor:"o", wall:"O"},
   enc:{rate:0.075, troop:function(){ return "cave1"; }},
+  escape:{to:"world", x:25, y:4},
   genPlan:{
     exitTo:{to:"world", tx:25, ty:4, d:"down"},
     downTo:"cave2",
@@ -661,6 +712,7 @@ MAPS.cave2 = {
   name:"風の洞窟 B2", kind:"cave", bgm:"cave", w:28, h:22, dark:1,
   gen:{seed:4242, walks:5, len:70, room:0.08, floor:"o", wall:"O"},
   enc:{rate:0.08, troop:function(){ return "cave2"; }},
+  escape:{to:"world", x:25, y:4},
   genPlan:{
     exitTo:{to:"cave1", up:1},
     boss:"golem",
@@ -671,6 +723,7 @@ MAPS.cave2 = {
 MAPS.dark = {
   name:"ザルドス魔城", kind:"in", bgm:"dark", w:24, h:20, dark:1,
   enc:{rate:0.07, troop:function(){ return "dark"; }},
+  escape:{to:"world", x:29, y:26},
   tiles:[
     "xxxxxxxxxxxxxxxxxxxxxxxx",
     "xxxxxxxxx*ttt*xxxxxxxxxx",
@@ -1102,6 +1155,14 @@ var UI = {
     if(opt.foot) w.appendChild(el("div", "small", opt.foot));
     var css = opt.css || {};
     for(var k in css) w.style[k] = css[k];
+    /* 長い一覧は ウィンドウごとではなく 中身だけをスクロールさせる。
+       ウィンドウを overflow:auto にすると 見出し(.cap)が切れてしまうため。 */
+    if(css.maxHeight){
+      w.style.maxHeight = "";
+      w.style.overflow = "";
+      ul.style.maxHeight = css.maxHeight;
+      ul.style.overflowY = "auto";
+    }
     (opt.into || this.layer).appendChild(w);
 
     var idx = opt.index || 0;
@@ -1115,6 +1176,9 @@ var UI = {
     var lis = [].slice.call(ul.children);
     function draw(){
       lis.forEach(function(li, i){ li.classList.toggle("sel", i === idx); });
+      if(lis[idx] && lis[idx].scrollIntoView){
+        try{ lis[idx].scrollIntoView({block:"nearest"}); }catch(e){}
+      }
       if(opt.onMove) opt.onMove(idx);
     }
     draw();
@@ -2011,6 +2075,12 @@ function onStep(){
       return;
     }
   }
+  /* トヘロスの効果は歩くほど薄れる */
+  if(Game.flags.repel > 0){
+    Game.flags.repel--;
+    if(Game.flags.repel === 0) msgOnce("トヘロスの ききめが きれた!");
+    return;
+  }
   /* エンカウント */
   var enc = Game.map.enc;
   if(enc && Game.sinceBattle > 3 && Math.random() < enc.rate){
@@ -2251,8 +2321,10 @@ async function fieldSpell(){
     if(!list.length){ await msgIn(m.n + "は じゅもんを つかえない。"); continue; }
     var si = await UI.list({
       cap:m.n + "の じゅもん",
+      cols:list.length > 7 ? 2 : 1,
       items:list.map(function(s){ return {l:SPELL[s].n, s:"MP" + SPELL[s].mp, off:m.mp < SPELL[s].mp}; }),
-      css:{left:"calc(5*var(--u))", bottom:"calc(5*var(--u))", minWidth:"calc(110*var(--u))"}
+      css:{left:"calc(5*var(--u))", bottom:"calc(5*var(--u))", right:"calc(5*var(--u))",
+           maxHeight:"calc(120*var(--u))", overflow:"auto"}
     });
     if(si < 0) continue;
     var sp = SPELL[list[si]];
@@ -2293,8 +2365,54 @@ async function fieldSpell(){
         Snd.se("err");
         await msgIn(m.n + "は " + sp.n + "を となえた!\nしかし なにも おこらなかった……。");
       }
+    } else if(sp.k === "cure"){
+      var ci = await pickMember("だれに");
+      if(ci < 0) continue;
+      var ct = Game.party[ci];
+      var hit = sp.cure === "any" ? !!ct.status : ct.status === sp.cure;
+      if(!hit){ await msgIn("なにも おこらなかった。"); continue; }
+      m.mp -= sp.mp;
+      var was = ct.status === "poison" ? "どく" : "ねむり";
+      ct.status = null;
+      Snd.se("heal");
+      await msgIn(m.n + "は " + sp.n + "を となえた!\n" + ct.n + "の " + was + "が きえた!");
+    } else if(sp.k === "warp"){
+      await castFieldWarp(m, sp);
     }
   }
+}
+/* ルーラ / リレミト / トヘロス */
+async function castFieldWarp(m, sp){
+  var kind = sp.warp;
+  if(kind === "repel"){
+    m.mp -= sp.mp;
+    Game.flags.repel = 130;
+    Snd.se("spell");
+    UI.flash(300, "#bff0d0");
+    await msgIn(m.n + "は " + sp.n + "を となえた!\nまものが よってこなくなった!");
+    return;
+  }
+  if(kind === "town"){
+    if(Game.map.kind === "town" || Game.map.kind === "in"){ await msgIn("ここでは つかえない。"); return; }
+    m.mp -= sp.mp;
+    Snd.se("spell");
+    await UI.say(m.n + "は " + sp.n + "を となえた!\nそらへ まいあがった!");
+    UI.closeMsg();
+    await UI.fade(true);
+    loadMap(Game.lastTown.map, Game.lastTown.x, Game.lastTown.y, "up");
+    await UI.fade(false);
+    return;
+  }
+  /* リレミト: ダンジョンの外へ */
+  var esc = Game.map.escape;
+  if(!esc){ await msgIn("ここでは つかえない。"); return; }
+  m.mp -= sp.mp;
+  Snd.se("stairs");
+  await UI.say(m.n + "は " + sp.n + "を となえた!\nまばゆい ひかりに つつまれた!");
+  UI.closeMsg();
+  await UI.fade(true);
+  loadMap(esc.to, esc.x, esc.y, "down");
+  await UI.fade(false);
 }
 function msgIn(text){
   return (async function(){
@@ -2505,6 +2623,10 @@ function makeEnemy(key, i, total, sameCount){
   if(sameCount > 1) m.n = d.n + SUF[i];
   return m;
 }
+/* 弱体を反映した敵の実効ステータス */
+function edef(e){ return e.d.def * (e.defDown ? 0.55 : 1); }
+function eatk(e){ return e.d.atk * (e.atkDown ? 0.68 : 1); }
+
 function battleBg(){
   var k = Game.map ? Game.map.kind : "field";
   if(Game.mapId === "dark") return "dark";
@@ -2634,7 +2756,10 @@ async function runBattle(keys, opt){
     e.x = pos[i][0]; e.y = pos[i][1];
     if(e.d.boss){ e.x = 118; e.y = 128; }
   });
-  Game.party.forEach(function(m){ m.buffAtk = 0; m.buffDef = 0; m.guard = 0; m.hurt = 0; m.ox = 0; m.oy = 0; m.bframe = 0; });
+  Game.party.forEach(function(m){
+    m.buffAtk = 0; m.buffDef = 0; m.buffSpd = 0; m.guard = 0; m.charge = 0;
+    m.cover = null; m.reckless = 0; m.hurt = 0; m.ox = 0; m.oy = 0; m.bframe = 0;
+  });
 
   Game.battle = {enemies:enemies, bg:battleBg(), boss:enemies.some(function(e){ return e.d.boss; }), turn:0};
   Game.scene = "battle";
@@ -2749,14 +2874,19 @@ function pickEnemy(){
   });
 }
 function pickSpell(m){
+  /* 移動じゅもん(ルーラなど)は 戦闘中は出さない */
+  var list = m.spells.filter(function(s){ return !SPELL[s].only; });
   return UI.list({
     cap:m.n,
-    items:m.spells.map(function(s){
+    cols:list.length > 7 ? 2 : 1,
+    items:list.map(function(s){
       var S = SPELL[s];
       return {l:S.n, s:S.mp ? "MP" + S.mp : "―", off:m.mp < S.mp};
     }),
-    css:{left:"calc(5*var(--u))", bottom:"calc(54*var(--u))", minWidth:"calc(78*var(--u))", maxHeight:"calc(110*var(--u))", overflow:"auto"}
-  }).then(function(i){ return i < 0 ? null : m.spells[i]; });
+    css:{left:"calc(5*var(--u))", bottom:"calc(54*var(--u))",
+         minWidth:list.length > 7 ? "calc(140*var(--u))" : "calc(80*var(--u))",
+         maxHeight:"calc(104*var(--u))", overflow:"auto"}
+  }).then(function(i){ return i < 0 ? null : list[i]; });
 }
 function pickBattleItem(){
   return UI.list({
@@ -2769,7 +2899,7 @@ function pickBattleItem(){
 /* --- ターン解決 --- */
 function spdOf(a){
   if(a.e) return a.e.d.spd * rndf(0.8, 1.2);
-  return ST(a.m, "spd") * rndf(0.8, 1.2);
+  return ST(a.m, "spd") * (a.m.buffSpd ? 1.6 : 1) * rndf(0.8, 1.2);
 }
 async function resolveTurn(acts){
   var B = Game.battle;
@@ -2805,6 +2935,7 @@ async function resolveTurn(acts){
   /* ターン終わりの処理 */
   for(var j = 0; j < Game.party.length; j++){
     var m = Game.party[j];
+    m.cover = null; m.reckless = 0;
     if(!alive(m)) continue;
     m.guard = 0;
     if(m.status === "poison"){
@@ -2816,7 +2947,16 @@ async function resolveTurn(acts){
       if(m.hp <= 0) await downMember(m);
     }
   }
-  B.enemies.forEach(function(e){ e.guard = 0; });
+  B.enemies.forEach(function(e){
+    e.guard = 0;
+    if(e.silence > 0 && --e.silence === 0 && !e.dead) e.silenceEnd = 1;
+    if(e.blind > 0 && --e.blind === 0 && !e.dead) e.blindEnd = 1;
+  });
+  for(var q = 0; q < B.enemies.length; q++){
+    var eq = B.enemies[q];
+    if(eq.silenceEnd){ eq.silenceEnd = 0; await bMsg(eq.n + "の じゅもんふうじが とけた!"); }
+    if(eq.blindEnd){ eq.blindEnd = 0; await bMsg(eq.n + "の まぼろしが きえた!"); }
+  }
   if(livingParty().length === 0) return "lose";
   if(B.enemies.every(function(e){ return e.dead; })) return "win";
   return "";
@@ -2874,9 +3014,10 @@ async function partyAct(a){
     await bMsg(m.n + "の こうげき!");
     await stepFwd(m);
     m.bframe = 1;
+    var chg = takeCharge(m);
     var crit = Math.random() < 0.055;
-    var dmg = crit ? Math.floor(ST(m, "atk") * 1.5 * rndf(0.95, 1.1))
-                   : Math.max(1, Math.floor((ST(m, "atk") * 0.95 - e.d.def * (e.guard ? 0.9 : 0.45)) * rndf(0.85, 1.15)));
+    var dmg = crit ? Math.floor(ST(m, "atk") * 1.5 * chg * rndf(0.95, 1.1))
+                   : Math.max(1, Math.floor((ST(m, "atk") * 0.95 * chg - edef(e) * (e.guard ? 0.9 : 0.45)) * rndf(0.85, 1.15)));
     if(Math.random() < 0.03){
       Snd.se("miss");
       UI.pop(e.x, e.y - 30, "MISS", "miss");
@@ -2902,11 +3043,21 @@ async function partyAct(a){
     if(S.k === "atk") await castAttack(m, S, a.t);
     else if(S.k === "heal") await castHeal(m, S, a.t);
     else if(S.k === "rev") await castRevive(m, S, a.t);
+    else if(S.k === "cure") await castCure(m, S, a.t);
     else if(S.k === "buff") await castBuff(m, S, a.t);
+    else if(S.k === "pguard") await castPGuard(m, S);
+    else if(S.k === "weak") await castWeak(m, S, a.t);
     else if(S.k === "sleep") await castSleep(m, S, a.t);
+    else if(S.k === "death") await castDeath(m, S, a.t);
+    else if(S.k === "drain") await castDrain(m, S, a.t);
+    else if(S.k === "mdrain") await castMDrain(m, S, a.t);
     else if(S.k === "multi") await castMulti(m, S, a.t);
     else if(S.k === "break") await castBreak(m, S, a.t);
     else if(S.k === "phys") await castPhysAll(m, S);
+    else if(S.k === "charge") await castCharge(m, S);
+    else if(S.k === "stun") await castStun(m, S);
+    else if(S.k === "cover") await castCover(m, S, a.t);
+    else if(S.k === "warp") await bMsg("しかし ここでは つかえない!");
     return;
   }
 }
@@ -2962,7 +3113,7 @@ async function castRevive(m, S, ti){
   var t = Game.party[ti];
   if(!t || alive(t)){ await bMsg("しかし なにも おこらなかった。"); return; }
   if(Math.random() < S.rate){
-    t.hp = Math.max(1, Math.floor(maxHP(t) / 2));
+    t.hp = S.full ? maxHP(t) : Math.max(1, Math.floor(maxHP(t) / 2));
     Snd.se("levelup");
     FX.rise(PPOS[ti][0] + 8, PPOS[ti][1] + 8, "#ffe38a", 16);
     refreshPanel();
@@ -2972,19 +3123,22 @@ async function castRevive(m, S, ti){
     await bMsg("しかし むなしく ひびいた……。");
   }
 }
+var BUFF_KEY = {def:"buffDef", atk:"buffAtk", spd:"buffSpd"};
+var BUFF_NAME = {def:"みのまもり", atk:"こうげきりょく", spd:"すばやさ"};
 async function castBuff(m, S, ti){
   Snd.se("guard");
+  var key = BUFF_KEY[S.stat], nm = BUFF_NAME[S.stat];
   if(S.tgt === "allA"){
     Game.party.filter(alive).forEach(function(t){
-      t[S.stat === "def" ? "buffDef" : "buffAtk"] = 1;
+      t[key] = 1;
       FX.rise(PPOS[memberIndex(t)][0] + 8, PPOS[memberIndex(t)][1] + 8, "#ffd75e", 8);
     });
-    await bMsg("みんなの みのまもりが 上がった!");
+    await bMsg("みんなの " + nm + "が 上がった!");
   } else {
     var t2 = Game.party[ti] || m;
-    t2[S.stat === "def" ? "buffDef" : "buffAtk"] = 1;
+    t2[key] = 1;
     FX.rise(PPOS[memberIndex(t2)][0] + 8, PPOS[memberIndex(t2)][1] + 8, "#ffd75e", 10);
-    await bMsg(t2.n + "の " + (S.stat === "def" ? "みのまもり" : "こうげきりょく") + "が 上がった!");
+    await bMsg(t2.n + "の " + nm + "が 上がった!");
   }
 }
 async function castSleep(m, S, ti){
@@ -3001,21 +3155,32 @@ async function castSleep(m, S, ti){
   }
 }
 async function castMulti(m, S, ti){
-  var B = Game.battle;
+  var B = Game.battle, chg = takeCharge(m);
+  if(S.reckless) m.reckless = 1;
   for(var h = 0; h < S.hits; h++){
     var live = B.enemies.filter(function(e){ return !e.dead; });
     if(!live.length) break;
-    var e = live.length === 1 ? live[0] : pick(live);
+    var e = (S.hits > 1 && live.length > 1) ? pick(live) : (B.enemies[ti] && !B.enemies[ti].dead ? B.enemies[ti] : live[0]);
     await stepFwd(m);
-    Snd.se("hit");
+    if(S.miss && Math.random() < S.miss){
+      Snd.se("miss");
+      UI.pop(e.x, e.y - 30, "MISS", "miss");
+      await bMsg("しかし ミス! こうげきは はずれた。");
+      await stepFwd(m, 1);
+      continue;
+    }
+    var crit = Math.random() < (S.crit || 0.05);
+    Snd.se(crit ? "crit" : "hit");
     FX.slash(e.x, e.y - 22);
-    Game.shake = 1.6;
-    var dmg = Math.max(1, Math.floor((ST(m, "atk") * S.r - e.d.def * 0.4) * rndf(0.85, 1.15)));
-    await hurtEnemy(e, dmg, false);
-    await bMsg(e.n + "に " + dmg + " のダメージ!");
+    Game.shake = crit ? 3 : 1.8;
+    var dmg = Math.max(1, Math.floor((ST(m, "atk") * S.r * chg - edef(e) * 0.4) * rndf(0.85, 1.15)));
+    if(crit) dmg = Math.floor(dmg * 1.5);
+    await hurtEnemy(e, dmg, crit);
+    await bMsg((crit ? "かいしんの いちげき!\n" : "") + e.n + "に " + dmg + " のダメージ!");
     await stepFwd(m, 1);
     if(e.hp <= 0) await killEnemy(e);
   }
+  if(S.reckless) await bMsg(m.n + "は みを すてて とびこんだ!\nつぎの こうげきを うけやすい!");
 }
 async function castBreak(m, S, ti){
   var e = Game.battle.enemies[ti] || pick(Game.battle.enemies.filter(function(x){ return !x.dead; }));
@@ -3024,16 +3189,16 @@ async function castBreak(m, S, ti){
   Snd.se("crit");
   FX.slash(e.x, e.y - 22);
   Game.shake = 3;
-  var dmg = Math.max(1, Math.floor((ST(m, "atk") * S.r - e.d.def * 0.25) * rndf(0.9, 1.1)));
+  var dmg = Math.max(1, Math.floor((ST(m, "atk") * S.r * takeCharge(m) - edef(e) * 0.25) * rndf(0.9, 1.1)));
   await hurtEnemy(e, dmg, true);
-  e.d = Object.create(e.d);
-  e.d.def = Math.floor(e.d.def * 0.7);
+  e.defDown = 1;
   await bMsg(e.n + "に " + dmg + " のダメージ!\n" + e.n + "の みのまもりが さがった!");
   await stepFwd(m, 1);
   if(e.hp <= 0) await killEnemy(e);
 }
 async function castPhysAll(m, S){
   var live = Game.battle.enemies.filter(function(e){ return !e.dead; });
+  var chgAll = takeCharge(m);
   Snd.se("wind");
   live.forEach(function(e){ FX.slash(e.x, e.y - 22); });
   Game.shake = 2.4;
@@ -3041,12 +3206,146 @@ async function castPhysAll(m, S){
   var txt = "";
   for(var i = 0; i < live.length; i++){
     var e = live[i];
-    var dmg = Math.max(1, Math.floor((ST(m, "atk") * S.r - e.d.def * 0.4) * rndf(0.85, 1.15)));
+    var dmg = Math.max(1, Math.floor((ST(m, "atk") * S.r * chgAll - edef(e) * 0.4) * rndf(0.85, 1.15)));
     await hurtEnemy(e, dmg, false);
     txt += e.n + "に " + dmg + " のダメージ!\n";
   }
   await bMsg(txt.trim());
   for(var j = 0; j < live.length; j++) if(live[j].hp <= 0) await killEnemy(live[j]);
+}
+/* ためた力を取り出す(消費して倍率を返す) */
+function takeCharge(m){
+  if(!m.charge) return 1;
+  m.charge = 0;
+  return 2.4;
+}
+/* --- 状態回復 キアリー / キアリク --- */
+async function castCure(m, S, ti){
+  var t = Game.party[ti];
+  if(!t || !alive(t)){ await bMsg("しかし なにも おこらなかった。"); return; }
+  var hit = S.cure === "any" ? !!t.status : t.status === S.cure;
+  if(!hit){ await bMsg("しかし なにも おこらなかった。"); return; }
+  var was = t.status === "poison" ? "どく" : "ねむり";
+  t.status = null;
+  Snd.se("heal");
+  FX.rise(PPOS[ti][0] + 8, PPOS[ti][1] + 8, "#8effa0", 10);
+  refreshPanel();
+  await bMsg(t.n + "の " + was + "が きえた!");
+}
+/* --- 全体軽減 フバーハ / マジックバリア --- */
+async function castPGuard(m, S){
+  var B = Game.battle;
+  Snd.se("guard");
+  Game.party.filter(alive).forEach(function(t){
+    FX.rise(PPOS[memberIndex(t)][0] + 8, PPOS[memberIndex(t)][1] + 8, "#9ad8ff", 8);
+  });
+  await sleep(200);
+  if(S.guard === "breath"){
+    B.breathGuard = 1;
+    await bMsg("つめたい かぜが パーティを つつんだ!\nブレスの ダメージを おさえる!");
+  } else {
+    B.spellGuard = 1;
+    await bMsg("ひかりの まくが パーティを つつんだ!\nじゅもんの ダメージを おさえる!");
+  }
+}
+/* --- 敵の弱体 ルカニ / ヘナトス / マヌーサ / マホトーン --- */
+async function castWeak(m, S, ti){
+  var e = Game.battle.enemies[ti];
+  if(!e || e.dead) return;
+  Snd.se("spell");
+  FX.ring(e.x, e.y - 20, "#c8a0ff");
+  await sleep(200);
+  var rate = e.d.boss ? S.rate * 0.55 : S.rate;
+  if(Math.random() >= rate){ await bMsg(e.n + "には きかなかった!"); return; }
+  if(S.stat === "def"){ e.defDown = 1; await bMsg(e.n + "の みのまもりが さがった!"); }
+  else if(S.stat === "atk"){ e.atkDown = 1; await bMsg(e.n + "の こうげきりょくが さがった!"); }
+  else if(S.stat === "acc"){ e.blind = rndInt(3, 5); await bMsg(e.n + "は まぼろしを 見ている!\nこうげきが 当たりにくい!"); }
+  else { e.silence = rndInt(3, 5); await bMsg(e.n + "は じゅもんを ふうじられた!"); }
+}
+/* --- 即死 ザキ / ザラキ --- */
+async function castDeath(m, S, ti){
+  var B = Game.battle;
+  var list = S.tgt === "allE" ? B.enemies.filter(function(e){ return !e.dead; })
+                              : [B.enemies[ti]].filter(function(e){ return e && !e.dead; });
+  if(!list.length) return;
+  Snd.se("spell");
+  list.forEach(function(e){ FX.burst(e.x, e.y - 20, "#2a1030", 16, 70); FX.ring(e.x, e.y - 20, "#9a4ac8"); });
+  Game.shake = 2;
+  await sleep(260);
+  var any = false, txt = "";
+  for(var i = 0; i < list.length; i++){
+    var e = list[i];
+    if(e.d.boss){ txt += e.n + "には きかなかった!\n"; continue; }
+    if(Math.random() < S.rate){ e.hp = 0; any = true; txt += e.n + "は たおれた!\n"; }
+    else txt += e.n + "には きかなかった!\n";
+  }
+  await bMsg(txt.trim());
+  for(var j = 0; j < list.length; j++) if(list[j].hp <= 0) await killEnemy(list[j]);
+}
+/* --- HP吸収 ドレイン --- */
+async function castDrain(m, S, ti){
+  var e = Game.battle.enemies[ti];
+  if(!e || e.dead){
+    var alt = Game.battle.enemies.filter(function(x){ return !x.dead; });
+    if(!alt.length) return;
+    e = alt[0];
+  }
+  elFx("dark", e.x, e.y);
+  await sleep(220);
+  var dmg = Math.max(1, Math.floor((S.pow + ST(m, "mag") * S.r) * rndf(0.88, 1.12)));
+  if(e.d.boss) dmg = Math.floor(dmg * 0.82);
+  await hurtEnemy(e, dmg, false);
+  var back = Math.min(Math.floor(dmg * S.back), maxHP(m) - m.hp);
+  m.hp += back;
+  var mi = memberIndex(m);
+  FX.rise(PPOS[mi][0] + 8, PPOS[mi][1] + 8, "#c86aff", 10);
+  if(back > 0) UI.pop(PPOS[mi][0] + 8, PPOS[mi][1], "+" + back, "heal");
+  refreshPanel();
+  await bMsg(e.n + "に " + dmg + " のダメージ!" + (back > 0 ? "\n" + m.n + "は " + back + " HPを すいとった!" : ""));
+  if(e.hp <= 0) await killEnemy(e);
+}
+/* --- MP吸収 マホトラ --- */
+async function castMDrain(m, S, ti){
+  var e = Game.battle.enemies[ti];
+  if(!e || e.dead) return;
+  Snd.se("spell");
+  FX.rise(e.x, e.y - 20, "#5ec8ff", 12);
+  await sleep(220);
+  if(e.d.mag < 6){ await bMsg(e.n + "は MPを もっていなかった!"); return; }
+  var got = Math.min(Math.floor(S.pow + e.d.mag * S.r), maxMP(m) - m.mp);
+  if(got <= 0){ await bMsg(m.n + "の MPは まんたんだ。"); return; }
+  m.mp += got;
+  refreshPanel();
+  await bMsg(m.n + "は " + e.n + "から MPを " + got + " すいとった!");
+}
+/* --- ためる --- */
+async function castCharge(m, S){
+  m.charge = 1;
+  Snd.se("guard");
+  FX.rise(PPOS[memberIndex(m)][0] + 8, PPOS[memberIndex(m)][1] + 8, "#ffd75e", 12);
+  await bMsg(m.n + "は ちからを ためている!");
+}
+/* --- おたけび --- */
+async function castStun(m, S){
+  var live = Game.battle.enemies.filter(function(e){ return !e.dead; });
+  Snd.se("crit");
+  Game.shake = 3;
+  await sleep(220);
+  var txt = "";
+  live.forEach(function(e){
+    if(e.d.boss || Math.random() >= S.rate){ txt += e.n + "は ひるまない!\n"; return; }
+    e.stun = 1;
+    txt += e.n + "は ひるんだ!\n";
+  });
+  await bMsg(txt.trim());
+}
+/* --- かばう --- */
+async function castCover(m, S, ti){
+  var t = Game.party[ti];
+  if(!t || t === m || !alive(t)){ await bMsg("しかし だれも かばえなかった。"); return; }
+  m.cover = memberIndex(t);
+  Snd.se("guard");
+  await bMsg(m.n + "は " + t.n + "を かばっている!");
 }
 async function hurtEnemy(e, dmg, crit){
   e.hp -= dmg;
@@ -3077,12 +3376,25 @@ async function enemyAct(e){
     await bMsg(e.n + "は ねむっている。");
     return;
   }
+  if(e.stun){
+    e.stun = 0;
+    await bMsg(e.n + "は ひるんで うごけない!");
+    return;
+  }
   var living = livingParty();
   if(!living.length) return;
   var act = e.ai[e.aiI % e.ai.length];
   e.aiI++;
   if(Math.random() < 0.25) act = pick(e.ai);
+  /* マホトーンで じゅもんは 封じられる(ブレスや物理は封じられない) */
+  if(e.silence && ["mera","gira","dark","heal2","sleepA"].indexOf(act) >= 0){
+    await bMsg(e.n + "は じゅもんを となえようとした!\nしかし ふうじられている!");
+    return;
+  }
   var tgt = pick(living);
+  /* かばう: 単体攻撃は かばっている仲間が うけとめる */
+  var covers = living.filter(function(x){ return x.cover != null && Game.party[x.cover] === tgt && x !== tgt; });
+  if(covers.length) tgt = covers[0];
   var ti = memberIndex(tgt);
   switch(act){
     case "guard":
@@ -3110,13 +3422,18 @@ async function enemyAct(e){
       Game.shake = 3;
       await sleep(240);
       var base = {mera:20, gira:16, breath:28, dark:34, quake:0}[act];
+      var B2 = Game.battle;
       var txt = "";
       for(var i = 0; i < tl.length; i++){
         var t = tl[i];
         var dmg = act === "quake"
-          ? Math.max(1, Math.floor((e.d.atk * 0.55 - ST(t, "def") * 0.25) * rndf(0.85, 1.15)))
+          ? Math.max(1, Math.floor((eatk(e) * 0.55 - ST(t, "def") * 0.25) * rndf(0.85, 1.15)))
           : Math.max(1, Math.floor((base + e.d.mag * 0.6) * rndf(0.88, 1.12) - ST(t, "def") * 0.12));
+        /* フバーハはブレス系を、マジックバリアはじゅもん系を弱める */
+        if(B2.breathGuard && (act === "breath" || act === "dark")) dmg = Math.floor(dmg * 0.55);
+        if(B2.spellGuard && (act === "mera" || act === "gira")) dmg = Math.floor(dmg * 0.6);
         if(t.guard) dmg = Math.floor(dmg * 0.5);
+        if(t.reckless) dmg = Math.floor(dmg * 1.5);
         t.hp = Math.max(0, t.hp - dmg);
         t.hurt = 0.3;
         UI.pop(PPOS[memberIndex(t)][0] + 8, PPOS[memberIndex(t)][1], String(dmg), "dmg");
@@ -3141,16 +3458,17 @@ async function enemyAct(e){
   e.ox = -6;
   setTimeout(function(){ e.ox = 0; }, 140);
   await sleep(130);
-  if(Math.random() < 0.04){
+  if(Math.random() < (e.blind ? 0.45 : 0.04)){
     Snd.se("miss");
     UI.pop(PPOS[ti][0] + 8, PPOS[ti][1], "MISS", "miss");
-    await bMsg("しかし ミス!");
+    await bMsg(e.blind ? "こうげきは 空を きった!" : "しかし ミス!");
     return;
   }
   var crit = Math.random() < 0.04;
-  var dmg2 = crit ? Math.floor(e.d.atk * 1.4 * rndf(0.95, 1.1))
-                  : Math.max(1, Math.floor((e.d.atk * 0.95 - ST(tgt, "def") * 0.35) * rndf(0.85, 1.15)));
+  var dmg2 = crit ? Math.floor(eatk(e) * 1.4 * rndf(0.95, 1.1))
+                  : Math.max(1, Math.floor((eatk(e) * 0.95 - ST(tgt, "def") * 0.35) * rndf(0.85, 1.15)));
   if(tgt.guard) dmg2 = Math.floor(dmg2 * 0.45);
+  if(tgt.reckless) dmg2 = Math.floor(dmg2 * 1.5);
   Snd.se(crit ? "crit" : "hit");
   Game.shake = crit ? 3.5 : 2;
   tgt.hp = Math.max(0, tgt.hp - dmg2);
@@ -3198,7 +3516,10 @@ async function endBattle(result, enemies, opt){
   } else if(result === "flee"){
     await bMsg("うまく にげきれた!");
   }
-  Game.party.forEach(function(m){ m.buffAtk = 0; m.buffDef = 0; m.guard = 0; m.hurt = 0; m.ox = 0; m.__act = 0; });
+  Game.party.forEach(function(m){
+    m.buffAtk = 0; m.buffDef = 0; m.buffSpd = 0; m.guard = 0; m.charge = 0;
+    m.cover = null; m.reckless = 0; m.hurt = 0; m.ox = 0; m.__act = 0;
+  });
   await UI.fade(true);
   UI.clearAll();
   UI.msgWin = null;
