@@ -1,0 +1,3471 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>巨獣狩り — 光のクロニクル外伝</title>
+<style>
+/* ================================================================
+   巨獣狩り / THE GREAT HUNT
+   「光のクロニクル」外伝。巨獣と一対一で渡りあう アクション狩猟ゲーム。
+   本編と同じ ドット絵・チップチューン・窓UI を、革と骨の色に着替えて使う。
+   ================================================================ */
+:root{
+  --u:3px;
+  --win-a:#3a2a18;
+  --win-b:#170f08;
+  --line:#e8d6a8;
+  --line-in:#8a6a3a;
+  --ink:#f4e9d2;
+  --dim:#b09a76;
+  --gold:#ffd75e;
+  --hp:#5ee06a;
+  --hp-mid:#ffd75e;
+  --hp-low:#ff5a4a;
+  --st:#ffd75e;
+  --danger:#ff6a58;
+  --font:"Hiragino Kaku Gothic ProN","Hiragino Sans","Yu Gothic UI","Meiryo","Noto Sans JP","MS PGothic",system-ui,sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;background:#000;overflow:hidden}
+body{
+  font-family:var(--font);color:var(--ink);
+  -webkit-tap-highlight-color:transparent;
+  overscroll-behavior:none;
+  user-select:none;-webkit-user-select:none;
+  touch-action:manipulation;
+}
+#app{
+  position:fixed;inset:0;display:grid;place-items:center;
+  background:radial-gradient(120% 90% at 50% 0%,#241a10 0%,#000 70%);
+}
+@media (orientation:portrait) and (pointer:coarse){
+  #app{align-items:start;padding-top:max(env(safe-area-inset-top),2vh)}
+}
+#stage{
+  position:relative;
+  width:calc(256 * var(--u));
+  height:calc(224 * var(--u));
+  background:#000;overflow:hidden;
+  box-shadow:0 0 0 calc(1*var(--u)) #4a3620, 0 calc(6*var(--u)) calc(18*var(--u)) rgba(0,0,0,.8);
+}
+#screen{
+  position:absolute;inset:0;width:100%;height:100%;
+  image-rendering:pixelated;image-rendering:crisp-edges;display:block;
+}
+#stage::after{
+  content:"";position:absolute;inset:0;pointer-events:none;z-index:60;
+  background:repeating-linear-gradient(to bottom,rgba(0,0,0,.16) 0 1px,transparent 1px calc(2*var(--u)));
+  opacity:.45;
+}
+#ui{position:absolute;inset:0;z-index:20;pointer-events:none}
+#ui > *{pointer-events:auto}
+
+/* ---------------- ウィンドウ ---------------- */
+.win{
+  position:absolute;
+  background:linear-gradient(180deg,var(--win-a) 0%,var(--win-b) 100%);
+  border:calc(1*var(--u)) solid var(--line);
+  border-radius:calc(2.5*var(--u));
+  box-shadow:
+    inset 0 0 0 calc(1*var(--u)) var(--line-in),
+    inset 0 calc(2*var(--u)) calc(6*var(--u)) rgba(255,200,120,.18),
+    0 calc(2*var(--u)) 0 rgba(0,0,0,.65);
+  padding:calc(4*var(--u)) calc(5*var(--u));
+  font-size:calc(9*var(--u));line-height:1.65;letter-spacing:.04em;font-weight:700;
+  text-shadow:0 calc(1*var(--u)) 0 rgba(0,0,0,.85);
+  animation:winIn .12s steps(2) both;
+}
+@keyframes winIn{from{transform:scaleY(.55);opacity:.4}to{transform:none;opacity:1}}
+.win.plain{animation:none}
+.win.mid{left:0;right:0;margin-left:auto;margin-right:auto;width:max-content}
+.win > .cap + .small{margin-top:calc(4*var(--u))}
+.win .cap{
+  position:absolute;top:calc(-4.5*var(--u));left:calc(5*var(--u));
+  background:#170f08;border:calc(1*var(--u)) solid var(--line-in);
+  border-radius:calc(1.5*var(--u));
+  font-size:calc(6.5*var(--u));letter-spacing:.22em;color:var(--gold);
+  padding:0 calc(2.5*var(--u));line-height:1.7;
+}
+#msgWin{left:calc(5*var(--u));right:calc(5*var(--u));bottom:calc(6*var(--u));min-height:calc(38*var(--u));display:none}
+#msgWin.on{display:block}
+#msgWin .txt{white-space:pre-wrap;overflow-wrap:anywhere}
+#msgWin .who{color:var(--gold);font-size:calc(8*var(--u));letter-spacing:.16em;display:block;margin-bottom:calc(1*var(--u))}
+.more{position:absolute;right:calc(5*var(--u));bottom:calc(2*var(--u));font-size:calc(8*var(--u));animation:blink .6s steps(1) infinite;opacity:0}
+.more.on{opacity:1}
+@keyframes blink{50%{opacity:.15}}
+
+.list{list-style:none;display:grid;gap:calc(.5*var(--u))}
+.list.c2{grid-template-columns:1fr 1fr;column-gap:calc(6*var(--u))}
+.list li{
+  position:relative;padding:calc(.5*var(--u)) 0 calc(.5*var(--u)) calc(9*var(--u));
+  display:flex;justify-content:space-between;gap:calc(4*var(--u));white-space:nowrap;cursor:pointer;
+}
+.list li .sub{color:var(--gold);font-variant-numeric:tabular-nums}
+.list li.off{color:#7d6a4c}
+.list li.off .sub{color:#7d6a4c}
+.list li.sel::before{content:"▶";position:absolute;left:calc(0.5*var(--u));top:calc(.5*var(--u));animation:cur .5s steps(1) infinite}
+@keyframes cur{50%{opacity:.2}}
+.kv{display:flex;justify-content:space-between;gap:calc(4*var(--u));white-space:nowrap}
+.kv b{color:var(--gold);font-variant-numeric:tabular-nums}
+.small{font-size:calc(7.5*var(--u));color:var(--dim);letter-spacing:.1em}
+.hr{height:calc(1*var(--u));background:var(--line-in);margin:calc(2*var(--u)) 0;opacity:.7}
+
+/* ---------------- 全画面 ---------------- */
+.ov{position:absolute;inset:0;z-index:50;display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.ov.on{display:flex}
+#title{background:radial-gradient(90% 70% at 50% 24%,rgba(96,58,20,.45) 0%,rgba(26,16,8,.7) 52%,rgba(0,0,0,.92) 100%)}
+#title .logo{
+  font-size:calc(20*var(--u));letter-spacing:.16em;line-height:1.35;
+  text-shadow:0 0 calc(6*var(--u)) rgba(255,190,110,.7),0 calc(2*var(--u)) 0 #7a4a18,0 calc(3*var(--u)) calc(6*var(--u)) rgba(0,0,0,.9);
+  animation:logoIn 1.2s cubic-bezier(.2,1,.25,1) both;pointer-events:none;
+}
+#title .logo b{display:block;font-size:calc(9.5*var(--u));color:var(--gold);letter-spacing:.36em;text-indent:.36em;margin-bottom:calc(3*var(--u));text-shadow:0 calc(1*var(--u)) 0 #000}
+@keyframes logoIn{from{opacity:0;transform:translateY(calc(6*var(--u))) scale(.94)}to{opacity:1;transform:none}}
+#title > .sub{margin-top:calc(3*var(--u));font-size:calc(7.5*var(--u));letter-spacing:.3em;color:#c8ab7e;pointer-events:none}
+#title.choosing > .sub{display:none}
+#title .foot{
+  position:absolute;bottom:calc(3*var(--u));left:calc(5*var(--u));right:calc(5*var(--u));
+  font-size:calc(5.8*var(--u));letter-spacing:.12em;color:#8a7454;line-height:1.8;pointer-events:none;
+}
+#title .foot i{font-style:normal;display:block}
+#title .logo{pointer-events:none}
+#result{background:radial-gradient(90% 70% at 50% 40%,rgba(34,22,10,.9) 0%,rgba(0,0,0,.96) 100%)}
+#result .big{font-size:calc(15*var(--u));letter-spacing:.3em}
+#result.win .big{color:var(--gold);text-shadow:0 0 calc(8*var(--u)) rgba(255,215,94,.55)}
+#result.lose .big{color:#c8412f;text-shadow:0 0 calc(8*var(--u)) rgba(200,60,40,.6)}
+#result .stat{margin-top:calc(6*var(--u));font-size:calc(8*var(--u));line-height:1.9;color:#e8dcc2}
+#result .stat b{color:var(--gold)}
+#resultMenu{margin-top:calc(6*var(--u))}
+
+#flash{position:absolute;inset:0;z-index:45;background:#fff;opacity:0;pointer-events:none}
+#fade{position:absolute;inset:0;z-index:48;background:#000;opacity:0;pointer-events:none;transition:opacity .3s linear}
+#fade.on{opacity:1}
+.pop{
+  position:absolute;z-index:40;pointer-events:none;
+  font-size:calc(9*var(--u));font-weight:700;
+  text-shadow:calc(1*var(--u)) calc(1*var(--u)) 0 #000,calc(-1*var(--u)) calc(1*var(--u)) 0 #000;
+  animation:pop .8s ease-out forwards;transform:translate(-50%,0);
+}
+.pop.gold{color:var(--gold)}
+.pop.dmg{color:#fff}
+.pop.crit{color:#ffd75e;font-size:calc(12*var(--u))}
+.pop.bounce{color:#9fb4d8;font-size:calc(8*var(--u))}
+.pop.hurt{color:#ff6a58;font-size:calc(11*var(--u))}
+@keyframes pop{
+  0%{transform:translate(-50%,0) scale(.6);opacity:0}
+  20%{transform:translate(-50%,calc(-7*var(--u))) scale(1.1);opacity:1}
+  100%{transform:translate(-50%,calc(-18*var(--u))) scale(1);opacity:0}
+}
+
+/* ---------------- そうさボタン ---------------- */
+#pad{
+  position:fixed;left:0;right:0;bottom:0;z-index:70;
+  height:min(38vh,calc(150*var(--u)));
+  padding:0 calc(6*var(--u)) max(env(safe-area-inset-bottom),calc(6*var(--u)));
+  display:flex;align-items:center;justify-content:space-between;
+  pointer-events:none;
+}
+#pad.hide{display:none}
+#stick{
+  position:relative;pointer-events:auto;
+  width:calc(56*var(--u));height:calc(56*var(--u));
+  border-radius:50%;
+  background:radial-gradient(circle at 50% 42%,rgba(90,66,38,.5),rgba(20,14,8,.62));
+  border:calc(1*var(--u)) solid rgba(232,214,168,.42);
+  box-shadow:inset 0 0 calc(6*var(--u)) rgba(0,0,0,.7);
+  touch-action:none;
+}
+#knob{
+  position:absolute;left:50%;top:50%;
+  width:calc(24*var(--u));height:calc(24*var(--u));margin:calc(-12*var(--u)) 0 0 calc(-12*var(--u));
+  border-radius:50%;
+  background:radial-gradient(circle at 40% 34%,#c8ab7e,#5a4224);
+  border:calc(1*var(--u)) solid rgba(255,255,255,.6);
+  transition:transform .05s linear;
+}
+#btns{
+  position:relative;pointer-events:none;
+  width:calc(96*var(--u));height:calc(84*var(--u));
+}
+#btns button{
+  position:absolute;pointer-events:auto;
+  font-family:var(--font);font-weight:700;color:var(--ink);
+  background:radial-gradient(circle at 40% 34%,rgba(96,70,40,.85),rgba(24,16,8,.9));
+  border:calc(1*var(--u)) solid rgba(232,214,168,.55);
+  border-radius:50%;
+  text-shadow:0 calc(1*var(--u)) 0 #000;
+  display:grid;place-items:center;line-height:1;
+  touch-action:none;cursor:pointer;
+}
+#btns button:active,#btns button.on{background:radial-gradient(circle at 40% 34%,#a87a3e,#6a4a1e);transform:scale(.94)}
+#btns button i{font-style:normal;display:block;font-size:calc(5.4*var(--u));color:var(--dim);letter-spacing:.06em;margin-top:calc(1*var(--u))}
+#bAtk{right:calc(2*var(--u));bottom:calc(20*var(--u));width:calc(38*var(--u));height:calc(38*var(--u));font-size:calc(11*var(--u))}
+#bHeavy{right:calc(40*var(--u));bottom:calc(42*var(--u));width:calc(32*var(--u));height:calc(32*var(--u));font-size:calc(9.5*var(--u))}
+#bRoll{right:calc(42*var(--u));bottom:calc(4*var(--u));width:calc(30*var(--u));height:calc(30*var(--u));font-size:calc(9.5*var(--u))}
+#bItem{right:calc(6*var(--u));bottom:calc(62*var(--u));width:calc(26*var(--u));height:calc(26*var(--u));font-size:calc(8.5*var(--u))}
+#bSwap{right:calc(74*var(--u));bottom:calc(66*var(--u));width:calc(22*var(--u));height:calc(22*var(--u));font-size:calc(7.5*var(--u))}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms!important}}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="stage">
+    <canvas id="screen" width="256" height="224"></canvas>
+    <div id="ui"></div>
+    <div id="flash"></div>
+    <div id="fade"></div>
+    <div id="title" class="ov on">
+      <div class="logo"><b>THE GREAT HUNT</b>巨獣狩り</div>
+      <div class="sub">ひかりの クロニクル 外伝</div>
+      <div id="titleMenu"></div>
+      <div class="foot">
+        <i>巨獣と 一対一。よけて、隙を さらして、素材で 強くなる</i>
+        <i>スマホは 左スティックと 右ボタン　　WASD / Z X C V でも あそべます</i>
+      </div>
+    </div>
+    <div id="result" class="ov"><div class="big"></div><div class="stat"></div><div id="resultMenu"></div></div>
+  </div>
+</div>
+<div id="pad">
+  <div id="stick"><div id="knob"></div></div>
+  <div id="btns">
+    <button id="bAtk" data-k="atk">斬<i>Z</i></button>
+    <button id="bHeavy" data-k="heavy">溜<i>X</i></button>
+    <button id="bRoll" data-k="roll">避<i>C</i></button>
+    <button id="bItem" data-k="item">具<i>A</i></button>
+    <button id="bSwap" data-k="swap">替<i>S</i></button>
+  </div>
+</div>
+<script>
+"use strict";
+
+function $(id){ return document.getElementById(id); }
+function el(tag, cls, html){
+  var e = document.createElement(tag);
+  if(cls) e.className = cls;
+  if(html != null) e.innerHTML = html;
+  return e;
+}
+function rndInt(a, b){ return a + Math.floor(Math.random() * (b - a + 1)); }
+function rndf(a, b){ return a + Math.random() * (b - a); }
+function pick(a){ return a[Math.floor(Math.random() * a.length)]; }
+function clamp(v, a, b){ return v < a ? a : (v > b ? b : v); }
+function sleep(ms){ return new Promise(function(r){ setTimeout(r, ms); }); }
+function esc(s){ return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;"); }
+function shade(hex, d){
+  var n = parseInt(hex.slice(1), 16);
+  var r = clamp((n >> 16) + d, 0, 255), g = clamp(((n >> 8) & 255) + d, 0, 255), b = clamp((n & 255) + d, 0, 255);
+  return "rgb(" + r + "," + g + "," + b + ")";
+}
+/* 決定的な擬似乱数(マップ生成用) */
+function mulberry(seed){
+  return function(){
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    var t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+function hash2(x, y){
+  var h = x * 374761393 + y * 668265263;
+  h = (h ^ (h >> 13)) * 1274126177;
+  return ((h ^ (h >> 16)) >>> 0) / 4294967296;
+}
+
+/* ================================================================
+   サウンド(WebAudio) ── 本編「光のクロニクル」と共通
+   ================================================================ */
+var Snd = {
+  ac:null, master:null, on:true, cur:null, timer:null, step:0, nextT:0, track:null,
+  init:function(){
+    if(this.ac) return;
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if(!AC) { this.on = false; return; }
+    this.ac = new AC();
+    this.master = this.ac.createGain();
+    this.master.gain.value = 0.24;
+    this.master.connect(this.ac.destination);
+  },
+  resume:function(){
+    if(this.ac && this.ac.state === "suspended") this.ac.resume();
+    if(this.on && !this.cur && typeof Game !== "undefined" && Game && Game.scene === "title") this.play("castle");
+  },
+  freq:function(name){
+    if(!name || name === "r") return 0;
+    var m = /^([A-G])(#?)(-?\d)$/.exec(name);
+    if(!m) return 0;
+    var base = {C:0,D:2,E:4,F:5,G:7,A:9,B:11}[m[1]] + (m[2] ? 1 : 0);
+    var midi = base + (parseInt(m[3], 10) + 1) * 12;
+    return 440 * Math.pow(2, (midi - 69) / 12);
+  },
+  /* 単発の効果音 */
+  se:function(kind){
+    if(!this.on) return;
+    this.init(); if(!this.ac) return;
+    var t = this.ac.currentTime, ac = this.ac, self = this;
+    function tone(f, f2, d, type, vol, delay){
+      var o = ac.createOscillator(), g = ac.createGain();
+      o.type = type || "square";
+      var st = t + (delay || 0);
+      o.frequency.setValueAtTime(f, st);
+      if(f2) o.frequency.exponentialRampToValueAtTime(Math.max(20, f2), st + d);
+      g.gain.setValueAtTime(0, st);
+      g.gain.linearRampToValueAtTime(vol == null ? 0.5 : vol, st + 0.008);
+      g.gain.exponentialRampToValueAtTime(0.0008, st + d);
+      o.connect(g); g.connect(self.master); o.start(st); o.stop(st + d + 0.02);
+    }
+    function noise(d, vol, delay, hp){
+      var len = Math.floor(ac.sampleRate * d), buf = ac.createBuffer(1, len, ac.sampleRate), ch = buf.getChannelData(0);
+      for(var i = 0; i < len; i++) ch[i] = (Math.random() * 2 - 1) * (1 - i / len);
+      var s = ac.createBufferSource(); s.buffer = buf;
+      var f = ac.createBiquadFilter(); f.type = "highpass"; f.frequency.value = hp || 700;
+      var g = ac.createGain(); g.gain.value = vol == null ? 0.4 : vol;
+      s.connect(f); f.connect(g); g.connect(self.master); s.start(t + (delay || 0));
+    }
+    switch(kind){
+      case "cursor": tone(880, 0, 0.05, "square", 0.22); break;
+      case "ok":     tone(660, 0, 0.06, "square", 0.3); tone(990, 0, 0.09, "square", 0.26, 0.05); break;
+      case "cancel": tone(400, 220, 0.11, "square", 0.26); break;
+      case "buy":    tone(784, 0, 0.07, "square", 0.3); tone(1046, 0, 0.12, "square", 0.28, 0.07); break;
+      case "err":    tone(180, 120, 0.2, "sawtooth", 0.25); break;
+      case "hit":    noise(0.16, 0.5, 0, 500); tone(180, 60, 0.13, "square", 0.3); break;
+      case "crit":   noise(0.24, 0.6, 0, 300); tone(300, 50, 0.24, "sawtooth", 0.35); break;
+      case "guard":  tone(500, 700, 0.1, "triangle", 0.3); noise(0.08, 0.2, 0, 2000); break;
+      case "miss":   tone(300, 500, 0.09, "triangle", 0.22); break;
+      case "heal":   [523,659,784,1046].forEach(function(f, i){ tone(f, 0, 0.3, "triangle", 0.28, i * 0.06); }); break;
+      case "spell":  tone(220, 1400, 0.3, "sawtooth", 0.22); break;
+      case "fire":   noise(0.4, 0.4, 0, 250); tone(120, 700, 0.35, "sawtooth", 0.22); break;
+      case "ice":    [1400,1100,1700,1300].forEach(function(f, i){ tone(f, f * 0.6, 0.14, "triangle", 0.22, i * 0.05); }); break;
+      case "thunder":noise(0.5, 0.55, 0, 900); tone(90, 40, 0.5, "sawtooth", 0.3); break;
+      case "wind":   noise(0.45, 0.3, 0, 1200); break;
+      case "enc":    [0,1,2,3,4,5].forEach(function(i){ tone(200 + i * 260, 200 + i * 320, 0.09, "square", 0.3, i * 0.055); }); break;
+      case "run":    [0,1,2,3].forEach(function(i){ tone(900 - i * 120, 0, 0.06, "square", 0.24, i * 0.05); }); break;
+      case "door":   tone(300, 160, 0.14, "square", 0.24); break;
+      case "stairs": [523,659,784].forEach(function(f, i){ tone(f, 0, 0.09, "square", 0.26, i * 0.05); }); break;
+      case "chest":  [659,784,988,1319].forEach(function(f, i){ tone(f, 0, 0.16, "square", 0.28, i * 0.07); }); break;
+      case "dead":   tone(400, 60, 0.7, "sawtooth", 0.3); break;
+      case "levelup":[523,659,784,1046,1319].forEach(function(f, i){ tone(f, 0, 0.5, "square", 0.3, i * 0.1); }); break;
+      case "item":   tone(880, 0, 0.07, "triangle", 0.3); tone(1174, 0, 0.14, "triangle", 0.26, 0.07); break;
+      case "swing":  noise(0.07, 0.20, 0, 1600); tone(520, 300, 0.06, "square", 0.14); break;
+      case "leak":   tone(220, 90, 0.45, "sawtooth", 0.34); noise(0.3, 0.4, 0, 300); break;
+      case "wave":   [392,523,659].forEach(function(f, i){ tone(f, 0, 0.18, "square", 0.28, i * 0.09); }); break;
+      case "clearwave": [523,659,784,1046].forEach(function(f, i){ tone(f, 0, 0.22, "square", 0.26, i * 0.08); }); break;
+      case "hitw":   noise(0.1, 0.22, 0, 700); tone(200, 120, 0.09, "square", 0.16); break;
+      case "hitb":   noise(0.3, 0.42, 0, 260); tone(140, 60, 0.26, "sawtooth", 0.3); break;
+      case "hurt":   tone(360, 150, 0.18, "square", 0.3); noise(0.12, 0.22, 0, 500); break;
+      case "break":  noise(0.34, 0.44, 0, 420); [784,988,1319].forEach(function(f, i){ tone(f, 0, 0.2, "square", 0.28, i * 0.06); }); break;
+      case "step":   noise(0.06, 0.14, 0, 900); break;
+      case "shot":   noise(0.05, 0.16, 0, 2200); tone(1200, 700, 0.07, "triangle", 0.18); break;
+      case "down":   tone(300, 50, 0.8, "sawtooth", 0.32); noise(0.4, 0.3, 0, 200); break;
+    }
+  },
+  /* BGM */
+  play:function(name){
+    if(this.cur === name) return;
+    this.cur = name;
+    this.stop(true);
+    if(!this.on) return;
+    this.init(); if(!this.ac) return;
+    this.track = BGM[name];
+    if(!this.track) return;
+    this.step = 0;
+    this.nextT = this.ac.currentTime + 0.08;
+    var self = this;
+    this.timer = setInterval(function(){ self.tick(); }, 25);
+  },
+  stop:function(keepName){
+    if(this.timer){ clearInterval(this.timer); this.timer = null; }
+    this.track = null;
+    if(!keepName) this.cur = null;
+  },
+  tick:function(){
+    if(!this.track || !this.ac) return;
+    var spb = 60 / this.track.bpm / 4;                 /* 1ステップ=16分 */
+    while(this.nextT < this.ac.currentTime + 0.2){
+      this.voice(this.track.lead, this.step, spb, "square", 0.16, 0);
+      if(this.track.bass) this.voice(this.track.bass, this.step, spb, "triangle", 0.24, -0);
+      if(this.track.drum) this.drum(this.track.drum, this.step, spb);
+      this.step++;
+      this.nextT += spb;
+    }
+  },
+  voice:function(seq, step, spb, type, vol, det){
+    var i = step % seq.length, tok = seq[i];
+    if(!tok || tok === "-" || tok === "r") return;
+    var len = 1;
+    while(seq[(i + len) % seq.length] === "-" && len < 16) len++;
+    var f = this.freq(tok); if(!f) return;
+    var ac = this.ac, o = ac.createOscillator(), g = ac.createGain();
+    o.type = type; o.frequency.value = f;
+    var t = this.nextT, d = spb * len * 0.92;
+    g.gain.setValueAtTime(0, t);
+    g.gain.linearRampToValueAtTime(vol, t + 0.012);
+    g.gain.setValueAtTime(vol, t + d * 0.6);
+    g.gain.exponentialRampToValueAtTime(0.0008, t + d);
+    o.connect(g); g.connect(this.master); o.start(t); o.stop(t + d + 0.02);
+  },
+  drum:function(seq, step, spb){
+    var c = seq[step % seq.length];
+    if(!c || c === ".") return;
+    var ac = this.ac, t = this.nextT;
+    var len = Math.floor(ac.sampleRate * 0.09), buf = ac.createBuffer(1, len, ac.sampleRate), ch = buf.getChannelData(0);
+    for(var i = 0; i < len; i++) ch[i] = (Math.random() * 2 - 1) * (1 - i / len);
+    var s = ac.createBufferSource(); s.buffer = buf;
+    var f = ac.createBiquadFilter(); f.type = c === "k" ? "lowpass" : "highpass";
+    f.frequency.value = c === "k" ? 220 : 3000;
+    var g = ac.createGain(); g.gain.value = c === "k" ? 0.5 : 0.14;
+    s.connect(f); f.connect(g); g.connect(this.master); s.start(t);
+  },
+  /* 勝利ファンファーレなど、一度きりの曲 */
+  jingle:function(list){
+    if(!this.on) return; this.init(); if(!this.ac) return;
+    var t = this.ac.currentTime + 0.02, self = this;
+    list.forEach(function(nd){
+      var f = self.freq(nd[0]); if(!f){ t += nd[1]; return; }
+      var o = self.ac.createOscillator(), g = self.ac.createGain();
+      o.type = "square"; o.frequency.value = f;
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(0.26, t + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.001, t + nd[1] * 0.95);
+      o.connect(g); g.connect(self.master); o.start(t); o.stop(t + nd[1]);
+      t += nd[1];
+    });
+  }
+};
+function sq(s){ return s.trim().split(/\s+/); }
+
+/* ================================================================
+   BGM ── 本編「光のクロニクル」と共通
+   ================================================================ */
+var BGM = {
+  field:{bpm:132,
+    lead:sq("G4 - B4 - D5 - B4 - C5 - E5 - D5 - B4 - A4 - C5 - B4 - G4 - E4 - G4 - A4 - "+
+            "G4 - B4 - D5 - G5 - F#5 - D5 - B4 - G4 - A4 - C5 - E5 - D5 - G4 - - - - -"),
+    bass:sq("G2 - - - G2 - - - C3 - - - C3 - - - A2 - - - A2 - - - D3 - - - D3 - - - "+
+            "G2 - - - B2 - - - C3 - - - C3 - - - D3 - - - D3 - - - G2 - - - - - - -"),
+    drum:sq("k . . . h . . . k . . . h . . . k . . . h . . . k . k . h . . .")},
+  town:{bpm:104,
+    lead:sq("C5 - - E5 - - G5 - - E5 - - F5 - - A5 - - G5 - - E5 - - "+
+            "D5 - - F5 - - A5 - - F5 - - E5 - - G5 - - C5 - - - - -"),
+    bass:sq("C3 - - - - - G2 - - - - - F2 - - - - - C3 - - - - - "+
+            "D3 - - - - - G2 - - - - - C3 - - - - - C3 - - - - -")},
+  castle:{bpm:96,
+    lead:sq("D5 - - - A4 - - - D5 - - - F5 - - - E5 - - - C#5 - - - D5 - - - - - - - "+
+            "A5 - - - G5 - - - F5 - - - E5 - - - D5 - - - E5 - - - A4 - - - - - - -"),
+    bass:sq("D3 - - - D3 - - - A2 - - - A2 - - - A2 - - - A2 - - - D3 - - - D3 - - - "+
+            "F3 - - - F3 - - - A2 - - - A2 - - - D3 - - - A2 - - - D3 - - - - - - -")},
+  cave:{bpm:86,
+    lead:sq("A3 - - - C4 - - - E4 - - - D#4 - - - E4 - - - C4 - - - A3 - - - - - - - "+
+            "F3 - - - A3 - - - C4 - - - B3 - - - A3 - - - G#3 - - - A3 - - - - - - -"),
+    bass:sq("A2 - - - - - - - A2 - - - - - - - E2 - - - - - - - E2 - - - - - - - "+
+            "F2 - - - - - - - F2 - - - - - - - E2 - - - - - - - A2 - - - - - - -")},
+  battle:{bpm:158,
+    lead:sq("E4 E4 - E4 - C4 E4 - G4 - - - G3 - - - C4 - - G3 - - E3 - A3 - B3 - A#3 A3 - - "+
+            "G3 E4 G4 A4 - F4 G4 - E4 - C4 D4 B3 - - - C4 - - G3 - - E3 - - - - - - - - -"),
+    bass:sq("C3 - C3 - C3 - C3 - C3 - C3 - C3 - C3 - G2 - G2 - G2 - G2 - A2 - A2 - A#2 - A#2 - "+
+            "C3 - C3 - C3 - C3 - F2 - F2 - F2 - F2 - G2 - G2 - G2 - G2 - G2 - G2 - G2 - G2 -"),
+    drum:sq("k . h . k . h . k . h . k . h k k . h . k . h . k . h . k h k h")},
+  boss:{bpm:168,
+    lead:sq("D4 - D#4 - D4 - A#3 - D4 - D#4 - D4 - A#3 - C4 - C#4 - C4 - G#3 - C4 - C#4 - C4 - G#3 - "+
+            "F4 - - E4 - - D#4 - - D4 - - C#4 - - C4 - - A#3 - - A3 - - D4 - - - - - -"),
+    bass:sq("D2 D2 - D2 D2 - D2 - D2 D2 - D2 D2 - D2 - C2 C2 - C2 C2 - C2 - C2 C2 - C2 C2 - C2 - "+
+            "A#1 - - - A#1 - - - A1 - - - A1 - - - D2 - - - D2 - - - D2 - - - D2 - - -"),
+    drum:sq("k h k h k h k h k h k h k h k k k h k h k h k h k h k h k h k h")},
+  dark:{bpm:90,
+    lead:sq("C4 - - C#4 - - C4 - - G#3 - - A#3 - - G#3 - - G3 - - - - - "+
+            "F3 - - F#3 - - F3 - - C#3 - - D#3 - - C#3 - - C3 - - - - -"),
+    bass:sq("C2 - - - - - C2 - - - - - G#1 - - - - - A#1 - - - - - "+
+            "F1 - - - - - F1 - - - - - G#1 - - - - - C2 - - - - -")}
+};
+
+/* ================================================================
+   入力 ── 本編「光のクロニクル」と共通
+   ================================================================ */
+var Input = {
+  held:{}, queue:[], waiters:[],
+  dirOf:function(){
+    if(this.held.up) return "up";
+    if(this.held.down) return "down";
+    if(this.held.left) return "left";
+    if(this.held.right) return "right";
+    return null;
+  },
+  press:function(k){
+    this.queue.push(k);
+    if(this.queue.length > 4) this.queue.shift();
+    var w = this.waiters; this.waiters = [];
+    w.forEach(function(fn){ fn(k); });
+  },
+  take:function(){ return this.queue.shift(); },
+  clear:function(){ this.queue.length = 0; },
+  wait:function(keys){
+    var self = this;
+    return new Promise(function(res){
+      function on(k){
+        if(!keys || keys.indexOf(k) >= 0){
+          /* 待ちで 受け取った キーは 行列からも 取りのぞく。
+             残すと つぎに 開く メニューが それを 拾って 勝手に 決定してしまう */
+          var i = self.queue.lastIndexOf(k);
+          if(i >= 0) self.queue.splice(i, 1);
+          res(k);
+        } else self.waiters.push(on);
+      }
+      self.waiters.push(on);
+    });
+  }
+};
+(function(){
+  var MAP = {
+    ArrowUp:"up", ArrowDown:"down", ArrowLeft:"left", ArrowRight:"right",
+    KeyW:"up", KeyS:"down", KeyA:"left", KeyD:"right",
+    Enter:"confirm", Space:"confirm", KeyZ:"confirm", NumpadEnter:"confirm",
+    Escape:"cancel", KeyX:"cancel", Backspace:"cancel", ShiftLeft:"cancel"
+  };
+  function typing(e){
+    var t = e.target;
+    return t && (t.tagName === "TEXTAREA" || t.tagName === "INPUT");
+  }
+  addEventListener("keydown", function(e){
+    if(typing(e)) return;
+    var k = MAP[e.code];
+    if(!k) return;
+    e.preventDefault();
+    Snd.resume();
+    if(!e.repeat) Input.press(k);
+    Input.held[k] = 1;
+  }, {passive:false});
+  addEventListener("keyup", function(e){
+    if(typing(e)) return;
+    var k = MAP[e.code]; if(!k) return;
+    Input.held[k] = 0;
+  });
+  addEventListener("pointerdown", function(){ Snd.resume(); }, {once:false});
+})();
+
+/* ================================================================
+   ウィンドウUI ── 本編「光のクロニクル」と共通
+   ================================================================ */
+var UI = {
+  layer:$("ui"),
+  clearAll:function(){ this.layer.innerHTML = ""; },
+  win:function(css, html, cls){
+    var w = el("div", "win " + (cls || ""), html || "");
+    for(var k in css) w.style[k] = css[k];
+    this.layer.appendChild(w);
+    return w;
+  },
+  /* --- メッセージ --- */
+  msgWin:null,
+  openMsg:function(){
+    var w = this.msgWin;
+    if(!w){
+      w = el("div", "win", '<div class="txt"></div><span class="more">▼</span>');
+      w.id = "msgWin"; w.classList.add("on");
+      /* メッセージ窓そのものを タップしても 先へ進めるようにする
+         (キーや A/Bボタンが 無い環境で 詰まないための保険)。
+         ただし 送り待ちのあいだ だけ。うしろに メニューが 出ている
+         ときに 送ってしまうと、その決定を メニューが 拾ってしまう */
+      w.addEventListener("pointerdown", function(e){
+        Snd.resume();
+        if(!UI.msgLive) return;
+        e.preventDefault();
+        Input.press("confirm");
+      });
+      this.msgWin = w;
+    }
+    /* タイトルなどの全面オーバーレイは メッセージ窓より前面なので、
+       そのままだと 窓を タップしても オーバーレイが 受け取ってしまう。
+       出ているオーバーレイが あれば その中へ 入れ直す */
+    var ovs = document.querySelectorAll(".ov.on");
+    var host = ovs.length ? ovs[ovs.length - 1] : this.layer;
+    if(w.parentNode !== host) host.appendChild(w);
+    return w;
+  },
+  closeMsg:function(){ this.msgLive = false; if(this.msgWin){ this.msgWin.remove(); this.msgWin = null; } },
+  /* タップ送りを 受けつけてよい あいだ だけ true */
+  msgLive:false,
+  /* 1ページ表示。wait=true なら決定キー待ち */
+  say:async function(text, opt){
+    opt = opt || {};
+    var w = this.openMsg();
+    this.msgLive = true;
+    var t = w.querySelector(".txt"), more = w.querySelector(".more");
+    more.classList.remove("on");
+    var head = opt.who ? '<span class="who">' + esc(opt.who) + '</span>' : "";
+    t.innerHTML = head;
+    var body = document.createTextNode("");
+    t.appendChild(body);
+    var s = String(text), i = 0;
+    Input.clear();
+    var skipped = false;
+    while(i < s.length){
+      if(!skipped && Input.queue.length){ Input.clear(); skipped = true; }
+      if(skipped){ body.nodeValue = s; break; }
+      body.nodeValue = s.slice(0, ++i);
+      if(s[i - 1] !== "\n") await sleep(opt.speed || 18);
+    }
+    if(opt.nowait){ this.msgLive = false; return; }
+    more.classList.add("on");
+    await Input.wait(["confirm","cancel"]);
+    this.msgLive = false;
+    Snd.se("cursor");
+    more.classList.remove("on");
+  },
+  /* 複数ページ */
+  sayAll:async function(lines, opt){
+    lines = [].concat(lines);
+    for(var i = 0; i < lines.length; i++) await this.say(lines[i], opt);
+  },
+  flash:function(ms, color){
+    var f = $("flash");
+    f.style.background = color || "#fff";
+    f.style.transition = "none"; f.style.opacity = "0.85";
+    setTimeout(function(){ f.style.transition = "opacity " + (ms || 220) + "ms linear"; f.style.opacity = "0"; }, 16);
+  },
+  fade:function(on){
+    $("fade").classList.toggle("on", !!on);
+    return sleep(340);
+  },
+  pop:function(x, y, text, cls){
+    var p = el("div", "pop " + (cls || "dmg"), esc(text));
+    p.style.left = (x / SCR_W * 100) + "%";
+    p.style.top = (y / SCR_H * 100) + "%";
+    this.layer.appendChild(p);
+    setTimeout(function(){ p.remove(); }, 900);
+  },
+  /* --- 選択リスト --- 戻り値: 選択index / -1(キャンセル) --- */
+  list:function(opt){
+    var self = this;
+    var items = opt.items;
+    var w = el("div", "win " + (opt.cls || ""));
+    if(opt.cap) w.appendChild(el("div", "cap", esc(opt.cap)));
+    if(opt.head) w.appendChild(el("div", "small", opt.head));
+    var ul = el("ul", "list" + (opt.cols === 2 ? " c2" : opt.cols === 3 ? " c3" : ""));
+    items.forEach(function(it, i){
+      var li = el("li");
+      li.innerHTML = '<span>' + esc(it.l) + '</span>' + (it.s != null ? '<span class="sub">' + esc(it.s) + '</span>' : "");
+      if(it.off) li.classList.add("off");
+      li.dataset.i = i;
+      ul.appendChild(li);
+    });
+    w.appendChild(ul);
+    if(opt.foot) w.appendChild(el("div", "small", opt.foot));
+    var css = opt.css || {};
+    for(var k in css) w.style[k] = css[k];
+    /* 長い一覧は ウィンドウごとではなく 中身だけをスクロールさせる。
+       ウィンドウを overflow:auto にすると 見出し(.cap)が切れてしまうため。 */
+    if(css.maxHeight){
+      w.style.maxHeight = "";
+      w.style.overflow = "";
+      ul.style.maxHeight = css.maxHeight;
+      ul.style.overflowY = "auto";
+    }
+    (opt.into || this.layer).appendChild(w);
+
+    var idx = opt.index || 0;
+    /* 初期カーソルが選べない項目なら、選べる最初の項目へ寄せる */
+    if(items[idx] && (items[idx].off || items[idx].skip)){
+      for(var q = 0; q < items.length; q++){
+        var n2 = (idx + q) % items.length;
+        if(!items[n2].off && !items[n2].skip){ idx = n2; break; }
+      }
+    }
+    var lis = [].slice.call(ul.children);
+    function draw(){
+      lis.forEach(function(li, i){ li.classList.toggle("sel", i === idx); });
+      if(lis[idx] && lis[idx].scrollIntoView){
+        try{ lis[idx].scrollIntoView({block:"nearest"}); }catch(e){}
+      }
+      if(opt.onMove) opt.onMove(idx);
+    }
+    draw();
+    return new Promise(function(res){
+      function done(v){
+        cleanup();
+        w.remove();
+        res(v);
+      }
+      function move(d){
+        var n = items.length, cols = opt.cols || 1, step = (d === "up" || d === "down") ? cols : 1;
+        var dir = (d === "up" || d === "left") ? -1 : 1;
+        var next = idx;
+        for(var g = 0; g < n; g++){
+          next = (next + dir * step + n * 2) % n;
+          if(!items[next].skip) break;
+        }
+        if(next !== idx){ idx = next; Snd.se("cursor"); draw(); }
+      }
+      function onKey(k){
+        if(k === "up" || k === "down" || k === "left" || k === "right"){ move(k); return; }
+        if(k === "confirm"){
+          if(items[idx].off){ Snd.se("err"); return; }
+          Snd.se("ok"); done(idx);
+        } else if(k === "cancel"){
+          if(opt.noCancel){ Snd.se("err"); return; }
+          Snd.se("cancel"); done(-1);
+        }
+      }
+      var pumping = true;
+      function pump(){
+        if(!pumping) return;
+        var k;
+        while((k = Input.take())) onKey(k);
+        requestAnimationFrame(pump);
+      }
+      pump();
+      var born = Date.now();
+      function onClick(e){
+        /* 直前の操作(メッセージ送りなど)の タップが、
+           出たばかりの この一覧に 流れこむのを 防ぐ */
+        if(Date.now() - born < 200) return;
+        var li = e.target.closest ? e.target.closest("li") : null;
+        if(!li || !ul.contains(li)) return;
+        var i = +li.dataset.i;
+        if(items[i].skip) return;
+        if(i !== idx){ idx = i; draw(); Snd.se("cursor"); return; }
+        if(items[i].off){ Snd.se("err"); return; }
+        Snd.se("ok"); done(i);
+      }
+      ul.addEventListener("click", onClick);
+      function cleanup(){ pumping = false; ul.removeEventListener("click", onClick); }
+      w.__close = function(){ done(-1); };
+    });
+  },
+  yesno:async function(text, opt){
+    opt = opt || {};
+    if(text) await this.say(text, {nowait:true});
+    var i = await this.list({
+      items:[{l:"はい"},{l:"いいえ"}],
+      css:opt.css || {right:"calc(6*var(--u))", bottom:"calc(66*var(--u))", minWidth:"calc(48*var(--u))"},
+      index:opt.def || 0
+    });
+    return i === 0;
+  }
+};
+
+/* ================================================================
+   描画ヘルパ ── 本編「光のクロニクル」と共通
+   ================================================================ */
+function P(g, x, y, w, h, c){ g.fillStyle = c; g.fillRect(x | 0, y | 0, w | 0, h | 0); }
+function E(g, x, y, rx, ry, c){ g.fillStyle = c; g.beginPath(); g.ellipse(x, y, rx, ry, 0, 0, 6.2832); g.fill(); }
+function TRI(g, pts, c){
+  g.fillStyle = c; g.beginPath(); g.moveTo(pts[0], pts[1]);
+  for(var i = 2; i < pts.length; i += 2) g.lineTo(pts[i], pts[i + 1]);
+  g.closePath(); g.fill();
+}
+
+/* ================================================================
+   地形の種類 ── 本編「光のクロニクル」と共通
+   ================================================================ */
+var TILE = {
+  ".": {t:"grass"},        ",": {t:"road"},        "f": {t:"flower"},
+  "T": {t:"tree",  s:1},   "M": {t:"mtn",   s:1},  "~": {t:"water", s:1},
+  "B": {t:"bridge"},       "S": {t:"sand"},        "_": {t:"floor"},
+  "w": {t:"wall",  s:1},   "d": {t:"door"},        "D": {t:"door",  s:1},
+  "k": {t:"carpet"},       "t": {t:"throne",s:1},  "p": {t:"pillar",s:1},
+  "b": {t:"shelf", s:1},   "j": {t:"jar",   s:1},  "c": {t:"counter",s:1},
+  "A": {t:"altar", s:1},   "i": {t:"sign",  s:1},  "h": {t:"house", s:1},
+  "r": {t:"roof",  s:1},   "o": {t:"cavef"},       "O": {t:"cavew", s:1},
+  "*": {t:"dark"},         "x": {t:"darkw", s:1},  "u": {t:"up"},
+  "n": {t:"down"},         "1": {t:"castle"},      "2": {t:"village"},
+  "3": {t:"town"},         "4": {t:"cave"},        "5": {t:"dcastle"},      "6": {t:"shrine"}
+};
+
+/* ================================================================
+   地形の描画 ── 本編「光のクロニクル」と共通
+   ================================================================ */
+function tileChar(x, y){
+  if(typeof Game === "undefined" || !Game.tiles) return "";
+  if(x < 0 || y < 0 || y >= Game.tiles.length || x >= Game.tiles[y].length) return "";
+  return Game.tiles[y][x];
+}
+function drawTile(g, ch, X, Y, tx, ty){
+  var t = TILE[ch] ? TILE[ch].t : "grass";
+  var r = hash2(tx, ty), r2 = hash2(tx + 99, ty - 7);
+  switch(t){
+    case "grass":
+      P(g, X, Y, 16, 16, "#3c8a3f");
+      P(g, X + (r * 12 | 0), Y + (r2 * 12 | 0), 3, 2, "#317233");
+      P(g, X + (r2 * 13 | 0), Y + (r * 13 | 0), 2, 2, "#4da04a");
+      break;
+    case "flower":
+      P(g, X, Y, 16, 16, "#3c8a3f");
+      P(g, X + 4, Y + 5, 2, 2, "#f0e05a"); P(g, X + 10, Y + 9, 2, 2, "#f07ab0");
+      break;
+    case "road":
+      P(g, X, Y, 16, 16, "#c0a06c");
+      P(g, X + (r * 12 | 0), Y + (r2 * 12 | 0), 2, 2, "#a5854f");
+      P(g, X + (r2 * 12 | 0), Y + (r * 11 | 0), 3, 1, "#d4b881");
+      break;
+    case "sand":
+      P(g, X, Y, 16, 16, "#dcc487");
+      P(g, X + (r * 12 | 0), Y + (r2 * 12 | 0), 3, 1, "#c6a866");
+      break;
+    case "tree":
+      P(g, X, Y, 16, 16, "#3c8a3f");
+      P(g, X + 7, Y + 10, 3, 5, "#6b4a2a");
+      E(g, X + 8, Y + 7, 7, 6.5, "#245a28");
+      E(g, X + 8, Y + 6, 5.5, 5, "#2f7a33");
+      E(g, X + 6, Y + 4, 2.5, 2, "#45984a");
+      break;
+    case "mtn":
+      P(g, X, Y, 16, 16, "#3c8a3f");
+      TRI(g, [X, Y + 16, X + 8, Y + 1, X + 16, Y + 16], "#6d6250");
+      TRI(g, [X + 8, Y + 1, X + 16, Y + 16, X + 11, Y + 16], "#514936");
+      TRI(g, [X + 8, Y + 1, X + 4.5, Y + 8, X + 11.5, Y + 8], "#cfd4dd");
+      break;
+    case "water":
+      P(g, X, Y, 16, 16, "#2450c4");
+      P(g, X, Y, 16, 3, "#1f45ad");
+      var ph = Math.sin(Game.t * 2 + tx * 0.8 + ty * 0.5);
+      P(g, X + 2 + (ph > 0 ? 2 : 0), Y + 6, 5, 1, "#5b8dee");
+      P(g, X + 9 - (ph > 0 ? 2 : 0), Y + 11, 4, 1, "#4d7fe0");
+      break;
+    case "bridge":
+      P(g, X, Y, 16, 16, "#2450c4");
+      P(g, X, Y + 2, 16, 12, "#9a6a3c");
+      for(var i = 0; i < 4; i++) P(g, X + i * 4, Y + 2, 1, 12, "#6f4826");
+      P(g, X, Y + 2, 16, 1, "#c08c52"); P(g, X, Y + 13, 16, 1, "#6f4826");
+      break;
+    case "floor":
+      P(g, X, Y, 16, 16, "#5b6178");
+      P(g, X, Y, 16, 1, "#6d748d"); P(g, X, Y + 15, 16, 1, "#474d61");
+      P(g, X + 15, Y, 1, 16, "#474d61");
+      if(r > 0.8) P(g, X + 4, Y + 6, 4, 2, "#535a70");
+      break;
+    case "wall":
+      P(g, X, Y, 16, 16, "#39405a");
+      P(g, X, Y, 16, 2, "#4c5478");
+      for(var by = 0; by < 16; by += 8){
+        var off = (by / 8 + ty) % 2 ? 4 : 0;
+        for(var bx = -4; bx < 16; bx += 8) P(g, X + bx + off, Y + by + 1, 7, 6, "#454d6b");
+      }
+      break;
+    case "door":
+      P(g, X, Y, 16, 16, "#39405a");
+      P(g, X + 2, Y + 2, 12, 14, "#8a5a30");
+      P(g, X + 2, Y + 2, 12, 1, "#b57c46");
+      P(g, X + 7, Y + 2, 2, 14, "#6b4426");
+      P(g, X + 11, Y + 9, 2, 2, "#e8c65a");
+      break;
+    case "carpet":
+      P(g, X, Y, 16, 16, "#a8303f");
+      for(var cy = 0; cy < 16; cy += 4) P(g, X, Y + cy, 16, 1, "#95293a");
+      /* 金の縁は じゅうたんの外周だけに引く */
+      if(tileChar(tx - 1, ty) !== "k"){ P(g, X, Y, 2, 16, "#8a2230"); P(g, X + 2, Y, 1, 16, "#e8c65a"); }
+      if(tileChar(tx + 1, ty) !== "k"){ P(g, X + 14, Y, 2, 16, "#8a2230"); P(g, X + 13, Y, 1, 16, "#e8c65a"); }
+      break;
+    case "throne":
+      P(g, X, Y, 16, 16, "#9c2b3a");
+      P(g, X + 2, Y + 1, 12, 13, "#c9a33c");
+      P(g, X + 4, Y + 3, 8, 8, "#8f6f1e");
+      P(g, X + 2, Y + 1, 12, 2, "#e8c65a");
+      break;
+    case "pillar":
+      P(g, X, Y, 16, 16, "#5b6178");
+      P(g, X + 3, Y, 10, 16, "#9aa2ba");
+      P(g, X + 3, Y, 3, 16, "#c3cade"); P(g, X + 11, Y, 2, 16, "#6f7794");
+      P(g, X + 2, Y, 12, 2, "#c3cade"); P(g, X + 2, Y + 14, 12, 2, "#c3cade");
+      break;
+    case "shelf":
+      P(g, X, Y, 16, 16, "#5b6178");
+      P(g, X + 1, Y + 1, 14, 14, "#5c3c20");
+      var bc = ["#c04a3a","#3a7ac0","#c9a33c","#4aa05a"];
+      for(var k = 0; k < 4; k++) P(g, X + 2 + k * 3, Y + 3, 2, 5, bc[(k + tx) % 4]);
+      for(var k2 = 0; k2 < 4; k2++) P(g, X + 2 + k2 * 3, Y + 9, 2, 5, bc[(k2 + ty + 1) % 4]);
+      break;
+    case "jar":
+      P(g, X, Y, 16, 16, "#5b6178");
+      E(g, X + 8, Y + 10, 5, 5, "#a8763e");
+      P(g, X + 6, Y + 3, 4, 3, "#8a5a30");
+      E(g, X + 6, Y + 9, 1.5, 2, "#c99a5e");
+      break;
+    case "counter":
+      P(g, X, Y, 16, 16, "#7a5230");
+      P(g, X, Y, 16, 4, "#a5744a");
+      P(g, X, Y, 16, 1, "#c99a68");
+      P(g, X, Y + 8, 16, 1, "#5d3c22");
+      break;
+    case "altar":
+      P(g, X, Y, 16, 16, "#5b6178");
+      P(g, X + 2, Y + 5, 12, 11, "#cfd6e8");
+      P(g, X + 2, Y + 5, 12, 2, "#ffffff");
+      P(g, X + 7, Y, 2, 7, "#e8c65a"); P(g, X + 5, Y + 2, 6, 2, "#e8c65a");
+      break;
+    case "sign":
+      P(g, X, Y, 16, 16, "#3c8a3f");
+      P(g, X + 7, Y + 7, 2, 8, "#6b4a2a");
+      P(g, X + 2, Y + 2, 12, 7, "#b58a52");
+      P(g, X + 2, Y + 2, 12, 1, "#d4ab72");
+      P(g, X + 4, Y + 4, 8, 1, "#6b4a2a"); P(g, X + 4, Y + 6, 6, 1, "#6b4a2a");
+      break;
+    case "house":
+      P(g, X, Y, 16, 16, "#cbb89a");
+      P(g, X, Y, 16, 1, "#e0d0b4"); P(g, X, Y + 15, 16, 1, "#a8977c");
+      if((tx + ty) % 3 === 0){
+        P(g, X + 4, Y + 4, 8, 7, "#3f5f8f");
+        P(g, X + 4, Y + 4, 8, 1, "#7a5230"); P(g, X + 7, Y + 4, 2, 7, "#7a5230");
+      }
+      break;
+    case "roof":
+      P(g, X, Y, 16, 16, "#a8412f");
+      for(var ry2 = 0; ry2 < 16; ry2 += 5){
+        P(g, X, Y + ry2, 16, 1, "#7e2c1f");
+        for(var rx2 = ((ry2 / 5) % 2 ? 2 : 6); rx2 < 16; rx2 += 8) P(g, X + rx2, Y + ry2 + 1, 1, 4, "#8f3526");
+      }
+      P(g, X, Y, 16, 1, "#c95a44");
+      break;
+    case "cavef":
+      P(g, X, Y, 16, 16, "#5d5344");
+      P(g, X + (r * 12 | 0), Y + (r2 * 12 | 0), 2, 2, "#4c4437");
+      P(g, X + (r2 * 12 | 0), Y + (r * 12 | 0), 2, 1, "#6f6454");
+      break;
+    case "cavew":
+      P(g, X, Y, 16, 16, "#2c241c");
+      P(g, X + 1, Y + 1, 14, 13, "#42362a");
+      P(g, X + 2, Y + 2, 6, 4, "#544433"); P(g, X + 9, Y + 7, 5, 5, "#544433");
+      P(g, X, Y, 16, 1, "#6b5741");
+      break;
+    case "dark":
+      P(g, X, Y, 16, 16, "#241a33");
+      P(g, X, Y, 16, 1, "#33254a"); P(g, X, Y, 1, 16, "#33254a");
+      if(r > 0.85) P(g, X + 5, Y + 6, 5, 4, "#2c2040");
+      break;
+    case "darkw":
+      P(g, X, Y, 16, 16, "#150e1e");
+      for(var dy2 = 0; dy2 < 16; dy2 += 8){
+        var of2 = (dy2 / 8 + ty) % 2 ? 4 : 0;
+        for(var dx2 = -4; dx2 < 16; dx2 += 8) P(g, X + dx2 + of2, Y + dy2 + 1, 7, 6, "#241831");
+      }
+      P(g, X, Y, 16, 1, "#3a1f3a");
+      break;
+    case "up": case "down":
+      P(g, X, Y, 16, 16, ch === "u" ? "#4a4238" : "#4a4238");
+      for(var s = 0; s < 4; s++){
+        var sh = t === "up" ? s : 3 - s;
+        P(g, X + 1, Y + 2 + s * 3, 14, 3, s % 2 ? "#8a92a8" : "#6e7690");
+        P(g, X + 1, Y + 2 + s * 3, 14, 1, "#a8b0c4");
+      }
+      P(g, X, Y, 16, 2, "#1a1a22");
+      break;
+    case "castle":
+      P(g, X, Y, 16, 16, "#3c8a3f");
+      P(g, X + 2, Y + 6, 12, 9, "#c8cddb");
+      P(g, X + 1, Y + 3, 4, 12, "#dde2ee"); P(g, X + 11, Y + 3, 4, 12, "#dde2ee");
+      P(g, X + 6, Y + 1, 4, 6, "#dde2ee");
+      P(g, X + 1, Y + 2, 1, 2, "#9aa2ba"); P(g, X + 3, Y + 2, 1, 2, "#9aa2ba");
+      P(g, X + 12, Y + 2, 1, 2, "#9aa2ba"); P(g, X + 14, Y + 2, 1, 2, "#9aa2ba");
+      P(g, X + 7, Y + 10, 3, 5, "#5b3a1e");
+      P(g, X + 7, Y, 1, 2, "#e04a3a");
+      break;
+    case "village":
+      P(g, X, Y, 16, 16, "#3c8a3f");
+      P(g, X + 2, Y + 8, 6, 6, "#cbb89a"); TRI(g, [X + 1, Y + 8, X + 5, Y + 4, X + 9, Y + 8], "#a8412f");
+      P(g, X + 9, Y + 9, 5, 5, "#cbb89a"); TRI(g, [X + 8, Y + 9, X + 11.5, Y + 6, X + 15, Y + 9], "#a8412f");
+      P(g, X + 4, Y + 11, 2, 3, "#5b3a1e");
+      break;
+    case "town":
+      P(g, X, Y, 16, 16, "#3c8a3f");
+      P(g, X + 1, Y + 7, 5, 7, "#cbb89a"); TRI(g, [X, Y + 7, X + 3.5, Y + 3, X + 7, Y + 7], "#8f3526");
+      P(g, X + 6, Y + 9, 4, 5, "#cbb89a"); TRI(g, [X + 5, Y + 9, X + 8, Y + 6, X + 11, Y + 9], "#8f3526");
+      P(g, X + 10, Y + 6, 5, 8, "#dde2ee"); TRI(g, [X + 9, Y + 6, X + 12.5, Y + 2, X + 16, Y + 6], "#3f5f8f");
+      break;
+    case "cave":
+      P(g, X, Y, 16, 16, "#3c8a3f");
+      TRI(g, [X, Y + 16, X + 8, Y + 1, X + 16, Y + 16], "#6d6250");
+      TRI(g, [X + 8, Y + 1, X + 16, Y + 16, X + 11, Y + 16], "#514936");
+      E(g, X + 8, Y + 14, 4.5, 5, "#120f0c");
+      P(g, X + 4, Y + 14, 9, 2, "#120f0c");
+      break;
+    case "shrine":
+      P(g, X, Y, 16, 16, "#dcc487");
+      P(g, X + 2, Y + 7, 12, 8, "#e6ebf7");
+      P(g, X + 1, Y + 5, 14, 2, "#c3cade");
+      TRI(g, [X, Y + 6, X + 8, Y - 1, X + 16, Y + 6], "#8fb0d8");
+      P(g, X + 3, Y + 8, 2, 7, "#c3cade"); P(g, X + 11, Y + 8, 2, 7, "#c3cade");
+      P(g, X + 6, Y + 9, 4, 6, "#4a6a9a");
+      P(g, X + 7, Y + 1, 2, 3, "#ffd75e");
+      break;
+    case "dcastle":
+      P(g, X, Y, 16, 16, "#dcc487");
+      P(g, X + 3, Y + 6, 10, 9, "#2a1f38");
+      TRI(g, [X + 1, Y + 8, X + 3, Y + 1, X + 5, Y + 8], "#1a1226");
+      TRI(g, [X + 11, Y + 8, X + 13, Y + 1, X + 15, Y + 8], "#1a1226");
+      TRI(g, [X + 5, Y + 6, X + 8, Y - 1, X + 11, Y + 6], "#1a1226");
+      P(g, X + 6, Y + 10, 4, 5, "#4a1f2a");
+      P(g, X + 5, Y + 7, 2, 2, "#e04a3a"); P(g, X + 9, Y + 7, 2, 2, "#e04a3a");
+      break;
+    default:
+      P(g, X, Y, 16, 16, "#3c8a3f");
+  }
+}
+
+/* ================================================================
+   人物パレット ── 本編「光のクロニクル」と共通
+   ================================================================ */
+var SPR = {
+  hero:  {skin:"#f0c39a", hair:"#4a3a2a", cloth:"#2f6de0", cape:"#d8443a"},
+  gai:   {skin:"#e0aa80", hair:"#8a3d20", cloth:"#b6542c"},
+  mina:  {skin:"#f7d2b4", hair:"#dcb44a", cloth:"#eae4d4", long:1},
+  lino:  {skin:"#f7d8bd", hair:"#7a54e0", cloth:"#5b3fb0", hat:1},
+  king:  {skin:"#f0c39a", hair:"#e8e2d2", cloth:"#b02a3a", crown:1, beard:1},
+  sage:  {skin:"#eec49c", hair:"#d8d8d8", cloth:"#43438a", hat:1, beard:1},
+  guard: {skin:"#f0c39a", hair:"#3a3a3a", cloth:"#6a7a95", helm:1},
+  woman: {skin:"#f7d2b4", hair:"#8a5a2a", cloth:"#c86aa0", long:1},
+  man:   {skin:"#e6b088", hair:"#5a4a3a", cloth:"#5a8a4a"},
+  boy:   {skin:"#f7d2b4", hair:"#c8a04a", cloth:"#4aa0c8", small:1},
+  mer:   {skin:"#f0c39a", hair:"#3a2a1a", cloth:"#c8a04a"},
+  smith: {skin:"#d89a6a", hair:"#3a2a1a", cloth:"#8a4a2a"},
+  pri:   {skin:"#f7d2b4", hair:"#e8e8e8", cloth:"#e8e8f0", hat:1},
+  luka:  {skin:"#e8c0a0", hair:"#2f2f3a", cloth:"#3a6e5a"},
+  sailor:{skin:"#d89a6a", hair:"#2a3a5a", cloth:"#3a6a9a"}
+};
+
+/* ================================================================
+   装備の見た目 ── 本編「光のクロニクル」と共通
+   ================================================================ */
+var WLOOK = {
+  stick: {k:"staff", c:"#8a5a30"},
+  oak:   {k:"staff", c:"#a5744a", orb:"#8fd45a"},
+  mstaff:{k:"staff", c:"#7a5aa8", orb:"#5ee0ff"},
+  sage:  {k:"staff", c:"#c9a33c", orb:"#8effc0"},
+  club:  {k:"club",  c:"#8a5a30"},
+  axe:   {k:"axe",   c:"#c8ccd8"},
+  copper:{k:"sword", c:"#d89a4a"},
+  iron:  {k:"sword", c:"#c8ccd8"},
+  steel: {k:"sword", c:"#e8ecf8"},
+  flame: {k:"sword", c:"#ff9a4a", glow:"#ff5a2a"},
+  light: {k:"sword", c:"#fff6c0", glow:"#ffe98a"},
+  kaze:  {k:"sword", c:"#8fe8c0", glow:"#5ee0a0"}
+};
+var ALOOK = {leather:"#8a5a30", chain:"#8a92a8", ironA:"#6a7a95", robe:"#5b3fb0", holy:"#efe7cf"};
+function drawWeapon(g, X, Y, w, side){
+  if(!w) return;
+  var c = w.c, wood = "#6b4a2a";
+  if(side){
+    /* 横向き(戦闘): 体の前に構える */
+    if(w.glow){ g.globalAlpha = 0.45; P(g, X - 2, Y - 1, 6, 13, w.glow); g.globalAlpha = 1; }
+    if(w.k === "sword"){
+      P(g, X + 1, Y - 1, 2, 10, c); P(g, X + 1, Y - 1, 1, 10, "#ffffff");
+      P(g, X - 1, Y + 9, 6, 1, "#c9a33c"); P(g, X + 1, Y + 10, 2, 3, wood);
+    } else if(w.k === "staff"){
+      P(g, X + 2, Y - 2, 2, 15, c);
+      if(w.orb){ E(g, X + 3, Y - 3, 2.6, 2.6, w.orb); P(g, X + 2, Y - 4, 1, 1, "#ffffff"); }
+    } else if(w.k === "axe"){
+      P(g, X + 2, Y + 1, 2, 12, wood);
+      P(g, X - 2, Y, 6, 6, c); P(g, X - 2, Y, 6, 1, "#ffffff"); P(g, X - 3, Y + 1, 1, 4, c);
+    } else {
+      P(g, X + 1, Y + 3, 3, 10, wood); P(g, X, Y + 1, 5, 4, "#a5744a");
+      P(g, X, Y + 1, 5, 1, "#c99a68");
+    }
+  } else {
+    /* 前・後ろ向き(フィールド): 体の横に持つ */
+    if(w.k === "sword"){
+      P(g, X + 13, Y + 3, 2, 8, c); P(g, X + 13, Y + 3, 1, 8, "#ffffff");
+      P(g, X + 12, Y + 11, 4, 1, "#c9a33c"); P(g, X + 13, Y + 12, 2, 2, wood);
+    } else if(w.k === "staff"){
+      P(g, X + 13, Y + 1, 2, 13, c);
+      if(w.orb) E(g, X + 14, Y, 2.2, 2.2, w.orb);
+    } else if(w.k === "axe"){
+      P(g, X + 13, Y + 3, 2, 11, wood); P(g, X + 12, Y + 2, 5, 5, c);
+    } else {
+      P(g, X + 13, Y + 5, 2, 9, wood); P(g, X + 12, Y + 3, 4, 4, "#a5744a");
+    }
+  }
+}
+
+/* ================================================================
+   人物スプライト ── 本編「光のクロニクル」と共通
+   ================================================================ */
+function drawActor(g, X, Y, key, dir, frame, pal, eq){
+  var p = pal || SPR[key] || SPR.man;
+  var sk = p.skin, hr = p.hair, cl = p.cloth;
+  if(eq && eq.armor && ALOOK[eq.armor]) cl = ALOOK[eq.armor];
+  var dk = shade(cl, -42), lt = shade(cl, 26);
+  var wep = eq && eq.weapon ? WLOOK[eq.weapon] : null;
+  var top = p.small ? 3 : 1;
+  P(g, X + 3, Y + 15, 10, 1, "rgba(0,0,0,.28)");
+  if(wep && dir === "up") drawWeapon(g, X, Y, wep, false);
+  /* 足 */
+  var a = frame ? 1 : 0;
+  P(g, X + 5, Y + 12 + a, 3, 4 - a, "#4a3a2a");
+  P(g, X + 8, Y + 12 + (1 - a), 3, 4 - (1 - a), "#4a3a2a");
+  /* 胴 */
+  P(g, X + 4, Y + top + 6, 8, 6, cl);
+  P(g, X + 4, Y + top + 6, 8, 1, lt);
+  P(g, X + 4, Y + top + 11, 8, 1, dk);
+  /* 腕 */
+  P(g, X + 2, Y + top + 6, 2, 5, dk);
+  P(g, X + 12, Y + top + 6, 2, 5, dk);
+  P(g, X + 2, Y + top + 10, 2, 2, sk);
+  P(g, X + 12, Y + top + 10, 2, 2, sk);
+  if(p.cape && dir === "up"){ P(g, X + 4, Y + top + 6, 8, 7, p.cape); }
+  else if(p.cape){ P(g, X + 3, Y + top + 7, 1, 5, p.cape); P(g, X + 12, Y + top + 7, 1, 5, p.cape); }
+  /* 頭 */
+  P(g, X + 4, Y + top, 8, 7, sk);
+  if(dir === "up"){
+    P(g, X + 4, Y + top, 8, 6, hr);
+  } else {
+    P(g, X + 4, Y + top, 8, 3, hr);
+    P(g, X + 3, Y + top + 1, 1, 3, hr); P(g, X + 12, Y + top + 1, 1, 3, hr);
+    if(p.long){ P(g, X + 3, Y + top + 2, 1, 6, hr); P(g, X + 12, Y + top + 2, 1, 6, hr); }
+    if(dir === "down"){
+      P(g, X + 6, Y + top + 4, 1, 2, "#2a1a12"); P(g, X + 9, Y + top + 4, 1, 2, "#2a1a12");
+    } else if(dir === "left"){
+      P(g, X + 5, Y + top + 4, 1, 2, "#2a1a12");
+      P(g, X + 4, Y + top + 3, 1, 4, shade(sk, -30));
+    } else {
+      P(g, X + 10, Y + top + 4, 1, 2, "#2a1a12");
+      P(g, X + 11, Y + top + 3, 1, 4, shade(sk, -30));
+    }
+    if(p.beard) P(g, X + 5, Y + top + 6, 6, 2, hr);
+  }
+  if(p.crown){ P(g, X + 4, Y + top - 2, 8, 2, "#e8c65a"); P(g, X + 4, Y + top - 3, 1, 1, "#e8c65a"); P(g, X + 7, Y + top - 4, 2, 2, "#e8c65a"); P(g, X + 11, Y + top - 3, 1, 1, "#e8c65a"); }
+  if(p.hat){ TRI(g, [X + 2, Y + top + 1, X + 8, Y + top - 5, X + 14, Y + top + 1], cl); P(g, X + 2, Y + top, 12, 2, dk); }
+  if(p.helm){ P(g, X + 3, Y + top - 1, 10, 4, "#aab2c8"); P(g, X + 3, Y + top + 3, 10, 1, "#8a92a8"); P(g, X + 7, Y + top - 3, 2, 3, "#d8443a"); }
+  if(wep && dir !== "up") drawWeapon(g, X, Y, wep, dir === "left");
+}
+
+var FX = {
+  list:[],
+  add:function(o){ o.t = 0; this.list.push(o); return o; },
+  burst:function(x, y, color, n, spd, life){
+    for(var i = 0; i < (n || 12); i++){
+      var a = Math.random() * 6.2832, v = rndf(0.4, 1) * (spd || 60);
+      this.add({k:"p", x:x, y:y, vx:Math.cos(a) * v, vy:Math.sin(a) * v - 20, c:color, life:life || 0.55, sz:rndInt(1, 3)});
+    }
+  },
+  rise:function(x, y, color, n){
+    for(var i = 0; i < (n || 10); i++){
+      this.add({k:"p", x:x + rndf(-14, 14), y:y + rndf(-4, 10), vx:rndf(-6, 6), vy:rndf(-70, -30), c:color, life:rndf(0.5, 0.9), sz:rndInt(1, 3), g:0});
+    }
+  },
+  bolt:function(x, y){ this.add({k:"bolt", x:x, y:y, life:0.42}); },
+  slash:function(x, y){ this.add({k:"slash", x:x, y:y, life:0.28}); },
+  ring:function(x, y, color){ this.add({k:"ring", x:x, y:y, c:color, life:0.4}); },
+  update:function(dt){
+    for(var i = this.list.length - 1; i >= 0; i--){
+      var p = this.list[i];
+      p.t += dt;
+      if(p.k === "p"){
+        p.x += p.vx * dt; p.y += p.vy * dt;
+        p.vy += (p.g == null ? 140 : p.g) * dt;
+      }
+      if(p.t >= p.life) this.list.splice(i, 1);
+    }
+  },
+  draw:function(g){
+    this.list.forEach(function(p){
+      var k = 1 - p.t / p.life;
+      if(p.k === "p"){
+        g.globalAlpha = Math.max(0, k);
+        P(g, p.x, p.y, p.sz, p.sz, p.c);
+        g.globalAlpha = 1;
+      } else if(p.k === "bolt"){
+        g.globalAlpha = Math.max(0, k);
+        var w = 4 + Math.sin(p.t * 60) * 2;
+        P(g, p.x - w / 2, 0, w, p.y, "#ffffff");
+        P(g, p.x - w / 4, 0, w / 2, p.y, "#a8d8ff");
+        g.globalAlpha = 1;
+      } else if(p.k === "slash"){
+        g.globalAlpha = Math.max(0, k);
+        g.strokeStyle = "#ffffff"; g.lineWidth = 2;
+        g.beginPath(); g.moveTo(p.x - 18, p.y - 16); g.lineTo(p.x + 16, p.y + 14); g.stroke();
+        g.beginPath(); g.moveTo(p.x - 12, p.y - 22); g.lineTo(p.x + 20, p.y + 6); g.stroke();
+        g.globalAlpha = 1;
+      } else if(p.k === "ring"){
+        g.globalAlpha = Math.max(0, k);
+        g.strokeStyle = p.c; g.lineWidth = 2;
+        g.beginPath(); g.arc(p.x, p.y, 4 + (1 - k) * 30, 0, 6.2832); g.stroke();
+        g.globalAlpha = 1;
+      }
+    });
+  },
+  clear:function(){ this.list.length = 0; }
+};
+
+/* ================================================================
+   巨獣狩り — ゲーム本体
+   ================================================================ */
+var SCR_W = 256, SCR_H = 224, TS = 16;
+var HUD_H = 26;                                  /* 上の情報帯 */
+var SAVE_KEY = "great_hunt_v1";
+var cv = $("screen"), ctx = cv.getContext("2d");
+ctx.imageSmoothingEnabled = false;
+
+/* ---------------- 切れ味 ---------------- */
+/* hard: この切れ味で 何段階の かたさまで 弾かれずに 斬れるか */
+var BANDS = [
+  {n:"赤", c:"#c8412f", mul:0.62, hard:1},
+  {n:"黄", c:"#e8d24a", mul:0.84, hard:2},
+  {n:"緑", c:"#5ee06a", mul:1.00, hard:3},
+  {n:"青", c:"#5ec8ff", mul:1.16, hard:4},
+  {n:"白", c:"#f0f0f8", mul:1.32, hard:5}
+];
+
+/* ---------------- 攻撃モーション ----------------
+   mv   … モーション値(威力の素)
+   wind … 振りかぶり  act … 判定  rec … 戻り (フレーム, 60fps)
+   reach/arc … 前方の扇形。lunge … 踏みこみ距離
+   kind … slash(斬) / blunt(打) / shot(弾)
+   ko   … 頭に当てたときの スタン蓄積
+   ------------------------------------------------- */
+var MOVES = {
+  /* 大剣 */
+  gs_side:  {n:"横薙ぎ",     mv:42,  wind:15, act:6,  rec:26, reach:26, arc:2.2, lunge:7,  kind:"slash", sharp:2, stam:6,  ko:8,  hs:5},
+  gs_c0:    {n:"斬り上げ",   mv:34,  wind:12, act:5,  rec:22, reach:24, arc:1.5, lunge:6,  kind:"slash", sharp:2, stam:5,  ko:6,  hs:4},
+  gs_c1:    {n:"溜め斬り",   mv:72,  wind:10, act:6,  rec:34, reach:28, arc:1.4, lunge:11, kind:"slash", sharp:3, stam:14, ko:14, hs:7},
+  gs_c2:    {n:"溜め斬り 二",mv:104, wind:11, act:7,  rec:38, reach:30, arc:1.5, lunge:13, kind:"slash", sharp:4, stam:20, ko:20, hs:9},
+  gs_c3:    {n:"真・溜め斬り",mv:152,wind:13, act:8,  rec:46, reach:32, arc:1.6, lunge:15, kind:"slash", sharp:5, stam:28, ko:28, hs:12},
+  /* 片手剣 */
+  sw_a:     {n:"斬り",       mv:15,  wind:5,  act:4,  rec:9,  reach:19, arc:1.5, lunge:5,  kind:"slash", sharp:1, stam:2,  ko:3,  hs:2},
+  sw_b:     {n:"返し斬り",   mv:17,  wind:5,  act:4,  rec:10, reach:19, arc:1.7, lunge:5,  kind:"slash", sharp:1, stam:2,  ko:3,  hs:2},
+  sw_c:     {n:"斬り上げ",   mv:22,  wind:6,  act:5,  rec:16, reach:21, arc:1.4, lunge:7,  kind:"slash", sharp:1, stam:3,  ko:4,  hs:3},
+  sw_bash:  {n:"盾殴り",     mv:13,  wind:7,  act:5,  rec:18, reach:16, arc:1.2, lunge:6,  kind:"blunt", sharp:0, stam:5,  ko:26, hs:4},
+  /* ハンマー */
+  hm_a:     {n:"縦振り",     mv:38,  wind:13, act:5,  rec:24, reach:22, arc:1.1, lunge:6,  kind:"blunt", sharp:1, stam:6,  ko:26, hs:5},
+  hm_b:     {n:"横殴り",     mv:33,  wind:11, act:5,  rec:20, reach:24, arc:2.0, lunge:6,  kind:"blunt", sharp:1, stam:5,  ko:18, hs:4},
+  hm_c1:    {n:"回転攻撃",   mv:58,  wind:8,  act:16, rec:26, reach:23, arc:6.3, lunge:3,  kind:"blunt", sharp:2, stam:16, ko:30, hs:5},
+  hm_c2:    {n:"溜めアッパー",mv:112, wind:12, act:7,  rec:40, reach:25, arc:1.3, lunge:12, kind:"blunt", sharp:3, stam:26, ko:70, hs:11},
+  /* 弓 */
+  bw_kick:  {n:"けり",       mv:9,   wind:6,  act:4,  rec:12, reach:16, arc:1.3, lunge:4,  kind:"blunt", sharp:0, stam:3,  ko:8,  hs:2},
+  bw_s1:    {n:"矢",         mv:20,  wind:4,  act:1,  rec:14, kind:"shot", shot:{spd:230, r:4, life:0.62}, sharp:0, stam:6,  ko:1, hs:2},
+  bw_s2:    {n:"溜め矢",     mv:38,  wind:5,  act:1,  rec:16, kind:"shot", shot:{spd:250, r:5, life:0.66}, sharp:0, stam:11, ko:2, hs:3},
+  bw_s3:    {n:"曲射",       mv:30,  wind:6,  act:1,  rec:22, kind:"shot", shot:{spd:265, r:6, life:0.7, n:3, spread:0.14}, sharp:0, stam:20, ko:4, hs:5}
+};
+
+/* ---------------- 武器 ----------------
+   c1..c3 … 溜め段階の モーション。combo … 弱攻撃の つなぎ
+   top    … 切れ味の 上限帯 (BANDS の添字)
+   ------------------------------------------------- */
+var WTYPE = {
+  gs: {n:"大剣",   cls:"斬", combo:["gs_side","gs_c0"], charge:["gs_c1","gs_c2","gs_c3"],
+       ct:[38,80,132], hold:true, spd:0.80, sheathe:34, desc:"重く 遅いが 一撃が 別格。溜めて 頭を 狙え"},
+  sw: {n:"片手剣", cls:"斬", combo:["sw_a","sw_b","sw_c"], charge:["sw_bash"],
+       ct:[10], hold:false, spd:1.06, sheathe:14, desc:"手数と 小回り。抜いたまま 道具が 使える"},
+  hm: {n:"ハンマー", cls:"打", combo:["hm_a","hm_b"], charge:["hm_c1","hm_c2"],
+       ct:[34,84], hold:true, spd:0.86, sheathe:30, desc:"頭を 殴り続ければ 気絶させられる"},
+  bw: {n:"弓",     cls:"弾", combo:["bw_kick"], charge:["bw_s1","bw_s2","bw_s3"],
+       ct:[0,26,58], hold:true, spd:1.0, sheathe:16, desc:"間合いの外から。溜めるほど 深く 刺さる"}
+};
+
+/* 武器の 強化段階。mat は 必要素材 */
+var WTREE = {
+  gs: [{n:"鉄の大剣",     atk:100, top:2, g:0,    mat:null},
+       {n:"ガロ大剣",     atk:148, top:2, g:900,  mat:{garo_fang:3, garo_hide:4, bone:5}},
+       {n:"岩砕きの大剣", atk:196, top:3, g:2200, mat:{iwa_shell:4, iwa_horn:2, garo_fang:2}},
+       {n:"炎尾の大剣",   atk:252, top:4, g:4800, mat:{enbi_wing:3, enbi_scale:5, iwa_shell:3}}],
+  sw: [{n:"鉄の剣",       atk:88,  top:2, g:0,    mat:null},
+       {n:"ガロの牙剣",   atk:126, top:3, g:900,  mat:{garo_fang:4, garo_hide:3, bone:4}},
+       {n:"岩鱗の剣",     atk:168, top:3, g:2200, mat:{iwa_shell:3, iwa_horn:2, garo_hide:4}},
+       {n:"焔羽の剣",     atk:214, top:4, g:4800, mat:{enbi_wing:4, enbi_beak:2, iwa_shell:2}}],
+  hm: [{n:"鉄のハンマー", atk:106, top:2, g:0,    mat:null},
+       {n:"ガロ骨槌",     atk:156, top:2, g:900,  mat:{garo_fang:2, bone:8, garo_hide:3}},
+       {n:"岩塊の鎚",     atk:208, top:3, g:2200, mat:{iwa_shell:5, iwa_horn:3, bone:6}},
+       {n:"炎砕の鎚",     atk:266, top:4, g:4800, mat:{enbi_scale:6, enbi_beak:2, iwa_horn:3}}],
+  bw: [{n:"狩人の弓",     atk:82,  top:2, g:0,    mat:null},
+       {n:"ガロの猟弓",   atk:118, top:2, g:900,  mat:{garo_hide:5, bone:4, garo_fang:2}},
+       {n:"岩弓ゴウ",     atk:158, top:3, g:2200, mat:{iwa_shell:3, garo_hide:5, iwa_horn:2}},
+       {n:"炎尾の弓",     atk:202, top:4, g:4800, mat:{enbi_wing:5, enbi_scale:4, enbi_beak:1}}]
+};
+
+var ATREE = [
+  {n:"狩人の服",   def:0,  g:0,    mat:null},
+  {n:"ガロの革鎧", def:14, g:700,  mat:{garo_hide:6, bone:4}},
+  {n:"岩殻の鎧",   def:30, g:1900, mat:{iwa_shell:6, iwa_horn:2, garo_hide:4}},
+  {n:"焔鱗の鎧",   def:48, g:4200, mat:{enbi_scale:7, enbi_wing:3, iwa_shell:4}}
+];
+
+var MAT = {
+  bone:      {n:"じょうぶな骨"},
+  garo_hide: {n:"ガロの皮"},
+  garo_fang: {n:"ガロの牙"},
+  iwa_shell: {n:"ゴウの岩殻"},
+  iwa_horn:  {n:"ゴウの角"},
+  enbi_scale:{n:"エンビの鱗"},
+  enbi_wing: {n:"エンビの翼膜"},
+  enbi_beak: {n:"エンビのくちばし"},
+  nushi_horn:{n:"ヌシの大角"},
+  nushi_hide:{n:"ヌシの厚皮"}
+};
+
+/* ---------------- 道具 ---------------- */
+var ITEMS = {
+  potion:{n:"回復薬",     v:50,  lock:74,  max:10, g:60,  desc:"体力を 50 もどす"},
+  mega:  {n:"回復薬グレート", v:95, lock:86, max:5,  g:180, desc:"体力を 95 もどす"},
+  whet:  {n:"砥石",       lock:118, max:15, g:40,  desc:"切れ味を もどす"},
+  meat:  {n:"こんがり肉", lock:110, max:5,  g:80,  desc:"スタミナを 満タンに"},
+  trap:  {n:"落とし穴",   lock:126, max:2,  g:500, desc:"巨獣を 10秒 とらえる"},
+  tranq: {n:"麻酔玉",     lock:44,  max:4,  g:170, desc:"わなに かかった 瀕死の獣に 2つで 捕獲"}
+};
+var POUCH_ORDER = ["potion","mega","whet","meat","trap","tranq"];
+
+/* ---------------- 巨獣 ----------------
+   parts … ox/oy は 向いている方向を +x とした 相対位置
+   hz    … 部位倍率 {slash, blunt, shot}
+   hard  … かたさ。切れ味の hard が これ未満だと 弾かれる
+   moves … wind/act/rec と 判定の 円。tell で 予備動作の 見せかたが 変わる
+   ------------------------------------------------- */
+var BEASTS = {
+  garo: {
+    n:"ドスガロ", title:"群れの長", hp:2800, atk:84, spd:34, size:1.0, rageAt:0.62, tireAt:0.34,
+    look:{body:"#7a6242", belly:"#c8b48a", mane:"#4a3a24", eye:"#ffd75e", w:38, h:17, hw:15, hh:12,
+          tail:"whip", tl:20, horn:0, spike:1, wing:0, legs:4},
+    parts:[
+      {k:"head", n:"頭",   ox:22,  oy:-3, r:9,  hz:{slash:1.00, blunt:1.15, shot:0.95}, hard:2, hp:820, brk:"garo_fang"},
+      {k:"body", n:"胴",   ox:0,   oy:0,  r:14, hz:{slash:0.80, blunt:0.80, shot:0.75}, hard:1},
+      {k:"tail", n:"尻尾", ox:-24, oy:2,  r:8,  hz:{slash:0.90, blunt:0.70, shot:0.85}, hard:1, hp:700, sever:true, brk:"garo_hide"}
+    ],
+    moves:[
+      {n:"噛みつき",   w:34, rng:[0,44],  wind:26, act:9,  rec:30, tell:"crouch", step:16,
+       hit:[{ox:26, oy:-2, r:12, dmg:20}]},
+      {n:"突進",       w:26, rng:[36,150],wind:32, act:26, rec:34, tell:"back",   dash:132,
+       hit:[{ox:18, oy:0, r:13, dmg:26}]},
+      {n:"三連噛み",   w:20, rng:[0,52],  wind:30, act:26, rec:36, tell:"crouch", step:10, multi:3,
+       hit:[{ox:24, oy:-2, r:11, dmg:15}]},
+      {n:"尻尾はらい", w:20, rng:[0,50],  wind:24, act:12, rec:30, tell:"turn",
+       hit:[{ox:-22, oy:0, r:14, dmg:18}]}
+    ],
+    mats:{garo_hide:[1,3], garo_fang:[1,2], bone:[1,3]}, g:420
+  },
+  iwa: {
+    n:"イワトビゴウ", title:"岩を纏う者", hp:5600, atk:112, spd:28, size:1.18, rageAt:0.55, tireAt:0.3,
+    look:{body:"#6a6258", belly:"#a89a84", mane:"#3a352e", eye:"#ff8a3a", w:44, h:22, hw:17, hh:14,
+          tail:"club", tl:22, horn:2, spike:3, wing:0, legs:4, shell:true},
+    parts:[
+      {k:"head", n:"頭",   ox:25,  oy:-4, r:10, hz:{slash:0.95, blunt:1.20, shot:0.90}, hard:3, hp:1180, brk:"iwa_horn"},
+      {k:"back", n:"岩殻", ox:-2,  oy:-8, r:13, hz:{slash:0.30, blunt:0.55, shot:0.28}, hard:5, hp:1450, brk:"iwa_shell",
+       soft:{slash:0.85, blunt:1.00, shot:0.80}, softHard:2},
+      {k:"body", n:"腹",   ox:2,   oy:5,  r:12, hz:{slash:0.95, blunt:0.90, shot:0.90}, hard:1},
+      {k:"tail", n:"尾槌", ox:-27, oy:0,  r:9,  hz:{slash:0.55, blunt:0.85, shot:0.50}, hard:4, hp:1040, brk:"iwa_shell"}
+    ],
+    moves:[
+      {n:"噛みつき",     w:22, rng:[0,48],  wind:28, act:10, rec:32, tell:"crouch", step:14,
+       hit:[{ox:28, oy:-3, r:12, dmg:24}]},
+      {n:"転がり突進",   w:30, rng:[30,190],wind:36, act:44, rec:44, tell:"curl", dash:150, spin:true,
+       hit:[{ox:0, oy:0, r:16, dmg:32}]},
+      {n:"尾槌たたき",   w:24, rng:[0,58],  wind:32, act:11, rec:38, tell:"turn",
+       hit:[{ox:-26, oy:0, r:15, dmg:30}]},
+      {n:"岩投げ",       w:18, rng:[50,200],wind:34, act:6,  rec:34, tell:"rear", proj:{spd:120, r:6, dmg:22, life:2.0}},
+      {n:"のしかかり",   w:16, rng:[0,60],  wind:38, act:9,  rec:46, tell:"rear", step:20,
+       hit:[{ox:14, oy:2, r:18, dmg:34}]}
+    ],
+    mats:{iwa_shell:[1,3], iwa_horn:[1,2], bone:[1,2], garo_hide:[0,1]}, g:820
+  },
+  enbi: {
+    n:"エンビガラス", title:"焔をまとう翼", hp:9000, atk:136, spd:40, size:1.1, rageAt:0.6, tireAt:0.28,
+    look:{body:"#8a3428", belly:"#e0a05a", mane:"#5a1e16", eye:"#ffe08a", w:40, h:19, hw:14, hh:12,
+          tail:"blade", tl:24, horn:1, spike:2, wing:2, legs:2, beak:true},
+    parts:[
+      {k:"head", n:"頭",   ox:24,  oy:-6, r:9,  hz:{slash:1.05, blunt:1.15, shot:1.10}, hard:2, hp:1500, brk:"enbi_beak"},
+      {k:"wingL",n:"翼",   ox:-4,  oy:-10,r:12, hz:{slash:1.00, blunt:0.75, shot:1.00}, hard:2, hp:1320, brk:"enbi_wing", ground:true},
+      {k:"body", n:"胴",   ox:0,   oy:1,  r:13, hz:{slash:0.75, blunt:0.80, shot:0.70}, hard:2},
+      {k:"tail", n:"尾刃", ox:-26, oy:2,  r:8,  hz:{slash:0.95, blunt:0.65, shot:0.90}, hard:2, hp:1230, sever:true, brk:"enbi_scale"}
+    ],
+    moves:[
+      {n:"つつき",       w:22, rng:[0,46],  wind:22, act:8,  rec:26, tell:"crouch", step:16,
+       hit:[{ox:26, oy:-4, r:11, dmg:24}]},
+      {n:"火炎ブレス",   w:26, rng:[20,120],wind:40, act:30, rec:40, tell:"rear", breath:{len:96, r:11, dmg:9, tick:6}},
+      {n:"滑空突進",     w:24, rng:[50,220],wind:34, act:30, rec:36, tell:"fly", dash:180, air:true,
+       hit:[{ox:10, oy:-4, r:14, dmg:34}]},
+      {n:"尾刃なぎ",     w:20, rng:[0,58],  wind:26, act:12, rec:32, tell:"turn",
+       hit:[{ox:-26, oy:0, r:15, dmg:28}]},
+      {n:"羽ばたき",     w:16, rng:[0,70],  wind:30, act:14, rec:34, tell:"fly", air:true,
+       hit:[{ox:0, oy:0, r:24, dmg:20}], gust:true}
+    ],
+    mats:{enbi_scale:[1,3], enbi_wing:[1,2], enbi_beak:[0,1], bone:[1,2]}, g:1200
+  },
+  nushi: {
+    n:"ヌシ・ガンドウ", title:"谷を統べる古獣", hp:14000, atk:164, spd:33, size:1.4, rageAt:0.7, tireAt:0.24,
+    look:{body:"#4a3c5a", belly:"#c0b0d0", mane:"#241c30", eye:"#ff5a4a", w:52, h:26, hw:20, hh:17,
+          tail:"club", tl:28, horn:3, spike:4, wing:0, legs:4, shell:true, glow:"#a06aff"},
+    parts:[
+      {k:"head", n:"頭",   ox:30,  oy:-6, r:11, hz:{slash:0.95, blunt:1.15, shot:0.90}, hard:3, hp:2350, brk:"nushi_horn"},
+      {k:"back", n:"背甲", ox:-2,  oy:-10,r:15, hz:{slash:0.35, blunt:0.60, shot:0.30}, hard:5, hp:2700, brk:"nushi_hide",
+       soft:{slash:0.90, blunt:1.05, shot:0.85}, softHard:2},
+      {k:"body", n:"腹",   ox:2,   oy:7,  r:14, hz:{slash:0.90, blunt:0.90, shot:0.85}, hard:2},
+      {k:"tail", n:"大尾", ox:-32, oy:0,  r:10, hz:{slash:0.60, blunt:0.85, shot:0.55}, hard:4, hp:2080, brk:"nushi_hide"}
+    ],
+    moves:[
+      {n:"噛みつき",     w:20, rng:[0,54],  wind:26, act:10, rec:30, tell:"crouch", step:18,
+       hit:[{ox:32, oy:-4, r:13, dmg:32}]},
+      {n:"突進",         w:22, rng:[40,210],wind:34, act:32, rec:38, tell:"back", dash:158,
+       hit:[{ox:20, oy:0, r:17, dmg:38}]},
+      {n:"咆哮",         w:14, rng:[0,120], wind:34, act:16, rec:40, tell:"roar", roar:true},
+      {n:"地割れ",       w:20, rng:[0,110], wind:42, act:10, rec:46, tell:"rear", quake:{len:110, r:13, dmg:34}},
+      {n:"大尾なぎ払い", w:22, rng:[0,72],  wind:30, act:22, rec:40, tell:"turn", sweep:true,
+       hit:[{ox:-30, oy:0, r:18, dmg:36}]},
+      {n:"のしかかり",   w:16, rng:[0,64],  wind:40, act:10, rec:48, tell:"rear", step:24,
+       hit:[{ox:16, oy:2, r:20, dmg:42}]}
+    ],
+    mats:{nushi_hide:[1,3], nushi_horn:[1,2], enbi_scale:[1,2], bone:[2,3]}, g:2400
+  }
+};
+
+/* ---------------- クエスト ---------------- */
+var QUESTS = [
+  {id:"q1", rank:"★1", n:"群れの長を狩れ",     beast:"garo",  field:"forest", time:600, g:400,
+   brief:"里の畑を あらす 獣の群れ。長を たおせば 群れは 散る。"},
+  {id:"q2", rank:"★2", n:"岩を纏う者",         beast:"iwa",   field:"rocky",  time:660, g:900,
+   brief:"背の 岩殻は 生半可な 刃を はじく。腹か 頭を 狙え。"},
+  {id:"q3", rank:"★3", n:"焔をまとう翼",       beast:"enbi",  field:"ember",  time:720, g:1500,
+   brief:"空から 襲う。翼を 壊せば 地に 落ちる。"},
+  {id:"q4", rank:"★4", n:"谷を統べる古獣",     beast:"nushi", field:"deep",   time:900, g:3000,
+   brief:"この谷の ヌシ。生きて 帰れた 狩人は 数えるほどしか いない。"},
+  {id:"q5", rank:"★4", n:"再び、群れの長",     beast:"garo",  field:"forest", time:600, g:600, repeat:true,
+   brief:"素材あつめに。何度でも 受けられる。"},
+  {id:"q6", rank:"★4", n:"再び、岩を纏う者",   beast:"iwa",   field:"rocky",  time:660, g:1100, repeat:true,
+   brief:"素材あつめに。何度でも 受けられる。"},
+  {id:"q7", rank:"★4", n:"再び、焔の翼",       beast:"enbi",  field:"ember",  time:720, g:1800, repeat:true,
+   brief:"素材あつめに。何度でも 受けられる。"}
+];
+
+/* 狩場の 見た目 */
+var FIELDS = {
+  forest:{n:"みどりの谷", ground:"#3f6a34", ground2:"#356028", rock:"#6a6258", deco:"tree", sky:"#5a8ad0"},
+  rocky: {n:"岩塊の丘",   ground:"#7a6a4a", ground2:"#6a5c40", rock:"#585048", deco:"rock", sky:"#c8a86a"},
+  ember: {n:"焔の断崖",   ground:"#5a3a2a", ground2:"#4a2e20", rock:"#6a3a28", deco:"ember",sky:"#c85a3a"},
+  deep:  {n:"ヌシの谷底", ground:"#2e3448", ground2:"#262a3a", rock:"#3a3a52", deco:"crys", sky:"#3a2a5a"}
+};
+
+/* ================================================================
+   狩場の 地形
+   ================================================================ */
+var FW = 384, FH = 300;                          /* 狩場の 広さ(px) */
+
+function buildField(kind){
+  var F = FIELDS[kind], rnd = mulberry(kind.length * 7919 + 20260811);
+  var obs = [];                                   /* 通れない 岩・木 */
+  var deco = [];                                  /* 通れる 草・小石 */
+  var i, x, y, r;
+  /* 外周ぞいと 中ほどに 障害物を まく。中央は 広く あけて 戦えるように */
+  for(i = 0; i < 26; i++){
+    x = 18 + rnd() * (FW - 36);
+    y = 26 + rnd() * (FH - 52);
+    var dc = Math.hypot(x - FW / 2, y - FH / 2);
+    if(dc < 92) continue;                         /* 中央の 闘技場は あけておく */
+    r = 7 + rnd() * 7;
+    obs.push({x:x, y:y, r:r, kind:F.deco, s:rnd()});
+  }
+  for(i = 0; i < 90; i++){
+    deco.push({x:rnd() * FW, y:20 + rnd() * (FH - 20), s:rnd(), t:(rnd() * 3) | 0});
+  }
+  /* キャンプ(復帰地点)は 左下、巣は 右上 */
+  return {kind:kind, F:F, obs:obs, deco:deco,
+          camp:{x:44, y:FH - 46}, nest:{x:FW - 62, y:56}};
+}
+
+/* 地形を 一枚絵に 焼いておく(毎フレーム 描くと 重い) */
+function bakeField(fd){
+  var c = document.createElement("canvas");
+  c.width = FW; c.height = FH;
+  var g = c.getContext("2d");
+  g.imageSmoothingEnabled = false;
+  var F = fd.F, rnd = mulberry(4211);
+  g.fillStyle = F.ground; g.fillRect(0, 0, FW, FH);
+  /* 地面の むら */
+  var i;
+  for(i = 0; i < 420; i++){
+    var x = (rnd() * FW) | 0, y = (rnd() * FH) | 0, w = 2 + ((rnd() * 5) | 0);
+    g.fillStyle = rnd() < 0.5 ? F.ground2 : F.ground;
+    g.fillRect(x, y, w, 1 + ((rnd() * 2) | 0));
+  }
+  /* 草・小石 */
+  fd.deco.forEach(function(d){
+    var x = d.x | 0, y = d.y | 0;
+    if(d.t === 0){ P(g, x, y, 1, 2, tint(F.ground2, -14)); P(g, x + 1, y + 1, 1, 1, tint(F.ground2, -14)); }
+    else if(d.t === 1){ P(g, x, y, 2, 1, tint(F.ground, 18)); }
+    else { P(g, x, y, 1, 1, tint(F.rock, 10)); P(g, x + 1, y, 1, 1, tint(F.rock, -10)); }
+  });
+  /* 外周を 少し 暗く(谷の 壁) */
+  var grd = g.createLinearGradient(0, 0, 0, 26);
+  grd.addColorStop(0, "rgba(0,0,0,.55)"); grd.addColorStop(1, "rgba(0,0,0,0)");
+  g.fillStyle = grd; g.fillRect(0, 0, FW, 26);
+  g.fillStyle = "rgba(0,0,0,.30)";
+  g.fillRect(0, 0, 6, FH); g.fillRect(FW - 6, 0, 6, FH); g.fillRect(0, FH - 6, FW, 6);
+  /* 障害物 */
+  fd.obs.forEach(function(o){ drawObstacle(g, o, F); });
+  /* キャンプの たき火跡 */
+  var cx = fd.camp.x | 0, cy = fd.camp.y | 0;
+  ellipseFill(g, cx, cy, 13, 7, "rgba(0,0,0,.28)");
+  P(g, cx - 6, cy - 1, 12, 3, "#4a3a28"); P(g, cx - 4, cy - 3, 8, 2, "#6a5238");
+  P(g, cx - 2, cy - 5, 4, 3, "#c8541e"); P(g, cx - 1, cy - 7, 2, 2, "#ffb03a");
+  /* 巣(眠り場) */
+  var nx = fd.nest.x | 0, ny = fd.nest.y | 0;
+  ellipseFill(g, nx, ny, 26, 15, tint(F.ground2, -22));
+  ellipseFill(g, nx, ny, 20, 11, tint(F.ground2, -8));
+  for(i = 0; i < 14; i++){
+    var a = i / 14 * 6.283;
+    P(g, (nx + Math.cos(a) * 23) | 0, (ny + Math.sin(a) * 13) | 0, 3, 2, tint(F.rock, -6));
+  }
+  return c;
+}
+
+function drawObstacle(g, o, F){
+  var x = o.x | 0, y = o.y | 0, r = o.r | 0;
+  ellipseFill(g, x, y + 2, r + 2, (r * 0.5) | 0, "rgba(0,0,0,.3)");
+  if(o.kind === "tree"){
+    P(g, x - 2, y - r, 4, r + 2, "#4a3520");
+    ellipseFill(g, x, y - r - 4, r + 3, r + 1, "#2e5a24");
+    ellipseFill(g, x - 2, y - r - 6, r, r - 1, "#3f7a30");
+    P(g, x - 1, y - r - 9, 2, 2, "#54a03a");
+  } else if(o.kind === "ember"){
+    ellipseFill(g, x, y, r, r * 0.72, "#4a2a1e");
+    ellipseFill(g, x - 1, y - 2, r - 2, r * 0.5, "#6a3a26");
+    P(g, x - 1, y - r + 1, 2, 3, "#ff8a3a");
+    P(g, x + 2, y - r + 3, 1, 2, "#ffc86a");
+  } else if(o.kind === "crys"){
+    TRI(g, [x, y - r - 5, x - r + 1, y + 3, x + r - 1, y + 3], "#5a4a8a");
+    TRI(g, [x - 1, y - r - 3, x - r + 3, y + 2, x + 1, y + 2], "#8a7ac8");
+    P(g, x - 1, y - r + 1, 1, 4, "#d0c0ff");
+  } else {
+    ellipseFill(g, x, y, r, r * 0.78, F.rock);
+    ellipseFill(g, x - 1, y - 2, r - 2, r * 0.5, tint(F.rock, 16));
+    P(g, x + 1, y + 1, 2, 1, tint(F.rock, -18));
+  }
+}
+
+/* 楕円ぬり(ドット感を 保つため 走査線で 描く) */
+function ellipseFill(g, cx, cy, rx, ry, col){
+  g.fillStyle = col;
+  for(var dy = -ry; dy <= ry; dy++){
+    var w = Math.sqrt(Math.max(0, 1 - (dy * dy) / (ry * ry))) * rx;
+    if(w < 0.5) continue;
+    g.fillRect(Math.round(cx - w), Math.round(cy + dy), Math.max(1, Math.round(w * 2)), 1);
+  }
+}
+function tint(hex, d){
+  var n = parseInt(hex.slice(1), 16);
+  var r = clamp(((n >> 16) & 255) + d, 0, 255);
+  var gg = clamp(((n >> 8) & 255) + d, 0, 255);
+  var b = clamp((n & 255) + d, 0, 255);
+  return "#" + (((1 << 24) + (r << 16) + (gg << 8) + b).toString(16).slice(1));
+}
+
+/* ================================================================
+   巨獣の 絵 ── 横向きで 描き、向きで 左右反転する
+   ================================================================ */
+function drawBeast(g, B, m){
+  var L = B.look, sc = B.size;
+  var fx = m.fx;                                   /* 1 = 右向き, -1 = 左向き */
+  var w = L.w, h = L.h;
+  g.save();
+  g.translate(Math.round(m.x), Math.round(m.y));
+  /* 影 */
+  ellipseFill(g, 0, 6 * sc, (w * 0.6 * sc) | 0, (h * 0.34 * sc) | 0, "rgba(0,0,0,.34)");
+  if(m.air > 0) g.translate(0, -m.air);
+  g.scale(fx * sc, sc);
+  if(m.hurt > 0) g.filter = "brightness(2.1) saturate(0.4)";
+  else if(m.rage) g.filter = "saturate(1.35) brightness(1.08)";
+  else if(m.tired) g.filter = "saturate(0.62) brightness(0.9)";
+
+  var body = L.body, belly = L.belly, dark = tint(body, -34), lite = tint(body, 22);
+  var lean = m.lean || 0;                          /* 予備動作の かがみ */
+
+  /* 尻尾 */
+  if(!m.tailCut){
+    var tl = L.tl, ty = 2 + lean * 0.3;
+    var sway = Math.sin(m.anim * 0.09) * 3 + (m.tailSw || 0);
+    var k;
+    for(k = 0; k < 6; k++){
+      var t = k / 5;
+      var tx = -w * 0.42 - tl * t;
+      var tyy = ty + Math.sin(t * 2.2 + m.anim * 0.09) * 2.6 + sway * t;
+      var tr = Math.max(1, (h * 0.30) * (1 - t * 0.72));
+      ellipseFill(g, tx, tyy, tr + 1, tr, k % 2 ? tint(body, -8) : body);
+    }
+    if(L.tail === "club"){
+      var cxx = -w * 0.42 - tl, cyy = ty + Math.sin(2.2 + m.anim * 0.09) * 2.6 + sway;
+      ellipseFill(g, cxx - 3, cyy, 6, 5, tint(body, -18));
+      P(g, cxx - 8, cyy - 4, 3, 2, "#d8d0c0"); P(g, cxx - 6, cyy + 3, 3, 2, "#d8d0c0");
+    } else if(L.tail === "blade"){
+      var bx = -w * 0.42 - tl, by2 = ty + Math.sin(2.2 + m.anim * 0.09) * 2.6 + sway;
+      TRI(g, [bx + 2, by2 - 5, bx - 8, by2, bx + 2, by2 + 5], tint(body, 34));
+      TRI(g, [bx + 1, by2 - 3, bx - 5, by2, bx + 1, by2 + 3], "#f0e0c0");
+    }
+  }
+  /* 後ろあし */
+  var gait = Math.sin(m.anim * 0.22) * (m.mov ? 3.4 : 0.7);
+  legAt(g, -w * 0.24, h * 0.42, gait, dark, L.legs);
+  if(L.legs >= 4) legAt(g, w * 0.24, h * 0.42, -gait, dark, L.legs);
+  /* 翼(奥) */
+  if(L.wing) drawWing(g, L, m, -1, tint(body, -26), belly);
+  /* 胴 */
+  ellipseFill(g, 0, 0 + lean * 0.4, w * 0.5, h * 0.5, body);
+  ellipseFill(g, -1, h * 0.16 + lean * 0.4, w * 0.42, h * 0.30, belly);
+  ellipseFill(g, -2, -h * 0.22 + lean * 0.3, w * 0.40, h * 0.24, lite);
+  /* 背の こぶ・岩殻 */
+  if(L.shell){
+    var brk = m.broken && m.broken.back;
+    ellipseFill(g, -2, -h * 0.44 + lean * 0.3, w * 0.36, h * 0.34, brk ? tint(body, -6) : tint(L.mane || dark, 10));
+    if(!brk){
+      var s;
+      for(s = 0; s < 4; s++){
+        var sx = -w * 0.26 + s * (w * 0.17);
+        TRI(g, [sx, -h * 0.62 - 4 + lean * 0.3, sx - 4, -h * 0.36 + lean * 0.3, sx + 4, -h * 0.36 + lean * 0.3], "#9a9288");
+        TRI(g, [sx, -h * 0.62 - 2 + lean * 0.3, sx - 2, -h * 0.40 + lean * 0.3, sx + 2, -h * 0.40 + lean * 0.3], "#c0b8aa");
+      }
+    } else {
+      P(g, -w * 0.24, -h * 0.56 + lean * 0.3, w * 0.5, 2, "#3a2a1a");
+    }
+  } else if(L.spike){
+    var q;
+    for(q = 0; q < L.spike + 2; q++){
+      var qx = -w * 0.3 + q * (w * 0.6 / (L.spike + 2));
+      TRI(g, [qx, -h * 0.5 - 3 - lean * 0.2, qx - 2, -h * 0.34, qx + 2, -h * 0.34], L.mane || dark);
+    }
+  }
+  /* たてがみ */
+  if(L.mane && !L.shell){
+    ellipseFill(g, w * 0.20, -h * 0.30 + lean * 0.5, w * 0.20, h * 0.42, L.mane);
+  }
+  /* 翼(手前) */
+  if(L.wing) drawWing(g, L, m, 1, body, belly);
+  /* 前あし */
+  legAt(g, w * 0.30, h * 0.40, -gait * 0.8, tint(body, -18), L.legs);
+  if(L.legs >= 4) legAt(g, w * 0.12, h * 0.44, gait * 0.8, tint(body, -18), L.legs);
+  /* 首と 頭 */
+  var hx = w * 0.44 + (m.headEx || 0), hy = -h * 0.42 + lean * 1.6;
+  var nk;
+  for(nk = 0; nk < 3; nk++){
+    var t2 = nk / 2;
+    ellipseFill(g, w * 0.30 + (hx - w * 0.30) * t2, (hy) * t2 * 0.9, h * 0.26 - t2 * 2, h * 0.24 - t2 * 1.6, tint(body, -6));
+  }
+  var HW = L.hw, HH = L.hh;
+  ellipseFill(g, hx, hy, HW * 0.5, HH * 0.5, body);
+  ellipseFill(g, hx + HW * 0.16, hy + HH * 0.16, HW * 0.34, HH * 0.28, belly);
+  /* あご / くちばし */
+  var open = m.jaw || 0;
+  if(L.beak){
+    TRI(g, [hx + HW * 0.42, hy - 3, hx + HW * 0.42 + 9, hy + 1 - open, hx + HW * 0.42, hy + 2], "#e8d24a");
+    TRI(g, [hx + HW * 0.42, hy + 2 + open, hx + HW * 0.42 + 7, hy + 3 + open, hx + HW * 0.42, hy + 4 + open], "#c8a83a");
+  } else {
+    ellipseFill(g, hx + HW * 0.38, hy + 2 + open * 0.6, HW * 0.30, HH * 0.22, tint(body, -14));
+    var tk;
+    for(tk = 0; tk < 3; tk++) P(g, hx + HW * 0.30 + tk * 3, hy + 3 + open * 0.4, 2, 3, "#f0e8d8");
+    if(open > 0.4) ellipseFill(g, hx + HW * 0.30, hy + 5 + open * 1.4, HW * 0.22, 2, "#4a1810");
+  }
+  /* 角 */
+  if(L.horn){
+    var hn;
+    for(hn = 0; hn < L.horn; hn++){
+      var ox2 = hx - hn * 4, hgt = 7 + hn * 2;
+      if(m.broken && m.broken.head) hgt = Math.max(3, hgt - 5);
+      TRI(g, [ox2, hy - HH * 0.5, ox2 - 3, hy - HH * 0.5 - hgt, ox2 + 3, hy - HH * 0.42], m.broken && m.broken.head ? "#8a7a68" : "#e8dcc0");
+    }
+  }
+  /* 目 */
+  var ec = m.rage ? "#ff4a3a" : (m.sleep ? null : L.eye);
+  if(m.sleep){ P(g, hx + HW * 0.16, hy - 1, 4, 1, "#2a1a10"); }
+  else {
+    P(g, hx + HW * 0.14, hy - 2, 3, 3, "#1a1008");
+    P(g, hx + HW * 0.18, hy - 2, 2, 2, ec);
+  }
+  if(L.glow && m.rage){
+    var gl;
+    for(gl = 0; gl < 5; gl++){
+      var ga = m.anim * 0.05 + gl * 1.26;
+      P(g, Math.cos(ga) * w * 0.34, -h * 0.5 + Math.sin(ga) * 4, 2, 2, L.glow);
+    }
+  }
+  /* よだれ(疲労) */
+  if(m.tired && (m.anim % 90) < 40){
+    P(g, hx + HW * 0.34, hy + 6 + ((m.anim % 90) * 0.12), 1, 3, "#a8d8f0");
+  }
+  g.restore();
+  g.filter = "none";
+}
+function legAt(g, x, y, off, col, n){
+  ellipseFill(g, x, y + 2, 3, 5 + Math.abs(off) * 0.2, col);
+  P(g, Math.round(x - 2 + off * 0.4), Math.round(y + 5), 5, 3, tint(col, -12));
+}
+function drawWing(g, L, m, side, col, belly){
+  var flap = m.air > 0 ? Math.sin(m.anim * 0.36) * 9 : Math.sin(m.anim * 0.06) * 2;
+  var bx = -L.w * 0.06, by = -L.h * 0.34 + side * 1.5;
+  var sp = side > 0 ? 1 : 0.82;
+  TRI(g, [bx, by, bx - 20 * sp, by - 14 - flap, bx + 6 * sp, by - 4 - flap * 0.4], col);
+  TRI(g, [bx, by, bx - 16 * sp, by - 6 - flap * 0.7, bx - 20 * sp, by - 14 - flap], tint(col, 16));
+  if(m.broken && m.broken.wingL && side > 0){
+    P(g, bx - 14, by - 10 - flap * 0.8, 8, 2, "#3a1a12");
+  } else {
+    P(g, bx - 12 * sp, by - 9 - flap * 0.7, 2, 2, belly);
+  }
+}
+
+/* ================================================================
+   狩り中の 入力 ── スティックと ボタン
+   ================================================================ */
+var Act = {held:{}, buf:null, bufT:0, vx:0, vy:0, mag:0};
+/* 硬直中に 押した ぶんを 少しだけ 覚えておく。
+   これが 無いと、連続で 斬ろうとしたとき 入力が こぼれて 手が 止まる */
+Act.press = function(k){ this.buf = k; this.bufT = 12; };
+Act.take = function(){
+  if(!this.buf || this.bufT <= 0) return null;
+  var k = this.buf; this.buf = null; return k;
+};
+Act.clear = function(){ this.buf = null; this.bufT = 0; };
+
+(function(){
+  var AK = {
+    KeyZ:"atk", KeyX:"heavy", KeyC:"roll", Space:"roll", KeyV:"sheath",
+    KeyQ:"item", KeyE:"swap", ShiftLeft:"dash", ShiftRight:"dash"
+  };
+  function typing(e){ var t = e.target; return t && (t.tagName === "TEXTAREA" || t.tagName === "INPUT"); }
+  addEventListener("keydown", function(e){
+    if(typing(e)) return;
+    var k = AK[e.code]; if(!k) return;
+    if(!e.repeat) Act.press(k);
+    Act.held[k] = 1;
+  });
+  addEventListener("keyup", function(e){
+    if(typing(e)) return;
+    var k = AK[e.code]; if(!k) return;
+    Act.held[k] = 0;
+  });
+
+  /* --- スティック --- */
+  var st = $("stick"), knob = $("knob"), pid = null, cx = 0, cy = 0, R = 1;
+  function setKnob(dx, dy){
+    knob.style.transform = "translate(" + dx + "px," + dy + "px)";
+  }
+  function grab(e){
+    if(pid !== null) return;
+    pid = e.pointerId;
+    var r = st.getBoundingClientRect();
+    cx = r.left + r.width / 2; cy = r.top + r.height / 2; R = r.width * 0.36;
+    st.setPointerCapture(pid);
+    Snd.resume();
+    move(e);
+  }
+  function move(e){
+    if(e.pointerId !== pid) return;
+    e.preventDefault();
+    var dx = e.clientX - cx, dy = e.clientY - cy;
+    var d = Math.hypot(dx, dy);
+    var m = Math.min(1, d / R);
+    if(d > 0.001){ Act.vx = dx / d * m; Act.vy = dy / d * m; } else { Act.vx = Act.vy = 0; }
+    Act.mag = m;
+    var kd = Math.min(d, R);
+    setKnob(d > 0.001 ? dx / d * kd : 0, d > 0.001 ? dy / d * kd : 0);
+  }
+  function drop(e){
+    if(e.pointerId !== pid) return;
+    pid = null; Act.vx = Act.vy = 0; Act.mag = 0; setKnob(0, 0);
+  }
+  st.addEventListener("pointerdown", grab);
+  st.addEventListener("pointermove", move, {passive:false});
+  st.addEventListener("pointerup", drop);
+  st.addEventListener("pointercancel", drop);
+
+  /* --- ボタン --- */
+  [].slice.call(document.querySelectorAll("#btns button")).forEach(function(b){
+    var k = b.dataset.k;
+    b.addEventListener("pointerdown", function(e){
+      e.preventDefault(); Snd.resume();
+      Act.held[k] = 1; Act.press(k); b.classList.add("on");
+    });
+    function up(e){ e.preventDefault(); Act.held[k] = 0; b.classList.remove("on"); }
+    b.addEventListener("pointerup", up);
+    b.addEventListener("pointercancel", up);
+    b.addEventListener("pointerleave", up);
+  });
+})();
+function padVisible(on){ $("pad").classList.toggle("hide", !on); }
+
+/* ================================================================
+   狩人
+   ================================================================ */
+var H = {};
+function resetHunter(){
+  var S = G.save;
+  H.x = 0; H.y = 0; H.vx = 0; H.vy = 0;
+  H.ang = -Math.PI / 2; H.fx = 1;
+  H.hpMax = 120; H.hp = 120;
+  H.stMax = 100; H.st = 100;
+  H.state = "idle"; H.t = 0; H.dur = 0;
+  H.drawn = false; H.move = null; H.hitSet = null;
+  H.chargeT = 0; H.combo = -1; H.comboWin = 0;
+  H.iframe = 0; H.anim = 0; H.swing = 0; H.swingArc = 0;
+  H.sharp = 100;
+  H.item = 0;
+  H.lives = 3;
+  H.wt = S.wep; H.tier = S.tier[S.wep];
+  H.W = WTREE[S.wep][H.tier];
+  H.T = WTYPE[S.wep];
+  H.def = ATREE[S.armor].def;
+  H.pouch = {};
+  POUCH_ORDER.forEach(function(k){ H.pouch[k] = S.bag[k] || 0; });
+}
+function curBand(){
+  var top = H.W.top;
+  var i = Math.floor(H.sharp / 100 * (top + 1));
+  return BANDS[clamp(i, 0, top)];
+}
+function hunterSpeed(){
+  var s = H.drawn ? 58 : 70;
+  s *= H.T.spd;
+  return s;
+}
+function canAct(){
+  return H.state === "idle" || H.state === "run";
+}
+
+/* --- 攻撃を 始める --- */
+function startMove(key){
+  var mv = MOVES[key];
+  if(!mv) return;
+  H.move = mv; H.state = "atk"; H.t = 0;
+  H.dur = mv.wind + mv.act + mv.rec;
+  H.hitSet = {};
+  H.st = Math.max(0, H.st - mv.stam);
+  H.shotDone = false;
+  H.swing = 0;
+  H.drawn = true;
+  Snd.se(mv.kind === "shot" ? "cursor" : "swing");
+}
+function faceInput(){
+  var ix = Act.vx, iy = Act.vy;
+  if(Math.abs(ix) < 0.2 && Math.abs(iy) < 0.2){
+    ix = (Input.held.right ? 1 : 0) - (Input.held.left ? 1 : 0);
+    iy = (Input.held.down ? 1 : 0) - (Input.held.up ? 1 : 0);
+  }
+  if(ix || iy){ H.ang = Math.atan2(iy, ix); H.fx = Math.cos(H.ang) >= 0 ? 1 : -1; }
+}
+function moveVector(){
+  var ix = Act.vx, iy = Act.vy, m = Act.mag;
+  if(m < 0.15){
+    ix = (Input.held.right ? 1 : 0) - (Input.held.left ? 1 : 0);
+    iy = (Input.held.down ? 1 : 0) - (Input.held.up ? 1 : 0);
+    var d = Math.hypot(ix, iy);
+    if(d > 0){ ix /= d; iy /= d; m = 1; } else m = 0;
+  }
+  return {x:ix, y:iy, m:m};
+}
+
+function updateHunter(dt){
+  H.anim++;
+  if(H.iframe > 0) H.iframe--;
+  if(H.comboWin > 0) H.comboWin--;
+  if(H.swing > 0) H.swing--;
+
+  if(Act.bufT > 0) Act.bufT--;
+  var k;
+  /* --- 行動できる 状態 --- */
+  if(canAct()){
+    while((k = Act.take())){
+      if(k === "atk"){
+        var seq = H.T.combo;
+        var next = (H.comboWin > 0) ? (H.combo + 1) % seq.length : 0;
+        H.combo = next;
+        startMove(seq[next]);
+        break;
+      } else if(k === "heavy"){
+        if(H.T.hold){ H.state = "charge"; H.chargeT = 0; H.drawn = true; H.t = 0; }
+        else { H.combo = -1; startMove(H.T.charge[0]); }
+        break;
+      } else if(k === "roll"){
+        if(H.st >= 22){ startRoll(); } else Snd.se("err");
+        break;
+      } else if(k === "sheath"){
+        H.drawn = !H.drawn; Snd.se("cursor");
+      } else if(k === "item"){
+        useItem(); break;
+      } else if(k === "swap"){
+        swapItem();
+      }
+    }
+  }
+
+  switch(H.state){
+    case "idle": case "run": {
+      var v = moveVector();
+      var dash = Act.held.dash && H.st > 2 && v.m > 0.2;
+      var sp = hunterSpeed() * (dash ? 1.62 : 1) * v.m;
+      if(dash){ H.st = Math.max(0, H.st - 22 * dt); if(H.st <= 0) dash = false; }
+      H.vx = v.x * sp; H.vy = v.y * sp;
+      if(v.m > 0.2){
+        H.state = "run"; H.ang = Math.atan2(v.y, v.x); H.fx = Math.cos(H.ang) >= 0 ? 1 : -1;
+      } else H.state = "idle";
+      H.st = Math.min(H.stMax, H.st + (dash ? 0 : (H.state === "idle" ? 30 : 17)) * dt);
+      break;
+    }
+    case "charge": {
+      H.chargeT += dt * 60;
+      var v2 = moveVector();
+      var sp2 = hunterSpeed() * 0.42 * v2.m;
+      H.vx = v2.x * sp2; H.vy = v2.y * sp2;
+      if(v2.m > 0.2){ H.ang = Math.atan2(v2.y, v2.x); H.fx = Math.cos(H.ang) >= 0 ? 1 : -1; }
+      var lv = chargeLevel();
+      if(lv !== H.lastLv){ H.lastLv = lv; if(lv > 0) Snd.se("cursor"); }
+      if(!Act.held.heavy){
+        H.lastLv = -1;
+        H.combo = -1;
+        startMove(H.T.charge[lv]);
+      }
+      break;
+    }
+    case "atk": {
+      var mv = H.move;
+      H.t += dt * 60;
+      /* 踏みこみ ── lunge は「何ピクセル 前に出るか」。
+         速度に そのまま 入れると 獣を 突きぬけてしまうので、
+         踏みこむ フレーム数で わって 積分が lunge に なるようにする */
+      var win = mv.wind + mv.act;
+      if(mv.lunge && H.t < win){
+        /* (1-p)*2 の 三角形で 押すと、積分が ちょうど lunge ピクセルに なる */
+        var p = H.t / win;
+        var push = mv.lunge * 60 / win * (1 - p) * 2;
+        H.vx = Math.cos(H.ang) * push; H.vy = Math.sin(H.ang) * push;
+      } else { H.vx *= 0.72; H.vy *= 0.72; }
+      if(H.t >= mv.wind && H.t < mv.wind + mv.act){
+        if(mv.kind === "shot"){ if(!H.shotDone){ H.shotDone = true; fireShot(mv); } }
+        else { H.swing = 8; H.swingArc = mv.arc; meleeCheck(mv); }
+      }
+      if(H.t >= H.dur){
+        H.state = "idle";
+        H.comboWin = 24;
+        H.move = null;
+      }
+      break;
+    }
+    case "roll": {
+      H.t += dt * 60;
+      var pr = H.t / H.dur;
+      var rs = 190 * (1 - pr * pr * 0.9);
+      H.vx = Math.cos(H.rollA) * rs; H.vy = Math.sin(H.rollA) * rs;
+      if(H.t >= H.dur){ H.state = "idle"; }
+      break;
+    }
+    case "item": {
+      H.t += dt * 60;
+      H.vx *= 0.6; H.vy *= 0.6;
+      if(!H.itemDone && H.t >= H.dur * 0.62){ H.itemDone = true; applyItem(H.itemKey); }
+      if(H.t >= H.dur){ H.state = "idle"; }
+      break;
+    }
+    case "hurt": {
+      H.t += dt * 60;
+      H.vx *= 0.88; H.vy *= 0.88;
+      if(H.t >= H.dur){ H.state = "idle"; }
+      break;
+    }
+    case "faint": {
+      H.t += dt * 60;
+      H.vx *= 0.8; H.vy *= 0.8;
+      if(H.t >= H.dur) reviveAtCamp();
+      break;
+    }
+    case "carve": {
+      H.t += dt * 60;
+      H.vx = H.vy = 0;
+      if(H.t >= H.dur){ H.state = "idle"; }
+      break;
+    }
+  }
+
+  /* 移動と 当たり */
+  moveWithCollision(H, H.vx * dt, H.vy * dt, 6);
+  pushOutOfBeast();
+}
+
+function startRoll(){
+  var v = moveVector();
+  if(v.m > 0.2) H.ang = Math.atan2(v.y, v.x);
+  H.rollA = H.ang;
+  H.fx = Math.cos(H.ang) >= 0 ? 1 : -1;
+  H.state = "roll"; H.t = 0; H.dur = 30;
+  H.iframe = 17;
+  H.st = Math.max(0, H.st - 22);
+  H.combo = -1;
+  Snd.se("step");
+  FX.burst(H.x, H.y + 2, "#cbbb96", 5, 34, 0.26);
+}
+function chargeLevel(){
+  var ct = H.T.ct, lv = 0, i;
+  for(i = 0; i < ct.length; i++) if(H.chargeT >= ct[i]) lv = i;
+  /* スタミナが 足りない 段階までしか 溜まらない */
+  while(lv > 0 && H.st < MOVES[H.T.charge[lv]].stam) lv--;
+  return lv;
+}
+
+/* --- 障害物と 外周に ぶつかりながら 動く --- */
+function moveWithCollision(o, dx, dy, rad){
+  var i, ob = G.fd.obs;
+  o.x += dx;
+  for(i = 0; i < ob.length; i++){
+    var b = ob[i], d = Math.hypot(o.x - b.x, o.y - b.y), mr = rad + b.r * 0.7;
+    if(d < mr && d > 0.001) o.x = b.x + (o.x - b.x) / d * mr;
+  }
+  o.y += dy;
+  for(i = 0; i < ob.length; i++){
+    var b2 = ob[i], d2 = Math.hypot(o.x - b2.x, o.y - b2.y), mr2 = rad + b2.r * 0.7;
+    if(d2 < mr2 && d2 > 0.001) o.y = b2.y + (o.y - b2.y) / d2 * mr2;
+  }
+  o.x = clamp(o.x, 10, FW - 10);
+  o.y = clamp(o.y, 24, FH - 10);
+}
+/* 狩人は 巨獣の 体に めりこめない(飛んでいる あいだは 下を くぐれる) */
+function pushOutOfBeast(){
+  var m = G.m;
+  if(!m || m.dead || m.air > 10) return;
+  var br = 12 * m.B.size;
+  var dx = H.x - m.x, dy = H.y - m.y, d = Math.hypot(dx, dy);
+  if(d < br && d > 0.001){
+    H.x = m.x + dx / d * br;
+    H.y = m.y + dy / d * br;
+  }
+}
+
+/* ================================================================
+   斬りの あたり判定
+   ================================================================ */
+function angDiff(a, b){
+  var d = (a - b) % 6.283185;
+  if(d > 3.14159) d -= 6.283185;
+  if(d < -3.14159) d += 6.283185;
+  return d;
+}
+function meleeCheck(mv){
+  var m = G.m;
+  if(!m || m.dead) return;
+  var i, ps = m.parts;
+  for(i = 0; i < ps.length; i++){
+    var pt = ps[i];
+    if(pt.gone) continue;
+    if(H.hitSet[pt.k]) continue;
+    var w = partPos(m, pt);
+    var dx = w.x - H.x, dy = w.y - H.y, d = Math.hypot(dx, dy);
+    if(d > mv.reach + w.r) continue;
+    if(d > 2){
+      var half = mv.arc / 2 + Math.atan2(w.r, Math.max(8, d));
+      if(Math.abs(angDiff(Math.atan2(dy, dx), H.ang)) > half) continue;
+    }
+    H.hitSet[pt.k] = 1;
+    dealDamage(pt, mv, w);
+  }
+}
+function partPos(m, pt){
+  var B = m.B, sc = B.size;
+  return {x:m.x + pt.ox * m.fx * sc, y:m.y + pt.oy * sc - (m.air || 0), r:pt.r * sc};
+}
+function dealDamage(pt, mv, w){
+  var m = G.m, band = curBand();
+  var soft = pt.soft && m.broken[pt.k];
+  var hard = soft ? pt.softHard : pt.hard;
+  var hz = (soft ? pt.soft : pt.hz)[mv.kind] || 1;
+
+  /* 空を 飛んでいる 相手には 近接が 届かない */
+  if(m.air > 12 && mv.kind !== "shot"){
+    UI.pop(sx(w.x), sy(w.y - 12), "とどかない", "bounce");
+    return;
+  }
+  /* 弾かれ */
+  if(mv.kind !== "shot" && band.hard < hard){
+    Snd.se("err");
+    H.sharp = Math.max(0, H.sharp - mv.sharp * 1.5);
+    H.state = "hurt"; H.t = 0; H.dur = 26; H.iframe = 20;
+    H.vx = -Math.cos(H.ang) * 90; H.vy = -Math.sin(H.ang) * 90;
+    UI.pop(sx(w.x), sy(w.y - 10), "はじかれた", "bounce");
+    FX.burst(w.x, w.y, "#c8d8f0", 8, 60, 0.35);
+    G.freeze = 5;
+    return;
+  }
+  var crit = Math.random() < 0.08 ? 1.35 : 1;
+  var dmg = mv.mv * (H.W.atk / 100) * band.mul * hz * crit;
+  if(m.sleep){ dmg *= 3; wakeUp(m); }
+  if(m.trap || m.stun) dmg *= 1.12;
+  dmg = Math.max(1, Math.round(dmg));
+
+  m.hp -= dmg;
+  m.rageGauge += dmg;
+  if(pt.hp != null && !pt.gone){
+    pt.dmg = (pt.dmg || 0) + dmg;
+    if(pt.dmg >= pt.hp && !m.broken[pt.k]) breakPart(m, pt);
+  }
+  /* 打撃で 頭を 殴ると 気絶が たまる */
+  if(mv.kind === "blunt" && pt.k === "head" && !m.stun){
+    m.ko += mv.ko;
+    if(m.ko >= m.koMax) stunBeast(m);
+  }
+  H.sharp = Math.max(0, H.sharp - mv.sharp * 0.5);
+  m.hurt = 6;
+  G.freeze = Math.min(9, mv.hs);
+  G.hits++;
+  G.dmgDealt += dmg;
+  G.sinceHit = 0;
+  Snd.se(crit > 1 ? "crit" : (hz >= 0.95 ? "hit" : "hitw"));
+  UI.pop(sx(w.x) + rndInt(-4, 4), sy(w.y - 8), String(dmg), crit > 1 ? "crit" : "dmg");
+  FX.burst(w.x, w.y, crit > 1 ? "#ffd75e" : (hz >= 0.95 ? "#ff8a5a" : "#c8c0b0"), crit > 1 ? 12 : 8, 66, 0.34);
+  if(m.hp <= 0) killBeast(m);
+  else reactBeast(m, dmg);
+}
+function breakPart(m, pt){
+  m.broken[pt.k] = 1;
+  if(pt.sever){ pt.gone = true; if(pt.k === "tail") m.tailCut = true; }
+  if(pt.k === "wingL"){ m.canFly = false; m.air = 0; }
+  Snd.se("break");
+  G.broke.push(pt.n);
+  UI.pop(sx(m.x), sy(m.y - 22), pt.sever ? (pt.n + "を 切断!") : (pt.n + "を 破壊!"), "crit");
+  FX.burst(m.x, m.y - 6, "#ffd75e", 22, 92, 0.6);
+  UI.flash(160, "#ffe8a0");
+}
+function stunBeast(m){
+  m.stun = 340; m.state = "stun"; m.t = 0; m.ko = 0; m.koMax = Math.round(m.koMax * 1.5);
+  Snd.se("break");
+  UI.pop(sx(m.x), sy(m.y - 26), "気絶!", "crit");
+}
+function reactBeast(m, dmg){
+  if(m.rageGauge >= m.rageNeed && !m.rage && !m.stun){ enterRage(m); }
+}
+
+/* ================================================================
+   矢
+   ================================================================ */
+function fireShot(mv){
+  var s = mv.shot, n = s.n || 1, i;
+  for(i = 0; i < n; i++){
+    var a = H.ang + (n > 1 ? (i - (n - 1) / 2) * s.spread : 0);
+    G.shots.push({x:H.x + Math.cos(a) * 8, y:H.y - 6 + Math.sin(a) * 8,
+                  vx:Math.cos(a) * s.spd, vy:Math.sin(a) * s.spd,
+                  r:s.r, life:s.life, mv:mv, a:a});
+  }
+  Snd.se("shot");
+}
+function updateShots(dt){
+  var m = G.m, i, j;
+  for(i = G.shots.length - 1; i >= 0; i--){
+    var s = G.shots[i];
+    s.x += s.vx * dt; s.y += s.vy * dt; s.life -= dt;
+    var gone = s.life <= 0 || s.x < 4 || s.x > FW - 4 || s.y < 20 || s.y > FH - 4;
+    if(!gone && m && !m.dead){
+      for(j = 0; j < m.parts.length; j++){
+        var pt = m.parts[j];
+        if(pt.gone) continue;
+        var w = partPos(m, pt);
+        if(Math.hypot(s.x - w.x, s.y - w.y) < w.r + s.r){
+          H.hitSet = {};
+          dealDamage(pt, s.mv, w);
+          gone = true; break;
+        }
+      }
+    }
+    if(gone) G.shots.splice(i, 1);
+  }
+}
+
+/* ================================================================
+   道具
+   ================================================================ */
+function swapItem(){
+  var n = POUCH_ORDER.length, i;
+  for(i = 1; i <= n; i++){
+    var idx = (H.item + i) % n;
+    if(H.pouch[POUCH_ORDER[idx]] > 0){ H.item = idx; Snd.se("cursor"); return; }
+  }
+  Snd.se("err");
+}
+function useItem(){
+  var key = POUCH_ORDER[H.item];
+  if(!H.pouch[key]){ Snd.se("err"); return; }
+  if(key === "tranq" && !(G.m && G.m.trap)){ Snd.se("err"); banner("わなに かかっていない"); return; }
+  var it = ITEMS[key];
+  H.state = "item"; H.t = 0; H.dur = it.lock * (H.wt === "sw" ? 0.7 : 1);
+  H.itemDone = false; H.itemKey = key;
+  /* 減らすのは 使いきってから。殴られて 中断したときに 損しないように */
+  if(H.wt !== "sw") H.drawn = false;
+  Snd.se("cursor");
+}
+function applyItem(key){
+  var it = ITEMS[key];
+  if(!H.pouch[key]) return;
+  H.pouch[key]--;
+  if(key === "potion" || key === "mega"){
+    H.hp = Math.min(H.hpMax, H.hp + it.v);
+    Snd.se("heal"); UI.pop(sx(H.x), sy(H.y - 18), "+" + it.v, "gold");
+    FX.burst(H.x, H.y - 6, "#8effc0", 10, 44, 0.5);
+  } else if(key === "whet"){
+    H.sharp = Math.min(100, H.sharp + 72);
+    Snd.se("levelup"); banner("切れ味が もどった");
+  } else if(key === "meat"){
+    H.st = H.stMax; Snd.se("heal"); banner("スタミナ 回復");
+  } else if(key === "trap"){
+    G.trap = {x:H.x, y:H.y, t:0, arm:52, used:false};
+    Snd.se("buy"); banner("落とし穴を しかけた");
+  } else if(key === "tranq"){
+    var m = G.m;
+    Snd.se("shot");
+    if(m && m.trap){
+      m.tranq++;
+      FX.burst(m.x, m.y - 8, "#a8e0ff", 14, 60, 0.5);
+      if(m.tranq >= 2 && m.hp / m.hpMax <= 0.20){ captureBeast(m); }
+      else if(m.tranq >= 2){ banner("まだ 元気だ。弱らせろ"); m.tranq = 0; }
+      else banner("麻酔玉 1つめ");
+    }
+  }
+}
+
+/* ================================================================
+   狩人が 受ける ダメージ
+   ================================================================ */
+function hunterHurt(dmg, fx0, fy0, big){
+  if(H.iframe > 0 || H.state === "faint" || G.over) return;
+  var m = G.m;
+  var d = dmg * (m.B.atk / 100) * (m.rage ? 1.25 : 1);
+  d *= 1 - H.def / (H.def + 78);
+  d = Math.max(1, Math.round(d));
+  H.hp -= d;
+  G.dmgTaken += d;
+  var a = Math.atan2(H.y - fy0, H.x - fx0);
+  H.vx = Math.cos(a) * (big ? 190 : 130);
+  H.vy = Math.sin(a) * (big ? 190 : 130);
+  H.iframe = 46;
+  H.combo = -1;
+  UI.flash(120, "#ff4a3a");
+  UI.pop(sx(H.x), sy(H.y - 18), String(d), "hurt");
+  Snd.se(big ? "hitb" : "hurt");
+  G.freeze = 6;
+  G.shake = big ? 7 : 4;
+  if(H.hp <= 0){
+    H.hp = 0;
+    H.state = "faint"; H.t = 0; H.dur = 110; H.drawn = false;
+    H.lives--;
+    Snd.se("down");
+  } else {
+    H.state = "hurt"; H.t = 0; H.dur = big ? 40 : 26;
+  }
+}
+function reviveAtCamp(){
+  if(H.lives <= 0){ questEnd(false, "力尽きた"); return; }
+  H.x = G.fd.camp.x; H.y = G.fd.camp.y;
+  H.hp = H.hpMax; H.st = H.stMax;
+  H.state = "idle"; H.vx = H.vy = 0; H.iframe = 60;
+  banner("キャンプに 運ばれた　のこり " + H.lives);
+}
+
+/* ================================================================
+   狩人の 絵
+   ================================================================ */
+var HWEP = {gs:"gsword", sw:"iron", hm:"club", bw:"bow"};
+WLOOK.gsword = {k:"sword", c:"#dfe6f4"};
+WLOOK.bow    = {k:"staff", c:"#a5744a"};
+ALOOK.hunt0 = "#6a8a4a"; ALOOK.hunt1 = "#8a5a30"; ALOOK.hunt2 = "#7a7268"; ALOOK.hunt3 = "#a8422e";
+
+function drawHunter(g){
+  var X = Math.round(H.x - 8), Y = Math.round(H.y - 15);
+  var dir = H.fx > 0 ? "right" : "left";
+  var frame = (H.state === "run" && ((H.anim >> 3) & 1)) ? 1 : 0;
+  var eq = {weapon:H.drawn ? HWEP[H.wt] : null, armor:"hunt" + G.save.armor};
+
+  g.save();
+  if(H.iframe > 0 && (H.anim >> 1) % 2) g.globalAlpha = 0.45;
+
+  if(H.state === "roll"){
+    /* 前転: つぶして 回す */
+    g.translate(H.x, H.y - 6);
+    g.rotate(H.fx * (H.t / H.dur) * 6.283);
+    g.translate(-8, -8);
+    P(g, 2, 4, 12, 9, ALOOK["hunt" + G.save.armor]);
+    P(g, 4, 2, 8, 6, "#f0c39a");
+    P(g, 4, 2, 8, 3, "#4a3a2a");
+    g.restore();
+    return;
+  }
+  if(H.state === "faint"){
+    g.translate(H.x, H.y);
+    g.rotate(1.4);
+    g.translate(-8, -15);
+    drawActor(g, 0, 0, "hero", "down", 0, SPR.hero, {armor:eq.armor});
+    g.restore();
+    return;
+  }
+  /* しゃがみ(道具・研ぎ) */
+  if(H.state === "item"){
+    drawActor(g, X, Y + 2, "hero", "down", 0, SPR.hero, {armor:eq.armor});
+    var key = H.itemKey;
+    var ic = key === "whet" ? "#9a9288" : (key === "trap" ? "#6a5238" : (key === "tranq" ? "#a8e0ff" : "#8effc0"));
+    P(g, X + (H.fx > 0 ? 12 : 2), Y + 8, 3, 4, ic);
+    if((H.anim >> 2) & 1) P(g, X + 5, Y - 4, 6, 1, "#ffffff");
+    g.restore();
+    return;
+  }
+  drawActor(g, X, Y, "hero", dir, frame, SPR.hero, eq);
+  g.restore();
+
+  /* 斬りの 軌跡 */
+  if(H.swing > 0 && H.move){
+    var p = 1 - H.swing / 8;
+    var a0 = H.ang - H.swingArc / 2, a1 = H.ang + H.swingArc / 2;
+    var a = a0 + (a1 - a0) * p;
+    var R = H.move.reach;
+    g.save();
+    g.globalAlpha = 0.75 - p * 0.5;
+    g.strokeStyle = H.move.kind === "blunt" ? "#ffd08a" : "#ffffff";
+    g.lineWidth = 2.5;
+    g.beginPath();
+    g.arc(H.x, H.y - 6, R * 0.9, a - 0.5, a + 0.2);
+    g.stroke();
+    g.globalAlpha = 0.35;
+    g.lineWidth = 5;
+    g.beginPath();
+    g.arc(H.x, H.y - 6, R * 0.86, a - 0.8, a + 0.1);
+    g.stroke();
+    g.restore();
+  }
+  /* 溜め */
+  if(H.state === "charge"){
+    var lv = chargeLevel();
+    var cc = ["#e8e8f0", "#ffd75e", "#ff8a3a", "#ff4a3a"][lv];
+    var i;
+    for(i = 0; i < 4 + lv * 3; i++){
+      var ca = H.anim * 0.12 + i * 1.0;
+      var cr = 12 - (H.anim % 20) * 0.3;
+      P(g, Math.round(H.x + Math.cos(ca) * cr), Math.round(H.y - 6 + Math.sin(ca) * cr * 0.6), 2, 2, cc);
+    }
+    if(lv > 0){
+      g.save(); g.globalAlpha = 0.5;
+      g.fillStyle = cc;
+      g.fillRect(Math.round(H.x - 9), Math.round(H.y - 22), Math.round(18 * Math.min(1, H.chargeT / H.T.ct[H.T.ct.length - 1])), 2);
+      g.restore();
+    }
+  }
+}
+
+/* ================================================================
+   巨獣 ── 状態と ふるまい
+   ================================================================ */
+function spawnBeast(id){
+  var B = BEASTS[id];
+  var m = {
+    id:id, B:B, x:FW * 0.66, y:FH * 0.40, fx:-1, vx:0, vy:0,
+    hp:B.hp, hpMax:B.hp, anim:0, mov:false, hurt:0,
+    state:"idle", t:0, dur:0, move:null, hitDone:null, cool:60,
+    rage:false, rageT:0, rageGauge:0, rageNeed:B.hp * 0.22,
+    tired:false, tiredT:0,
+    stun:0, ko:0, koMax:110,
+    sleep:false, air:0, canFly:!!B.look.wing,
+    lean:0, jaw:0, headEx:0, tailSw:0,
+    broken:{}, tailCut:false, trap:0, tranq:0, dead:false,
+    goal:null, rageCount:0,
+    parts:B.parts.map(function(p){ return JSON.parse(JSON.stringify(p)); })
+  };
+  return m;
+}
+function beastWeak(m){ return m.hp / m.hpMax <= 0.20; }
+function enterRage(m){
+  m.rage = true; m.rageT = 28 * 60; m.rageGauge = 0;
+  m.rageNeed = Math.round(m.rageNeed * 1.35);
+  m.rageCount++;
+  m.tired = false;
+  Snd.se("enc");
+  banner(m.B.n + "が 怒っている!");
+  FX.rise(m.x, m.y, "#ff6a3a", 18);
+  G.shake = 6;
+}
+function endRage(m){
+  m.rage = false;
+  m.tired = true; m.tiredT = 14 * 60;
+  banner(m.B.n + "は つかれている");
+}
+function wakeUp(m){
+  m.sleep = false; m.state = "idle"; m.t = 0;
+  banner(m.B.n + "が 目をさました!");
+}
+function killBeast(m){
+  m.dead = true; m.hp = 0; m.state = "dead"; m.t = 0;
+  Snd.se("dead");
+  G.shake = 10;
+  UI.flash(300, "#ffffff");
+  FX.burst(m.x, m.y - 6, "#ffd75e", 30, 110, 0.9);
+  questEnd(true, "討伐");
+}
+function captureBeast(m){
+  m.dead = true; m.state = "captured"; m.t = 0;
+  G.captured = true;
+  Snd.se("levelup");
+  UI.flash(280, "#a8e0ff");
+  questEnd(true, "捕獲");
+}
+
+/* --- 巨獣を どう動かすか --- */
+function updateBeast(m, dt){
+  m.anim++;
+  if(m.hurt > 0) m.hurt--;
+  if(m.dead){ m.vx = m.vy = 0; m.lean = Math.min(6, m.lean + dt * 12); return; }
+
+  if(m.rage){
+    m.rageT -= dt * 60;
+    if((m.anim % 8) === 0) FX.add({k:"p", x:m.x + rndf(-14, 14), y:m.y - 10, vx:rndf(-8, 8), vy:-26, c:"#ff7a4a", life:0.5, sz:2, g:-10});
+    if(m.rageT <= 0) endRage(m);
+  } else if(m.tired){
+    m.tiredT -= dt * 60;
+    if(m.tiredT <= 0) m.tired = false;
+  }
+  if(m.stun > 0){
+    m.stun -= dt * 60;
+    m.state = "stun"; m.vx = m.vy = 0;
+    m.lean = 3 + Math.sin(m.anim * 0.3) * 1.5;
+    if((m.anim % 6) === 0) FX.add({k:"p", x:m.x + rndf(-10, 10), y:m.y - 24, vx:rndf(-14, 14), vy:-18, c:"#ffe08a", life:0.5, sz:2, g:0});
+    if(m.stun <= 0){ m.state = "idle"; m.t = 0; m.lean = 0; }
+    return;
+  }
+  if(m.trap > 0){
+    m.trap -= dt * 60;
+    m.state = "trapped"; m.vx = m.vy = 0;
+    m.lean = 2 + Math.sin(m.anim * 0.22) * 2;
+    if(m.trap <= 0){ m.state = "idle"; m.t = 0; m.lean = 0; m.tranq = 0; banner(m.B.n + "が わなから 出た"); }
+    return;
+  }
+
+  var dx = H.x - m.x, dy = H.y - m.y, dist = Math.hypot(dx, dy);
+  var sc = m.B.size, spd = m.B.spd * (m.rage ? 1.32 : 1) * (m.tired ? 0.7 : 1);
+
+  switch(m.state){
+    case "sleep": {
+      m.vx = m.vy = 0; m.lean = 4;
+      m.hp = Math.min(m.hpMax, m.hp + m.hpMax * 0.004 * dt);
+      if((m.anim % 70) < 3) FX.add({k:"p", x:m.x + 16 * m.fx, y:m.y - 14, vx:2 * m.fx, vy:-14, c:"#a8c8f0", life:1.1, sz:2, g:-4});
+      if(dist < 26 && m.anim % 30 === 0 && Math.random() < 0.04) wakeUp(m);
+      break;
+    }
+    case "flee": {
+      var nx = G.fd.nest.x - m.x, ny = G.fd.nest.y - m.y, nd = Math.hypot(nx, ny);
+      if(nd < 14){ m.sleep = true; m.state = "sleep"; m.t = 0; banner(m.B.n + "は 巣で ねむった"); break; }
+      m.fx = nx >= 0 ? 1 : -1;
+      m.vx = nx / nd * spd * 1.15; m.vy = ny / nd * spd * 1.15;
+      m.mov = true; m.lean = 2;
+      break;
+    }
+    case "idle": {
+      m.lean *= 0.85; m.jaw *= 0.8; m.headEx *= 0.8;
+      if(m.cool > 0) m.cool -= dt * 60;
+      /* 瀕死で しばらく 殴られていなければ 巣へ */
+      if(beastWeak(m) && m.rageT <= 0 && G.sinceHit > 5 * 60 && Math.random() < 0.02){
+        m.state = "flee"; banner(m.B.n + "は 逃げ出した"); break;
+      }
+      if(dist < 190 && m.cool <= 0){
+        var mv = chooseMove(m, dist);
+        if(mv){ beginBeastMove(m, mv); break; }
+      }
+      /* 追う / うろつく */
+      if(dist < 210){
+        m.goal = null;
+        if(dist > 40){
+          m.fx = dx >= 0 ? 1 : -1;
+          m.vx = dx / dist * spd; m.vy = dy / dist * spd; m.mov = true;
+        } else { m.vx *= 0.8; m.vy *= 0.8; m.mov = false; m.fx = dx >= 0 ? 1 : -1; }
+      } else {
+        if(!m.goal || Math.hypot(m.goal.x - m.x, m.goal.y - m.y) < 12){
+          m.goal = {x:rndf(40, FW - 40), y:rndf(46, FH - 40)};
+        }
+        var gx = m.goal.x - m.x, gy = m.goal.y - m.y, gd = Math.hypot(gx, gy);
+        m.fx = gx >= 0 ? 1 : -1;
+        m.vx = gx / gd * spd * 0.55; m.vy = gy / gd * spd * 0.55; m.mov = true;
+      }
+      break;
+    }
+    case "atk": {
+      var mvv = m.move;
+      m.t += dt * 60;
+      var ph = m.t < mvv.wind ? "wind" : (m.t < mvv.wind + mvv.act ? "act" : "rec");
+      beastMovePhase(m, mvv, ph, dt, dist, dx, dy);
+      if(m.t >= mvv.wind + mvv.act + mvv.rec){
+        m.state = "idle"; m.t = 0; m.move = null; m.lean = 0; m.jaw = 0; m.headEx = 0; m.tailSw = 0;
+        m.cool = (m.rage ? 16 : 34) + rndInt(0, 26);
+        if(!m.canFly || !mvv.air) m.air = 0;
+      }
+      break;
+    }
+  }
+  moveWithCollision(m, m.vx * dt, m.vy * dt, 13 * sc);
+  /* 空中は だんだん 降りる */
+  if(m.air > 0 && !(m.state === "atk" && m.move && m.move.air)) m.air = Math.max(0, m.air - 60 * dt);
+}
+
+function chooseMove(m, dist){
+  var list = m.B.moves.filter(function(mv){
+    if(mv.air && !m.canFly) return false;
+    return dist >= mv.rng[0] && dist <= mv.rng[1];
+  });
+  if(!list.length) return null;
+  var tot = 0, i;
+  for(i = 0; i < list.length; i++) tot += list[i].w;
+  var r = Math.random() * tot;
+  for(i = 0; i < list.length; i++){ r -= list[i].w; if(r <= 0) return list[i]; }
+  return list[0];
+}
+function beginBeastMove(m, mv){
+  m.state = "atk"; m.t = 0; m.move = mv; m.hitDone = {};
+  m.dashDone = false;
+  var dx = H.x - m.x;
+  if(mv.tell !== "turn") m.fx = dx >= 0 ? 1 : -1;
+  else m.fx = dx >= 0 ? -1 : 1;              /* 尻尾攻撃は 背を 向ける */
+  m.aim = Math.atan2(H.y - m.y, H.x - m.x);
+  Snd.se("cursor");
+}
+function beastMovePhase(m, mv, ph, dt, dist, dx, dy){
+  var sc = m.B.size;
+  if(ph === "wind"){
+    var p = m.t / mv.wind;
+    m.vx *= 0.82; m.vy *= 0.82; m.mov = false;
+    /* 予備動作 */
+    if(mv.tell === "crouch"){ m.lean = 3 * p; m.jaw = p; }
+    else if(mv.tell === "back"){ m.lean = -2 * p; m.vx -= Math.cos(m.aim) * 34 * (1 - p); m.vy -= Math.sin(m.aim) * 34 * (1 - p); }
+    else if(mv.tell === "rear"){ m.lean = -5 * p; m.headEx = -3 * p; }
+    else if(mv.tell === "turn"){ m.tailSw = -6 * p; }
+    else if(mv.tell === "curl"){ m.lean = 4 * p; }
+    else if(mv.tell === "fly"){ m.air = Math.min(20, m.air + 44 * dt); m.lean = -2 * p; }
+    else if(mv.tell === "roar"){ m.lean = -4 * p; m.jaw = p; }
+    /* 溜め終わりに 光る */
+    if(m.t >= mv.wind - 6) FX.add({k:"p", x:m.x + rndf(-16, 16), y:m.y - 14, vx:0, vy:-20, c:m.rage ? "#ff6a3a" : "#ffd75e", life:0.3, sz:2, g:0});
+    /* 狙いを 少しだけ 追従 */
+    if(p < 0.6 && mv.tell !== "turn"){
+      m.aim = Math.atan2(H.y - m.y, H.x - m.x);
+      m.fx = (H.x - m.x) >= 0 ? 1 : -1;
+    }
+    return;
+  }
+  if(ph === "rec"){
+    m.vx *= 0.86; m.vy *= 0.86; m.mov = false;
+    m.lean *= 0.88; m.jaw *= 0.86; m.tailSw *= 0.86;
+    return;
+  }
+  /* --- act --- */
+  var at = m.t - mv.wind;
+  m.jaw = 1;
+  if(mv.dash){
+    var f = clamp(1 - at / mv.act, 0.25, 1);
+    m.vx = Math.cos(m.aim) * mv.dash * f; m.vy = Math.sin(m.aim) * mv.dash * f;
+    m.mov = true;
+    if(mv.spin) m.lean = Math.sin(at * 0.6) * 4;
+    if(mv.air) m.air = 18;
+    if((at | 0) % 4 === 0) FX.burst(m.x, m.y + 4, "#c8b48a", 3, 30, 0.3);
+  } else if(mv.step){
+    var sf = clamp(1 - at / mv.act, 0, 1);
+    m.vx = Math.cos(m.aim) * mv.step * 6 * sf; m.vy = Math.sin(m.aim) * mv.step * 6 * sf;
+  } else { m.vx *= 0.8; m.vy *= 0.8; }
+  if(mv.tell === "turn") m.tailSw = 10 * Math.sin(at / mv.act * 3.14);
+
+  /* 判定の 円 */
+  if(mv.hit){
+    var i;
+    for(i = 0; i < mv.hit.length; i++){
+      var hc = mv.hit[i];
+      var key = "h" + i + (mv.multi ? Math.floor(at / (mv.act / mv.multi)) : 0);
+      if(m.hitDone[key]) continue;
+      var wx = m.x + hc.ox * m.fx * sc, wy = m.y + hc.oy * sc - m.air;
+      if(Math.hypot(H.x - wx, H.y - wy) < hc.r * sc + 6){
+        m.hitDone[key] = 1;
+        hunterHurt(hc.dmg, wx, wy, hc.r * sc > 15);
+      }
+    }
+  }
+  /* 一度だけの 大技 */
+  if(!m.dashDone){
+    if(mv.breath && (at | 0) % mv.breath.tick === 0){
+      var b = mv.breath;
+      var t2 = at / mv.act;
+      var bx = m.x + (m.B.parts[0].ox + 6) * m.fx * sc, by = m.y + (m.B.parts[0].oy) * sc - m.air;
+      G.haz.push({kind:"fire", x:bx, y:by,
+                  vx:Math.cos(m.aim) * 150, vy:Math.sin(m.aim) * 150,
+                  r:b.r, dmg:b.dmg, life:b.len / 150, t:0, hit:{}});
+      Snd.se("fire");
+    }
+    if(mv.proj && at >= 2){
+      m.dashDone = true;
+      var px = m.x + 16 * m.fx * sc, py = m.y - 10 * sc;
+      G.haz.push({kind:"rock", x:px, y:py, vx:Math.cos(m.aim) * mv.proj.spd, vy:Math.sin(m.aim) * mv.proj.spd,
+                  r:mv.proj.r, dmg:mv.proj.dmg, life:mv.proj.life, t:0, hit:{}});
+      Snd.se("swing");
+    }
+    if(mv.quake && at >= 2){
+      m.dashDone = true;
+      var q, n = 7;
+      for(q = 1; q <= n; q++){
+        var qd = q / n * mv.quake.len;
+        G.haz.push({kind:"crack", x:m.x + Math.cos(m.aim) * qd, y:m.y + Math.sin(m.aim) * qd,
+                    r:mv.quake.r, dmg:mv.quake.dmg, life:0.34, t:-q * 0.055, hit:{}});
+      }
+      Snd.se("thunder"); G.shake = 8;
+    }
+    if(mv.roar && at >= 2){
+      m.dashDone = true;
+      Snd.se("wind"); G.shake = 9;
+      FX.ring(m.x, m.y - 10, "#ffe08a");
+      if(Math.hypot(H.x - m.x, H.y - m.y) < 110 && H.state !== "roll" && H.iframe <= 0){
+        H.state = "hurt"; H.t = 0; H.dur = 64; H.vx = H.vy = 0;
+        banner("咆哮で ひるんだ!");
+      }
+    }
+    if(mv.gust && at >= 2){
+      m.dashDone = true;
+      FX.ring(m.x, m.y, "#d8e8ff");
+      var gd2 = Math.hypot(H.x - m.x, H.y - m.y);
+      if(gd2 < 40){
+        var ga = Math.atan2(H.y - m.y, H.x - m.x);
+        H.vx += Math.cos(ga) * 150; H.vy += Math.sin(ga) * 150;
+      }
+    }
+  }
+}
+
+/* ================================================================
+   地面の 危険(ブレス・岩・地割れ)
+   ================================================================ */
+function updateHaz(dt){
+  var i;
+  for(i = G.haz.length - 1; i >= 0; i--){
+    var z = G.haz[i];
+    z.t += dt;
+    if(z.t < 0) continue;
+    if(z.vx != null){ z.x += z.vx * dt; z.y += z.vy * dt; }
+    if(z.kind === "fire" && (z.t * 60 | 0) % 2 === 0){
+      FX.add({k:"p", x:z.x + rndf(-3, 3), y:z.y + rndf(-3, 3), vx:rndf(-10, 10), vy:rndf(-30, -8),
+              c:pick(["#ffd75e", "#ff8a3a", "#ff4a2a"]), life:0.34, sz:2, g:-20});
+    }
+    if(!z.hitOnce && Math.hypot(H.x - z.x, H.y - (z.y)) < z.r + 5){
+      z.hitOnce = 1;
+      hunterHurt(z.dmg, z.x, z.y, z.kind !== "fire");
+      if(z.kind === "rock"){ z.life = 0; FX.burst(z.x, z.y, "#8a8278", 10, 60, 0.4); }
+    }
+    if(z.t >= z.life) G.haz.splice(i, 1);
+  }
+}
+function drawHaz(g){
+  G.haz.forEach(function(z){
+    if(z.t < 0) return;
+    if(z.kind === "crack"){
+      var k = 1 - z.t / z.life;
+      g.globalAlpha = Math.max(0, Math.min(1, k * 1.6));
+      ellipseFill(g, z.x, z.y, z.r, z.r * 0.45, "#c8541e");
+      ellipseFill(g, z.x, z.y, z.r * 0.6, z.r * 0.28, "#ffb03a");
+      g.globalAlpha = 1;
+    } else if(z.kind === "rock"){
+      ellipseFill(g, z.x, z.y, z.r, z.r * 0.9, "#6a6258");
+      ellipseFill(g, z.x - 1, z.y - 1, z.r * 0.6, z.r * 0.5, "#8a8278");
+    } else if(z.kind === "fire"){
+      ellipseFill(g, z.x, z.y, z.r, z.r * 0.8, "rgba(255,120,40,.5)");
+    }
+  });
+}
+
+/* ================================================================
+   狩りの 進行
+   ================================================================ */
+function banner(txt){
+  G.banner = txt; G.bannerT = 130;
+}
+function sx(wx){ return wx - G.cam.x; }
+function sy(wy){ return wy - G.cam.y + HUD_H; }
+
+function startHunt(q){
+  G.q = q;
+  G.fd = buildField(q.field);
+  G.baked = bakeField(G.fd);
+  G.m = spawnBeast(q.beast);
+  G.shots = []; G.haz = []; G.trap = null;
+  G.time = q.time * 60;
+  G.hits = 0; G.dmgDealt = 0; G.dmgTaken = 0; G.broke = [];
+  G.captured = false; G.over = false; G.freeze = 0; G.shake = 0;
+  G.sinceHit = 0; G.banner = ""; G.bannerT = 0;
+  G.cam = {x:0, y:0};
+  FX.clear();
+  resetHunter();
+  H.x = G.fd.camp.x; H.y = G.fd.camp.y - 10;
+  G.scene = "hunt";
+  padVisible(matchMedia("(pointer: coarse)").matches);
+  Snd.play(q.beast === "nushi" ? "boss" : "battle");
+}
+
+function updateTrap(dt){
+  var t = G.trap, m = G.m;
+  if(!t) return;
+  t.t += dt * 60;
+  if(t.used) return;
+  if(t.t < t.arm) return;
+  if(m && !m.dead && !m.trap && m.air <= 4 && Math.hypot(m.x - t.x, m.y - t.y) < 22){
+    t.used = true;
+    m.trap = 10 * 60; m.state = "trapped"; m.move = null; m.tranq = 0;
+    Snd.se("break"); G.shake = 6;
+    banner(m.B.n + "が わなに かかった!");
+  }
+}
+
+function huntStep(dt){
+  if(G.over) return;
+  if(G.freeze > 0){ G.freeze--; return; }
+  G.time -= dt * 60;
+  G.sinceHit += dt * 60;
+  /* 狩り中は 窓UIの キュー(Z=決定 など)を ためこまない。
+     残すと 狩りのあと 出る 結果画面が 勝手に 決定されてしまう */
+  Input.clear();
+  if(G.time <= 0){ questEnd(false, "時間切れ"); return; }
+  updateHunter(dt);
+  if(G.m) updateBeast(G.m, dt);
+  updateShots(dt);
+  updateHaz(dt);
+  updateTrap(dt);
+  FX.update(dt);
+  if(G.shake > 0) G.shake -= dt * 22;
+  if(G.bannerT > 0) G.bannerT--;
+  /* カメラ */
+  var tw = SCR_W, th = SCR_H - HUD_H;
+  G.cam.x = clamp(H.x - tw / 2, 0, Math.max(0, FW - tw));
+  G.cam.y = clamp(H.y - th / 2, 0, Math.max(0, FH - th));
+}
+
+/* ================================================================
+   描画
+   ================================================================ */
+function renderHunt(){
+  var g = ctx;
+  g.fillStyle = "#000"; g.fillRect(0, 0, SCR_W, SCR_H);
+  var shk = G.shake > 0 ? G.shake : 0;
+  var ox = shk ? rndInt(-shk, shk) * 0.5 : 0, oy = shk ? rndInt(-shk, shk) * 0.5 : 0;
+  g.save();
+  g.beginPath(); g.rect(0, HUD_H, SCR_W, SCR_H - HUD_H); g.clip();
+  g.translate(Math.round(-G.cam.x + ox), Math.round(-G.cam.y + HUD_H + oy));
+  g.drawImage(G.baked, 0, 0);
+
+  /* わな */
+  if(G.trap){
+    var t = G.trap;
+    if(t.used){
+      ellipseFill(g, t.x, t.y, 16, 9, "#120c06");
+      ellipseFill(g, t.x, t.y - 1, 13, 7, "#000000");
+    } else {
+      var arm = t.t >= t.arm;
+      ellipseFill(g, t.x, t.y, 14, 8, arm ? "#4a3a24" : "#5a4a30");
+      var q;
+      for(q = 0; q < 6; q++) P(g, t.x - 12 + q * 4, t.y - 1 + Math.sin(q) * 2, 3, 1, "#7a6a48");
+      if(!arm && (G.m ? 1 : 1)) P(g, t.x - 1, t.y - 8, 2, 2, "#ffd75e");
+    }
+  }
+  drawHaz(g);
+
+  /* 前後関係で ならべる */
+  var ents = [];
+  if(G.m) ents.push({y:G.m.y, f:function(){ drawBeast(g, G.m.B, G.m); drawBeastMarks(g, G.m); }});
+  ents.push({y:H.y, f:function(){ drawHunter(g); }});
+  ents.sort(function(a, b){ return a.y - b.y; });
+  ents.forEach(function(e){ e.f(); });
+
+  /* 矢 */
+  G.shots.forEach(function(s){
+    g.save(); g.translate(s.x, s.y); g.rotate(s.a);
+    P(g, -6, -1, 10, 1, "#d8c8a0"); P(g, 4, -1, 3, 1, "#e8e8f0");
+    P(g, -7, -2, 2, 3, "#c8a04a");
+    g.restore();
+  });
+  FX.draw(g);
+  g.restore();
+  drawHUD(g);
+}
+
+/* 部位破壊の しるし */
+function drawBeastMarks(g, m){
+  if(m.dead) return;
+  var i;
+  for(i = 0; i < m.parts.length; i++){
+    var pt = m.parts[i];
+    if(!m.broken[pt.k] || pt.gone) continue;
+    var w = partPos(m, pt);
+    if((m.anim >> 3) % 6 === 0) P(g, w.x - 1, w.y - 1, 2, 2, "#ffd75e");
+  }
+  /* わなに かかっているときの しるし */
+  if(m.trap > 0 && (m.anim >> 3) % 2){
+    P(g, m.x - 2, m.y - 34, 4, 4, "#a8e0ff");
+  }
+}
+
+/* ================================================================
+   情報帯
+   ================================================================ */
+function bar(g, x, y, w, h, v, max, col, bg){
+  P(g, x - 1, y - 1, w + 2, h + 2, "#12100c");
+  P(g, x, y, w, h, bg || "#2a241c");
+  var ww = Math.max(0, Math.round(w * clamp(v / max, 0, 1)));
+  if(ww > 0) P(g, x, y, ww, h, col);
+  P(g, x, y, ww, 1, "rgba(255,255,255,.35)");
+}
+function beastMood(m){
+  if(!m) return "";
+  if(m.dead) return "たおれた";
+  if(m.sleep) return "ねむっている";
+  if(m.trap > 0) return "わなに かかっている";
+  if(m.stun > 0) return "気絶している";
+  if(beastWeak(m)) return "瀕死";
+  if(m.rage) return "怒っている";
+  if(m.tired) return "つかれている";
+  if(m.hp / m.hpMax < 0.55) return "手負い";
+  return "元気";
+}
+function drawHUD(g){
+  P(g, 0, 0, SCR_W, HUD_H, "#150f08");
+  P(g, 0, HUD_H - 1, SCR_W, 1, "#8a6a3a");
+  var i;
+  /* 体力・スタミナ */
+  bar(g, 6, 4, 68, 6, H.hp, H.hpMax, H.hp / H.hpMax < 0.3 ? "#ff5a4a" : "#5ee06a");
+  bar(g, 6, 14, 56, 4, H.st, H.stMax, "#ffd75e");
+  /* 切れ味 ── 帯を ならべて、いまの位置を 明るく */
+  var band = curBand(), top = H.W.top, cur = BANDS.indexOf(band);
+  var bx = 80, bw = 5;
+  P(g, bx - 1, 3, (top + 1) * (bw + 1) + 1, 8, "#12100c");
+  for(i = 0; i <= top; i++){
+    P(g, bx + i * (bw + 1), 4, bw, 6, i <= cur ? BANDS[i].c : "#33291c");
+  }
+  /* いま どの帯の どのへんか */
+  var seg = 100 / (top + 1);
+  var inSeg = (H.sharp - cur * seg) / seg;
+  P(g, bx + cur * (bw + 1), 11, Math.max(1, Math.round(bw * clamp(inSeg, 0, 1))), 1, "#ffffff");
+  /* 残り時間 */
+  var s = Math.max(0, Math.ceil(G.time / 60));
+  var mm = (s / 60) | 0, ss = s % 60;
+  txt(g, (mm < 10 ? "0" : "") + mm + ":" + (ss < 10 ? "0" : "") + ss, SCR_W - 36, 3, s < 60 ? "#ff5a4a" : "#f4e9d2");
+  /* カート(あと何回 力尽きられるか) */
+  for(i = 0; i < 3; i++) P(g, SCR_W - 36 + i * 7, 15, 5, 5, i < H.lives ? "#ffd75e" : "#4a3a24");
+  /* 巨獣の ようす */
+  var m = G.m;
+  if(m){
+    txt(g, m.B.n, 116, 3, m.rage ? "#ff6a58" : "#f4e9d2");
+    txt(g, beastMood(m), 116, 14, m.rage ? "#ff8a6a" : (beastWeak(m) ? "#ffd75e" : "#b09a76"));
+  }
+  /* 道具 */
+  var key = POUCH_ORDER[H.item], n = H.pouch[key] || 0;
+  P(g, 4, SCR_H - 16, 82, 13, "rgba(10,8,4,.74)");
+  P(g, 4, SCR_H - 16, 82, 1, "rgba(232,214,168,.28)");
+  txt(g, ITEMS[key].n, 8, SCR_H - 13, n > 0 ? "#f4e9d2" : "#6a5a44");
+  txt(g, "x" + n, 70, SCR_H - 13, n > 0 ? "#ffd75e" : "#6a5a44");
+  /* しらせ */
+  if(G.bannerT > 0){
+    var a = Math.min(1, G.bannerT / 26);
+    g.globalAlpha = a;
+    var w2 = G.banner.length * 6 + 12;
+    P(g, (SCR_W - w2) / 2, 34, w2, 13, "rgba(10,8,4,.8)");
+    txt(g, G.banner, (SCR_W - w2) / 2 + 6, 37, "#ffd75e");
+    g.globalAlpha = 1;
+  }
+}
+function txt(g, s, x, y, col){
+  g.font = "8px " + FONT_CSS;
+  g.textBaseline = "top";
+  g.fillStyle = "#000";
+  g.fillText(s, x + 1, y + 1);
+  g.fillStyle = col || "#f4e9d2";
+  g.fillText(s, x, y);
+}
+var FONT_CSS = '"Hiragino Kaku Gothic ProN","Hiragino Sans","Yu Gothic UI","Meiryo","Noto Sans JP",sans-serif';
+
+/* ================================================================
+   全体の 状態と セーブ
+   ================================================================ */
+var G = {scene:"title", save:null, cam:{x:0, y:0}, haz:[], shots:[], freeze:0, shake:0, over:false};
+var STORAGE_OK = (function(){
+  try{ localStorage.setItem("__t", "1"); localStorage.removeItem("__t"); return true; }
+  catch(e){ return false; }
+})();
+
+function newSave(){
+  return {
+    v:1, g:1500, wep:"sw", tier:{gs:0, sw:0, hm:0, bw:0}, armor:0,
+    bag:{potion:6, mega:0, whet:4, meat:2, trap:0, tranq:0},
+    mats:{}, cleared:{}, hunted:{}, best:{}, quests:1
+  };
+}
+function saveGame(){
+  if(!STORAGE_OK) return false;
+  try{ localStorage.setItem(SAVE_KEY, JSON.stringify(G.save)); return true; }
+  catch(e){ return false; }
+}
+function loadGame(){
+  try{
+    var d = JSON.parse(localStorage.getItem(SAVE_KEY));
+    if(d && d.tier && d.bag){ G.save = d; return true; }
+  }catch(e){}
+  return false;
+}
+function hasSave(){
+  try{ return !!localStorage.getItem(SAVE_KEY); }catch(e){ return false; }
+}
+function encodeSave(){
+  return btoa(unescape(encodeURIComponent(JSON.stringify(G.save)))).replace(/=+$/, "");
+}
+function decodeSave(code){
+  try{
+    var s = String(code).replace(/\s+/g, "");
+    while(s.length % 4) s += "=";
+    var d = JSON.parse(decodeURIComponent(escape(atob(s))));
+    return (d && d.tier && d.bag) ? d : null;
+  }catch(e){ return null; }
+}
+function matCount(k){ return G.save.mats[k] || 0; }
+function addMat(k, n){ G.save.mats[k] = (G.save.mats[k] || 0) + n; }
+function canAfford(rec, g){
+  if(G.save.g < g) return false;
+  if(!rec) return true;
+  for(var k in rec) if(matCount(k) < rec[k]) return false;
+  return true;
+}
+function payFor(rec, g){
+  G.save.g -= g;
+  if(rec) for(var k in rec) G.save.mats[k] -= rec[k];
+}
+function recipeText(rec, g){
+  var a = [];
+  if(g) a.push(g + "G");
+  if(rec) for(var k in rec) a.push(MAT[k].n + " " + matCount(k) + "/" + rec[k]);
+  return a.join("　");
+}
+
+/* ================================================================
+   拠点の 絵
+   ================================================================ */
+var vTick = 0;
+function renderVillage(){
+  var g = ctx;
+  vTick++;
+  /* 空 */
+  var sky = g.createLinearGradient(0, 0, 0, 150);
+  sky.addColorStop(0, "#1a1830"); sky.addColorStop(0.6, "#4a3050"); sky.addColorStop(1, "#8a5030");
+  g.fillStyle = sky; g.fillRect(0, 0, SCR_W, 150);
+  /* 星 */
+  var i;
+  for(i = 0; i < 34; i++){
+    var sxp = (i * 97) % SCR_W, syp = (i * 43) % 90;
+    if(((vTick >> 4) + i) % 11 !== 0) P(g, sxp, syp, 1, 1, "#e8e0ff");
+  }
+  /* 山なみ */
+  for(i = 0; i < 5; i++){
+    var mx = i * 62 - 20, mh = 44 + (i % 3) * 16;
+    TRI(g, [mx, 150, mx + 44, 150 - mh, mx + 88, 150], i % 2 ? "#2a2438" : "#231e30");
+    TRI(g, [mx + 30, 150 - mh + 14, mx + 44, 150 - mh, mx + 58, 150 - mh + 14], "#3a3450");
+  }
+  /* 地面 */
+  g.fillStyle = "#3a2e1e"; g.fillRect(0, 150, SCR_W, SCR_H - 150);
+  for(i = 0; i < 90; i++){
+    var gx = (i * 71) % SCR_W, gy = 150 + ((i * 37) % (SCR_H - 150));
+    P(g, gx, gy, 2, 1, (i % 3) ? "#463726" : "#33291b");
+  }
+  /* テント */
+  TRI(g, [22, 168, 52, 126, 82, 168], "#7a5a34");
+  TRI(g, [30, 168, 52, 132, 74, 168], "#96703f");
+  TRI(g, [46, 168, 52, 142, 58, 168], "#2a1e10");
+  P(g, 20, 167, 64, 2, "#4a3520");
+  /* 武器かけ */
+  P(g, 196, 130, 2, 40, "#5a4228"); P(g, 226, 130, 2, 40, "#5a4228"); P(g, 194, 130, 36, 2, "#6a5030");
+  P(g, 202, 134, 3, 26, "#c8ccd8"); P(g, 201, 158, 5, 2, "#c9a33c");
+  P(g, 214, 134, 4, 16, "#8a8278"); P(g, 215, 148, 2, 14, "#6b4a2a");
+  /* たき火 */
+  var fx0 = 132, fy0 = 176;
+  ellipseFill(g, fx0, fy0 + 2, 16, 6, "rgba(0,0,0,.4)");
+  P(g, fx0 - 9, fy0 - 1, 18, 4, "#4a3a28"); P(g, fx0 - 6, fy0 - 3, 12, 2, "#6a5238");
+  var fl = (vTick >> 2) % 4;
+  TRI(g, [fx0 - 6 + fl, fy0 - 2, fx0, fy0 - 16 - fl * 2, fx0 + 6 - fl, fy0 - 2], "#ff6a2a");
+  TRI(g, [fx0 - 3, fy0 - 2, fx0 + (fl - 2), fy0 - 11 - fl, fx0 + 3, fy0 - 2], "#ffc84a");
+  for(i = 0; i < 5; i++){
+    var ep = (vTick * 1.4 + i * 26) % 60;
+    P(g, fx0 - 5 + ((i * 7) % 11) + Math.sin(ep * 0.14) * 3, fy0 - 8 - ep, 1, 1, "#ff9a4a");
+  }
+  g.globalAlpha = 0.16; ellipseFill(g, fx0, fy0 - 6, 40, 22, "#ff8a3a"); g.globalAlpha = 1;
+  /* 狩人 */
+  var eq = {weapon:HWEP[G.save.wep], armor:"hunt" + G.save.armor};
+  drawActor(g, 100, 158, "hero", "right", (vTick >> 5) & 1, SPR.hero, eq);
+  /* 帯 */
+  P(g, 0, 0, SCR_W, 13, "rgba(10,8,4,.7)");
+  txt(g, "狩人の 野営地", 6, 3, "#f4e9d2");
+  txt(g, G.save.g + "G", SCR_W - 46, 3, "#ffd75e");
+}
+
+/* ================================================================
+   拠点の メニュー
+   ================================================================ */
+async function village(){
+  G.scene = "village";
+  padVisible(false);
+  Snd.play("town");
+  while(true){
+    var i = await UI.list({
+      cap:"野営地",
+      items:[
+        {l:"狩りに 出る"},
+        {l:"そうび", s:WTYPE[G.save.wep].n},
+        {l:"鍛冶屋"},
+        {l:"道具屋"},
+        {l:"狩猟記録"},
+        {l:"きろく", s:STORAGE_OK ? "" : "×"}
+      ],
+      css:{left:"calc(6*var(--u))", top:"calc(24*var(--u))", minWidth:"calc(96*var(--u))"},
+      noCancel:true, index:G.vIdx || 0,
+      onMove:function(n){ G.vIdx = n; }
+    });
+    if(i === 0){ if(await questMenu()) return; }
+    else if(i === 1) await equipMenu();
+    else if(i === 2) await forgeMenu();
+    else if(i === 3) await shopMenu();
+    else if(i === 4) await recordMenu();
+    else if(i === 5) await saveMenu();
+  }
+}
+
+function questList(){
+  var out = [];
+  QUESTS.forEach(function(q, n){
+    var open = n < G.save.quests;
+    out.push({q:q, off:!open,
+      l:q.rank + " " + q.n,
+      s:open ? (G.save.cleared[q.id] ? "済" : BEASTS[q.beast].n) : "？？？"});
+  });
+  return out;
+}
+async function questMenu(){
+  while(true){
+    var rows = questList();
+    var items = rows.map(function(r){ return {l:r.l, s:r.s, off:r.off}; });
+    items.push({l:"もどる"});
+    var i = await UI.list({
+      cap:"受けられる 狩り",
+      items:items,
+      css:{left:"calc(6*var(--u))", top:"calc(20*var(--u))", minWidth:"calc(150*var(--u))"}
+    });
+    if(i < 0 || i >= rows.length) return false;
+    var q = rows[i].q, B = BEASTS[q.beast];
+    await UI.say(q.rank + "「" + q.n + "」\n" + B.n + " ── " + B.title + "\n" + q.brief);
+    var ok = await UI.yesno("この狩りを 受けますか?\n制限 " + Math.round(q.time / 60) + "分　報酬 " + q.g + "G");
+    UI.closeMsg();
+    if(!ok) continue;
+    /* 持ち物の 確認 */
+    var need = [];
+    POUCH_ORDER.forEach(function(k){ if(G.save.bag[k]) need.push(ITEMS[k].n + "×" + G.save.bag[k]); });
+    await UI.say("持ち物: " + (need.length ? need.join("　") : "なし"));
+    UI.closeMsg();
+    UI.clearAll();
+    await UI.fade(true);
+    startHunt(q);
+    await UI.fade(false);
+    return true;
+  }
+}
+
+async function equipMenu(){
+  while(true){
+    var keys = ["gs", "sw", "hm", "bw"];
+    var items = keys.map(function(k){
+      var w = WTREE[k][G.save.tier[k]];
+      return {l:WTYPE[k].n + (G.save.wep === k ? " ◀" : ""), s:w.n + " 攻" + w.atk};
+    });
+    items.push({l:"防具", s:ATREE[G.save.armor].n + " 防" + ATREE[G.save.armor].def});
+    items.push({l:"もどる"});
+    var i = await UI.list({
+      cap:"そうび",
+      items:items,
+      css:{left:"calc(6*var(--u))", top:"calc(22*var(--u))", minWidth:"calc(150*var(--u))"},
+      onMove:function(n){
+        if(n < 4){
+          UI.closeMsg();
+          UI.say(WTYPE[keys[n]].n + " ── " + WTYPE[keys[n]].desc, {nowait:true, speed:0});
+        } else UI.closeMsg();
+      }
+    });
+    UI.closeMsg();
+    if(i < 0 || i === items.length - 1) return;
+    if(i < 4){ G.save.wep = keys[i]; Snd.se("ok"); saveGame(); }
+  }
+}
+
+async function forgeMenu(){
+  while(true){
+    var i = await UI.list({
+      cap:"鍛冶屋",
+      items:[{l:"武器を きたえる"}, {l:"防具を きたえる"}, {l:"もどる"}],
+      css:{left:"calc(6*var(--u))", top:"calc(26*var(--u))", minWidth:"calc(100*var(--u))"}
+    });
+    if(i < 0 || i === 2) return;
+    if(i === 0) await forgeWeapon();
+    else await forgeArmor();
+  }
+}
+async function forgeWeapon(){
+  while(true){
+    var keys = ["gs", "sw", "hm", "bw"];
+    var items = keys.map(function(k){
+      var t = G.save.tier[k], nx = WTREE[k][t + 1];
+      if(!nx) return {l:WTYPE[k].n, s:"これ以上ない", off:true};
+      return {l:WTYPE[k].n + " → " + nx.n, s:canAfford(nx.mat, nx.g) ? "できる" : "素材不足",
+              off:!canAfford(nx.mat, nx.g), k:k};
+    });
+    items.push({l:"もどる"});
+    var i = await UI.list({
+      cap:"武器を きたえる",
+      items:items,
+      css:{left:"calc(4*var(--u))", top:"calc(20*var(--u))", minWidth:"calc(160*var(--u))"},
+      onMove:function(n){
+        UI.closeMsg();
+        if(n < 4){
+          var nx2 = WTREE[keys[n]][G.save.tier[keys[n]] + 1];
+          if(nx2) UI.say(nx2.n + " 攻" + nx2.atk + " 切れ味" + BANDS[nx2.top].n + "\n" + recipeText(nx2.mat, nx2.g), {nowait:true, speed:0});
+        }
+      }
+    });
+    UI.closeMsg();
+    if(i < 0 || i === 4) return;
+    var k2 = keys[i], nx3 = WTREE[k2][G.save.tier[k2] + 1];
+    if(!nx3 || !canAfford(nx3.mat, nx3.g)){ Snd.se("err"); continue; }
+    payFor(nx3.mat, nx3.g);
+    G.save.tier[k2]++;
+    G.save.wep = k2;
+    Snd.se("levelup"); UI.flash(200, "#ffd75e");
+    saveGame();
+    await UI.say(nx3.n + " が できあがった!");
+    UI.closeMsg();
+  }
+}
+async function forgeArmor(){
+  while(true){
+    var nx = ATREE[G.save.armor + 1];
+    var items = [];
+    if(nx) items.push({l:nx.n + " 防" + nx.def, s:canAfford(nx.mat, nx.g) ? "できる" : "素材不足", off:!canAfford(nx.mat, nx.g)});
+    else items.push({l:"これ以上ない", off:true});
+    items.push({l:"もどる"});
+    var i = await UI.list({
+      cap:"防具を きたえる",
+      items:items, head:nx ? recipeText(nx.mat, nx.g) : "",
+      css:{left:"calc(4*var(--u))", top:"calc(26*var(--u))", minWidth:"calc(160*var(--u))"}
+    });
+    if(i < 0 || i === items.length - 1) return;
+    if(!nx || !canAfford(nx.mat, nx.g)){ Snd.se("err"); continue; }
+    payFor(nx.mat, nx.g);
+    G.save.armor++;
+    Snd.se("levelup"); UI.flash(200, "#ffd75e");
+    saveGame();
+    await UI.say(nx.n + " が できあがった!");
+    UI.closeMsg();
+  }
+}
+
+async function shopMenu(){
+  while(true){
+    var items = POUCH_ORDER.map(function(k){
+      var it = ITEMS[k], have = G.save.bag[k] || 0;
+      return {l:it.n, s:have + "/" + it.max + "　" + it.g + "G", off:have >= it.max || G.save.g < it.g};
+    });
+    items.push({l:"もどる"});
+    var i = await UI.list({
+      cap:"道具屋　" + G.save.g + "G",
+      items:items,
+      css:{left:"calc(6*var(--u))", top:"calc(20*var(--u))", minWidth:"calc(140*var(--u))"},
+      onMove:function(n){
+        UI.closeMsg();
+        if(n < POUCH_ORDER.length) UI.say(ITEMS[POUCH_ORDER[n]].desc, {nowait:true, speed:0});
+      }
+    });
+    UI.closeMsg();
+    if(i < 0 || i === POUCH_ORDER.length) return;
+    var k2 = POUCH_ORDER[i], it2 = ITEMS[k2];
+    if((G.save.bag[k2] || 0) >= it2.max || G.save.g < it2.g){ Snd.se("err"); continue; }
+    G.save.g -= it2.g;
+    G.save.bag[k2] = (G.save.bag[k2] || 0) + 1;
+    Snd.se("buy");
+    saveGame();
+  }
+}
+
+async function recordMenu(){
+  var rows = [];
+  Object.keys(BEASTS).forEach(function(k){
+    var n = G.save.hunted[k] || 0;
+    rows.push({l:n ? BEASTS[k].n : "？？？？", s:n ? ("狩" + n) : "-"});
+  });
+  rows.push({l:"── 素材 ──", skip:true});
+  Object.keys(MAT).forEach(function(k){
+    if(matCount(k)) rows.push({l:MAT[k].n, s:String(matCount(k))});
+  });
+  rows.push({l:"もどる"});
+  await UI.list({
+    cap:"狩猟記録",
+    items:rows,
+    css:{left:"calc(6*var(--u))", top:"calc(18*var(--u))", minWidth:"calc(140*var(--u))", maxHeight:"calc(170*var(--u))"}
+  });
+}
+
+async function saveMenu(){
+  while(true){
+    var i = await UI.list({
+      cap:"きろく",
+      items:[{l:"きろくする", off:!STORAGE_OK}, {l:"あいことばを 見る"}, {l:"あいことばで 読む"}, {l:"もどる"}],
+      head:STORAGE_OK ? "" : "この環境では 記録を のこせません。\nあいことばを つかってください。",
+      css:{left:"calc(6*var(--u))", top:"calc(24*var(--u))", minWidth:"calc(120*var(--u))"}
+    });
+    if(i < 0 || i === 3) return;
+    if(i === 0){
+      if(saveGame()){ Snd.se("levelup"); await UI.say("記録した。"); } else await UI.say("記録できなかった。");
+      UI.closeMsg();
+    } else if(i === 1){
+      await codeWindow("あいことば(ひかえて ください)", encodeSave(), false);
+    } else if(i === 2){
+      var v = await codeWindow("あいことばを 貼りつけて ください", "", true);
+      if(v){
+        var d = decodeSave(v);
+        if(d){ G.save = d; saveGame(); Snd.se("levelup"); await UI.say("あいことばから 読みこんだ。"); }
+        else { Snd.se("err"); await UI.say("あいことばが ちがうようだ。"); }
+        UI.closeMsg();
+      }
+    }
+  }
+}
+/* テキスト入出力の 窓 */
+function codeWindow(cap, value, editable){
+  return new Promise(function(res){
+    var host = (G.scene === "title") ? $("title") : UI.layer;
+    var w = el("div", "win", "");
+    w.style.left = "calc(6*var(--u))"; w.style.right = "calc(6*var(--u))"; w.style.top = "calc(30*var(--u))";
+    w.appendChild(el("div", "cap", esc(cap)));
+    var ta = document.createElement("textarea");
+    ta.value = value;
+    ta.readOnly = !editable;
+    ta.style.cssText = "width:100%;height:calc(90*var(--u));margin-top:calc(4*var(--u));" +
+      "background:#0d0906;color:#f4e9d2;border:calc(1*var(--u)) solid #8a6a3a;border-radius:calc(2*var(--u));" +
+      "font:inherit;font-size:calc(6.5*var(--u));line-height:1.5;padding:calc(2*var(--u));resize:none;word-break:break-all;";
+    w.appendChild(ta);
+    var row = el("div", "small", "");
+    row.style.cssText = "margin-top:calc(3*var(--u));display:flex;gap:calc(4*var(--u));justify-content:flex-end";
+    var b1 = el("button", "", editable ? "読みこむ" : "コピー");
+    var b2 = el("button", "", "とじる");
+    [b1, b2].forEach(function(b){
+      b.style.cssText = "font:inherit;font-size:calc(7*var(--u));font-weight:700;color:#f4e9d2;" +
+        "background:#3a2a18;border:calc(1*var(--u)) solid #e8d6a8;border-radius:calc(2*var(--u));" +
+        "padding:calc(1*var(--u)) calc(4*var(--u));cursor:pointer";
+      row.appendChild(b);
+    });
+    w.appendChild(row);
+    host.appendChild(w);
+    if(editable) setTimeout(function(){ ta.focus(); }, 60);
+    function done(v){ w.remove(); res(v); }
+    b1.addEventListener("click", function(){
+      if(editable){ done(ta.value.trim()); }
+      else {
+        ta.select();
+        try{ document.execCommand("copy"); b1.textContent = "コピーした"; }catch(e){ b1.textContent = "選んで コピー"; }
+      }
+    });
+    b2.addEventListener("click", function(){ done(null); });
+  });
+}
+
+/* ================================================================
+   狩りの 結末
+   ================================================================ */
+function rollMats(m, n){
+  var got = {}, tbl = m.B.mats, keys = Object.keys(tbl), i;
+  for(i = 0; i < n; i++){
+    var k = pick(keys), r = tbl[k];
+    var q = rndInt(r[0], r[1]);
+    if(q > 0) got[k] = (got[k] || 0) + q;
+  }
+  return got;
+}
+async function questEnd(win, how){
+  if(G.over) return;
+  G.over = true;
+  var q = G.q, m = G.m;
+  padVisible(false);
+  Input.clear(); Act.clear();
+  Snd.play(win ? "town" : "dark");
+  await sleep(900);
+  await UI.fade(true);
+
+  var got = {}, gold = 0, lines = [];
+  if(win){
+    /* 剥ぎ取り / 捕獲 */
+    got = rollMats(m, G.captured ? 5 : 4);
+    /* 部位破壊の ぶん */
+    m.parts.forEach(function(pt){
+      if(m.broken[pt.k] && pt.brk) got[pt.brk] = (got[pt.brk] || 0) + 1;
+    });
+    gold = q.g + (G.captured ? Math.round(q.g * 0.25) : 0);
+    G.save.g += gold;
+    for(var k in got) addMat(k, got[k]);
+    G.save.hunted[q.beast] = (G.save.hunted[q.beast] || 0) + 1;
+    if(!G.save.cleared[q.id]){
+      G.save.cleared[q.id] = 1;
+      if(G.save.quests < QUESTS.length) G.save.quests++;
+    }
+    var used = Math.round(q.time - G.time / 60);
+    var bt = G.save.best[q.id];
+    if(bt == null || used < bt) G.save.best[q.id] = used;
+  }
+  /* 使った 道具を 反映 */
+  POUCH_ORDER.forEach(function(k){ G.save.bag[k] = H.pouch[k]; });
+  saveGame();
+
+  var el2 = $("result");
+  el2.className = "ov on " + (win ? "win" : "lose");
+  el2.querySelector(".big").textContent = win ? (G.captured ? "捕獲 成功" : "狩猟 成功") : "狩猟 失敗";
+  var used2 = Math.max(0, Math.round(q.time - G.time / 60));
+  var mm = (used2 / 60) | 0, ss = used2 % 60;
+  lines.push(BEASTS[q.beast].n + "　" + how);
+  lines.push("時間 " + mm + "分" + (ss < 10 ? "0" : "") + ss + "秒　あたえた ダメージ <b>" + Math.round(G.dmgDealt) + "</b>");
+  if(G.broke.length) lines.push("破壊: " + G.broke.join("・"));
+  if(win){
+    var gl = [];
+    for(var k2 in got) gl.push(MAT[k2].n + "×" + got[k2]);
+    lines.push("報酬 <b>" + gold + "G</b>");
+    lines.push(gl.length ? gl.join("　") : "素材は 手に入らなかった");
+  }
+  el2.querySelector(".stat").innerHTML = lines.join("<br>");
+  await UI.fade(false);
+  Snd.se(win ? "levelup" : "dead");
+
+  await UI.list({
+    items:[{l:"野営地へ もどる"}],
+    into:$("resultMenu"), noCancel:true,
+    css:{position:"relative", left:"0", top:"0", display:"inline-block"}
+  });
+  await UI.fade(true);
+  el2.className = "ov";
+  $("resultMenu").innerHTML = "";
+  UI.clearAll();
+  G.scene = "village";
+  await UI.fade(false);
+  village();
+}
+
+/* ================================================================
+   本編ループ
+   ================================================================ */
+var lastT = 0, acc = 0;
+function frame(ts){
+  requestAnimationFrame(frame);
+  if(!lastT) lastT = ts;
+  /* 遅い端末でも 実時間に 追いつけるだけの 余裕を もつ。
+     きざみ幅は 1/60 秒 固定なので、まとめて 進めても すり抜けは 起きない */
+  var dt = Math.min(0.12, (ts - lastT) / 1000);
+  lastT = ts;
+  if(G.scene === "hunt"){
+    acc += dt;
+    var n = 0;
+    while(acc >= 1 / 60 && n < 9){ huntStep(1 / 60); acc -= 1 / 60; n++; }
+    if(acc > 0.3) acc = 0;
+    renderHunt();
+  } else if(G.scene === "village"){
+    renderVillage();
+  } else if(G.scene === "title"){
+    renderTitleBg();
+  }
+}
+function renderTitleBg(){
+  vTick++;
+  var g = ctx;
+  var sky = g.createLinearGradient(0, 0, 0, SCR_H);
+  sky.addColorStop(0, "#14101c"); sky.addColorStop(0.55, "#3a2030"); sky.addColorStop(1, "#7a3a20");
+  g.fillStyle = sky; g.fillRect(0, 0, SCR_W, SCR_H);
+  var i;
+  for(i = 0; i < 30; i++){
+    var xx = (i * 89) % SCR_W, yy = (i * 51) % 110;
+    if(((vTick >> 4) + i) % 9 !== 0) P(g, xx, yy, 1, 1, "#e8e0ff");
+  }
+  for(i = 0; i < 6; i++){
+    var mx = i * 54 - 24, mh = 60 + (i % 3) * 22;
+    TRI(g, [mx, SCR_H, mx + 40, SCR_H - mh, mx + 80, SCR_H], i % 2 ? "#1d1826" : "#171320");
+  }
+  /* 巨獣の 影 */
+  var m = {x:170, y:196, fx:-1, anim:vTick, mov:false, air:0, hurt:0, rage:false, tired:false,
+           lean:0, jaw:0, headEx:0, tailSw:0, broken:{}, tailCut:false, sleep:false};
+  g.save();
+  g.globalAlpha = 0.9;
+  g.filter = "brightness(0.22)";
+  drawBeast(g, BEASTS.nushi, m);
+  g.restore();
+  g.filter = "none";
+}
+
+/* ================================================================
+   はじまり
+   ================================================================ */
+async function boot(){
+  G.save = newSave();
+  Snd.play("dark");
+  while(true){
+    var has = hasSave();
+    var i = await UI.list({
+      head:STORAGE_OK ? "" : "※この環境では 記録を のこせません。\n　あいことばを おつかいください。",
+      items:[{l:"新しく はじめる"}, {l:"つづきから", off:!has}, {l:"あいことばで はじめる"}, {l:"あそびかた"}],
+      css:{top:"calc(132*var(--u))", minWidth:"calc(112*var(--u))"},
+      cls:"mid", into:$("titleMenu"), index:has ? 1 : 0, noCancel:true
+    });
+    Snd.init(); Snd.resume();
+    if(i === 3){ await howTo(); continue; }
+    if(i === 1){ if(!loadGame()){ Snd.se("err"); continue; } }
+    if(i === 2){
+      $("title").classList.add("choosing");
+      var v = await codeWindow("あいことばを 貼りつけて ください", "", true);
+      $("title").classList.remove("choosing");
+      if(!v) continue;
+      var d = decodeSave(v);
+      if(!d){ Snd.se("err"); await UI.say("あいことばが ちがうようだ。"); UI.closeMsg(); continue; }
+      G.save = d; saveGame();
+    }
+    if(i === 0) G.save = newSave();
+    break;
+  }
+  await UI.fade(true);
+  $("title").classList.remove("on");
+  UI.clearAll();
+  await UI.fade(false);
+  village();
+}
+async function howTo(){
+  await UI.sayAll([
+    "巨獣は 強い。まともに 殴り合っては 勝てない。\nよけて、隙に 斬りこむ。それだけだ。",
+    "移動は 左スティック(WASD)。C か「避」で 前転。\n転がっている あいだは 攻撃が すり抜ける。",
+    "「斬」で 攻撃、「溜」を 長おしで 溜め攻撃。\n溜めるほど 重いが、そのぶん 動けない。",
+    "武器には 切れ味が ある。斬るほど 落ちて、\nかたい部位では はじかれる。砥石で もどせ。",
+    "頭・尻尾・背などは 部位ごとに 効きが ちがう。\nこわすと 素材が 多く 手に入る。",
+    "弱った獣は 巣へ 帰って 眠る。\n落とし穴と 麻酔玉×2 で 生け捕りに できる。",
+    "力尽きるのは 3回まで。素材を 集めて 装備を きたえろ。"
+  ]);
+  UI.closeMsg();
+}
+
+/* ================================================================
+   画面サイズ ── 1ドットを 何 CSSピクセルで 描くか
+   ================================================================ */
+function resize(){
+  /* さわる端末では 下の そうさボタンぶんを 空けておく */
+  var coarse = matchMedia("(pointer: coarse)").matches;
+  var availH = innerHeight * (coarse ? 0.58 : 0.96);
+  var s = Math.min(innerWidth / SCR_W, availH / SCR_H);
+  if(s >= 2) s = Math.floor(s * 2) / 2;
+  s = Math.max(1, Math.min(s, 4.6));
+  document.documentElement.style.setProperty("--u", s + "px");
+  /* そうさボタンは 画面の あまり全体を つかう。
+     下に はりつけると 親指から 遠くなり、中央が ぽっかり あいてしまう */
+  var pad = $("pad"), st = $("stage");
+  if(pad && st){
+    var r = st.getBoundingClientRect();
+    var topY = Math.min(innerHeight - 90, r.bottom + 4);
+    pad.style.top = coarse ? topY + "px" : "";
+    pad.style.height = coarse ? "auto" : "";
+  }
+}
+addEventListener("resize", resize);
+addEventListener("orientationchange", function(){ setTimeout(resize, 120); });
+resize();
+
+/* タイトルでは 最初のひと押しで BGMを鳴らす(自動再生できないため) */
+["pointerdown", "keydown"].forEach(function(ev){
+  addEventListener(ev, function once(){
+    if(G.scene === "title" && Snd.on) Snd.play("dark");
+    removeEventListener(ev, once);
+  });
+});
+
+/* 起動 */
+padVisible(false);
+requestAnimationFrame(frame);
+boot();
+</script>
+</body>
+</html>
