@@ -1398,15 +1398,15 @@ function drawTile(g, ch, X, Y, tx, ty){
       P(g, X, Y, 16, 1, "#c95a44");
       break;
     case "cavef":
-      P(g, X, Y, 16, 16, "#4a4238");
-      P(g, X + (r * 12 | 0), Y + (r2 * 12 | 0), 2, 2, "#3c352c");
-      P(g, X + (r2 * 12 | 0), Y + (r * 12 | 0), 2, 1, "#5a5245");
+      P(g, X, Y, 16, 16, "#5d5344");
+      P(g, X + (r * 12 | 0), Y + (r2 * 12 | 0), 2, 2, "#4c4437");
+      P(g, X + (r2 * 12 | 0), Y + (r * 12 | 0), 2, 1, "#6f6454");
       break;
     case "cavew":
-      P(g, X, Y, 16, 16, "#231d17");
-      P(g, X + 1, Y + 1, 14, 13, "#332a21");
-      P(g, X + 2, Y + 2, 6, 4, "#413628"); P(g, X + 9, Y + 7, 5, 5, "#413628");
-      P(g, X, Y, 16, 1, "#4a3d2e");
+      P(g, X, Y, 16, 16, "#2c241c");
+      P(g, X + 1, Y + 1, 14, 13, "#42362a");
+      P(g, X + 2, Y + 2, 6, 4, "#544433"); P(g, X + 9, Y + 7, 5, 5, "#544433");
+      P(g, X, Y, 16, 1, "#6b5741");
       break;
     case "dark":
       P(g, X, Y, 16, 16, "#241a33");
@@ -1916,6 +1916,10 @@ function buildCaves(){
     {x:a.down.x, y:a.down.y, to:"cave2", tx:b.up.x, ty:b.up.y, d:"down"}
   ];
   MAPS.cave1.npcs = [];
+  /* 世界地図から洞窟へ入ったときに降り立つ場所は、生成後に確定する */
+  (MAPS.world.warps || []).forEach(function(w){
+    if(w.to === "cave1"){ w.tx = a.up.x; w.ty = a.up.y; }
+  });
   MAPS.cave1.chests = pickSpots(a, 3).map(function(p, i){
     var c = MAPS.cave1.genPlan.chests[i]; return {x:p[0], y:p[1], id:c.id, item:c.item, gold:c.gold, num:c.num};
   });
@@ -1944,6 +1948,37 @@ function pickSpots(gen, n, avoid){
   return out;
 }
 
+/* ワープ先が地図の中の歩けるマスかを起動時に検証する。
+   万一おかしければ その地図の入口へ寄せて、プレイヤーが詰まないようにする。 */
+function validateWarps(){
+  function walkable(mid, x, y){
+    var m = MAPS[mid];
+    if(!m || !m.tiles) return false;
+    if(y < 0 || y >= m.tiles.length || x < 0 || x >= m.tiles[y].length) return false;
+    var t = TILE[m.tiles[y][x]];
+    return !!(t && !t.s);
+  }
+  function fallback(mid){
+    var m = MAPS[mid];
+    if(!m || !m.tiles) return {x:0, y:0};
+    for(var y = 0; y < m.tiles.length; y++){
+      for(var x = 0; x < m.tiles[y].length; x++){
+        if(walkable(mid, x, y)) return {x:x, y:y};
+      }
+    }
+    return {x:0, y:0};
+  }
+  var bad = 0;
+  for(var id in MAPS){
+    (MAPS[id].warps || []).forEach(function(w){
+      if(walkable(w.to, w.tx, w.ty)) return;
+      var f = fallback(w.to);
+      w.tx = f.x; w.ty = f.y;
+      bad++;
+    });
+  }
+  return bad;
+}
 function loadMap(id, x, y, dir){
   var m = MAPS[id];
   Game.mapId = id; Game.map = m;
@@ -2220,12 +2255,12 @@ function drawField(){
   if(Game.map && Game.map.dark){
     var px = Game.player.x * TS + Game.player.ox + 8 - Game.cam.x;
     var py = Game.player.y * TS + Game.player.oy + 8 - Game.cam.y;
-    var r = 88;
-    var grd = g.createRadialGradient(px, py, r * 0.3, px, py, r);
+    var r = 104;
+    var grd = g.createRadialGradient(px, py, r * 0.45, px, py, r);
     grd.addColorStop(0, "rgba(0,0,0,0)");
-    grd.addColorStop(0.6, "rgba(0,0,0,.34)");
-    grd.addColorStop(0.85, "rgba(0,0,0,.78)");
-    grd.addColorStop(1, "rgba(0,0,0,.96)");
+    grd.addColorStop(0.55, "rgba(0,0,0,.18)");
+    grd.addColorStop(0.8, "rgba(0,0,0,.62)");
+    grd.addColorStop(1, "rgba(0,0,0,.93)");
     g.fillStyle = grd;
     g.fillRect(0, 0, SCR_W, SCR_H);
   }
@@ -3919,6 +3954,7 @@ async function opening(){
 }
 async function boot(){
   buildCaves();
+  validateWarps();
   Game.scene = "title";
   var hasS = hasSave();
   var i = await UI.list({
