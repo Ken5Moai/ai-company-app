@@ -496,8 +496,13 @@ var Input = {
     var self = this;
     return new Promise(function(res){
       function on(k){
-        if(!keys || keys.indexOf(k) >= 0) res(k);
-        else self.waiters.push(on);
+        if(!keys || keys.indexOf(k) >= 0){
+          /* 待ちで 受け取った キーは 行列からも 取りのぞく。
+             残すと つぎに 開く メニューが それを 拾って 勝手に 決定してしまう */
+          var i = self.queue.lastIndexOf(k);
+          if(i >= 0) self.queue.splice(i, 1);
+          res(k);
+        } else self.waiters.push(on);
       }
       self.waiters.push(on);
     });
@@ -546,18 +551,38 @@ var UI = {
   /* --- メッセージ --- */
   msgWin:null,
   openMsg:function(){
-    if(this.msgWin) return this.msgWin;
-    var w = el("div", "win", '<div class="txt"></div><span class="more">▼</span>');
-    w.id = "msgWin"; w.classList.add("on");
-    this.layer.appendChild(w);
-    this.msgWin = w;
+    var w = this.msgWin;
+    if(!w){
+      w = el("div", "win", '<div class="txt"></div><span class="more">▼</span>');
+      w.id = "msgWin"; w.classList.add("on");
+      /* メッセージ窓そのものを タップしても 先へ進めるようにする
+         (キーや A/Bボタンが 無い環境で 詰まないための保険)。
+         ただし 送り待ちのあいだ だけ。うしろに メニューが 出ている
+         ときに 送ってしまうと、その決定を メニューが 拾ってしまう */
+      w.addEventListener("pointerdown", function(e){
+        Snd.resume();
+        if(!UI.msgLive) return;
+        e.preventDefault();
+        Input.press("confirm");
+      });
+      this.msgWin = w;
+    }
+    /* タイトルなどの全面オーバーレイは メッセージ窓より前面なので、
+       そのままだと 窓を タップしても オーバーレイが 受け取ってしまう。
+       出ているオーバーレイが あれば その中へ 入れ直す */
+    var ovs = document.querySelectorAll(".ov.on");
+    var host = ovs.length ? ovs[ovs.length - 1] : this.layer;
+    if(w.parentNode !== host) host.appendChild(w);
     return w;
   },
-  closeMsg:function(){ if(this.msgWin){ this.msgWin.remove(); this.msgWin = null; } },
+  closeMsg:function(){ this.msgLive = false; if(this.msgWin){ this.msgWin.remove(); this.msgWin = null; } },
+  /* タップ送りを 受けつけてよい あいだ だけ true */
+  msgLive:false,
   /* 1ページ表示。wait=true なら決定キー待ち */
   say:async function(text, opt){
     opt = opt || {};
     var w = this.openMsg();
+    this.msgLive = true;
     var t = w.querySelector(".txt"), more = w.querySelector(".more");
     more.classList.remove("on");
     var head = opt.who ? '<span class="who">' + esc(opt.who) + '</span>' : "";
@@ -573,9 +598,10 @@ var UI = {
       body.nodeValue = s.slice(0, ++i);
       if(s[i - 1] !== "\n") await sleep(opt.speed || 18);
     }
-    if(opt.nowait) return;
+    if(opt.nowait){ this.msgLive = false; return; }
     more.classList.add("on");
     await Input.wait(["confirm","cancel"]);
+    this.msgLive = false;
     Snd.se("cursor");
     more.classList.remove("on");
   },
@@ -681,7 +707,11 @@ var UI = {
         requestAnimationFrame(pump);
       }
       pump();
+      var born = Date.now();
       function onClick(e){
+        /* 直前の操作(メッセージ送りなど)の タップが、
+           出たばかりの この一覧に 流れこむのを 防ぐ */
+        if(Date.now() - born < 200) return;
         var li = e.target.closest ? e.target.closest("li") : null;
         if(!li || !ul.contains(li)) return;
         var i = +li.dataset.i;
