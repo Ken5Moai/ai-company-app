@@ -139,6 +139,26 @@ body{
 @keyframes cur{50%{opacity:.2}}
 .list li.sel{color:#fff}
 
+/* ふっかつのじゅもん(テキスト入出力) */
+.win textarea{
+  width:100%;height:calc(58*var(--u));resize:none;
+  background:#050a1e;color:#dbe4ff;
+  border:calc(1*var(--u)) solid var(--line-in);border-radius:calc(2*var(--u));
+  font-family:ui-monospace,Menlo,Consolas,monospace;
+  font-size:calc(6.5*var(--u));line-height:1.5;letter-spacing:0;
+  padding:calc(2*var(--u));margin-top:calc(2*var(--u));
+  word-break:break-all;
+}
+.win textarea:focus{outline:calc(1*var(--u)) solid var(--gold)}
+.btnrow{display:flex;gap:calc(4*var(--u));margin-top:calc(3*var(--u));justify-content:flex-end}
+.btnrow button{
+  font-family:var(--font);font-weight:700;
+  font-size:calc(8*var(--u));letter-spacing:.1em;
+  color:var(--ink);background:linear-gradient(180deg,#1d3d7a,#0a1230);
+  border:calc(1*var(--u)) solid var(--line);border-radius:calc(2*var(--u));
+  padding:calc(2*var(--u)) calc(6*var(--u));cursor:pointer;
+}
+.btnrow button:active{background:#2b58c8}
 /* 汎用の小窓 */
 .kv{display:flex;justify-content:space-between;gap:calc(4*var(--u));white-space:nowrap}
 .kv b{font-weight:700;color:var(--gold);font-variant-numeric:tabular-nums}
@@ -206,9 +226,11 @@ body{
 #title > .sub{margin-top:calc(4*var(--u));font-size:calc(7.5*var(--u));letter-spacing:.34em;color:#93a6cc}
 #title .menu{margin-top:calc(16*var(--u));width:calc(120*var(--u))}
 #title .foot{
-  position:absolute;bottom:calc(5*var(--u));left:calc(6*var(--u));right:calc(6*var(--u));
-  font-size:calc(6*var(--u));letter-spacing:.16em;color:#54608a;line-height:1.9;
+  position:absolute;bottom:calc(3*var(--u));left:calc(5*var(--u));right:calc(5*var(--u));
+  font-size:calc(5.6*var(--u));letter-spacing:.12em;color:#54608a;line-height:1.75;
+  pointer-events:none;                 /* メニューの タップを さえぎらない */
 }
+#title .logo,#title > .sub{pointer-events:none}
 #title .foot i{font-style:normal;display:block}
 #title.choosing > .sub,#title.choosing > .foot{display:none}
 #gameover .big{font-size:calc(16*var(--u));letter-spacing:.34em;color:#c8412f;text-shadow:0 0 calc(8*var(--u)) rgba(200,60,40,.6)}
@@ -1154,7 +1176,12 @@ var Input = {
     Enter:"confirm", Space:"confirm", KeyZ:"confirm", NumpadEnter:"confirm",
     Escape:"cancel", KeyX:"cancel", Backspace:"cancel", ShiftLeft:"cancel"
   };
+  function typing(e){
+    var t = e.target;
+    return t && (t.tagName === "TEXTAREA" || t.tagName === "INPUT");
+  }
   addEventListener("keydown", function(e){
+    if(typing(e)) return;
     var k = MAP[e.code];
     if(!k) return;
     e.preventDefault();
@@ -1164,6 +1191,7 @@ var Input = {
     padVisible(false);
   }, {passive:false});
   addEventListener("keyup", function(e){
+    if(typing(e)) return;
     var k = MAP[e.code]; if(!k) return;
     Input.held[k] = 0;
   });
@@ -2985,6 +3013,16 @@ async function settingsMenu(){
    13. セーブ / ロード
    ================================================================ */
 var SLOTS = 3;
+/* この環境で localStorage が使えるか(使えない場合は ふっかつのじゅもん を案内する) */
+var STORAGE_OK = (function(){
+  try{
+    var k = SAVE_KEY + "_probe";
+    localStorage.setItem(k, "1");
+    var v = localStorage.getItem(k);
+    localStorage.removeItem(k);
+    return v === "1";
+  }catch(e){ return false; }
+})();
 function slotKey(n){ return SAVE_KEY + "_slot" + n; }
 function readSlot(n){
   try{ return JSON.parse(localStorage.getItem(slotKey(n))); }catch(e){ return null; }
@@ -3009,10 +3047,9 @@ function slotLabel(n){
   return {l:"　" + n + "　" + hero + "　Lv" + lv,
           s:where + "　" + (d.party.length) + "人", d:d};
 }
-function saveData(slot){
-  var n = slot || Game.slot || 1;
-  var d = {
-    v:2, slot:n, at:Date.now(),
+function buildSave(slot){
+  return {
+    v:2, slot:slot || Game.slot || 1, at:Date.now(),
     map:Game.mapId, x:Game.player.x, y:Game.player.y, dir:Game.player.dir,
     gold:Game.gold, bag:Game.bag, flags:Game.flags, opened:Game.opened, lastTown:Game.lastTown,
     steps:Game.steps, book:Game.book, kills:Game.kills, ship:Game.ship, aboard:Game.aboard,
@@ -3020,8 +3057,34 @@ function saveData(slot){
       return {id:m.id, lv:m.lv, exp:m.exp, hp:m.hp, mp:m.mp, eq:m.eq, spells:m.spells, status:m.status};
     })
   };
-  try{ localStorage.setItem(slotKey(n), JSON.stringify(d)); Game.slot = n; return true; }
-  catch(e){ return false; }
+}
+function saveData(slot){
+  var n = slot || Game.slot || 1;
+  var d = buildSave(n);
+  try{
+    localStorage.setItem(slotKey(n), JSON.stringify(d));
+    /* 書いたつもりで消えている環境があるので 読み返して確認する */
+    if(!localStorage.getItem(slotKey(n))) return false;
+    Game.slot = n;
+    return true;
+  }catch(e){ return false; }
+}
+/* ---- ふっかつのじゅもん(セーブデータの文字列化) ---- */
+function encodeSave(d){
+  var c = JSON.parse(JSON.stringify(d));
+  c.party.forEach(function(m){ delete m.spells; });   /* 呪文はレベルから復元できる */
+  delete c.at;
+  var json = JSON.stringify(c);
+  return btoa(unescape(encodeURIComponent(json))).replace(/=+$/, "");
+}
+function decodeSave(code){
+  try{
+    var b = String(code).replace(/\s+/g, "");
+    while(b.length % 4) b += "=";
+    var d = JSON.parse(decodeURIComponent(escape(atob(b))));
+    if(!d || !d.party || !d.party.length) return null;
+    return d;
+  }catch(e){ return null; }
 }
 function hasSave(){
   for(var n = 1; n <= SLOTS; n++) if(readSlot(n)) return true;
@@ -3032,6 +3095,9 @@ function loadData(slot){
   var d = readSlot(n);
   if(!d) return false;
   Game.slot = n;
+  return applySave(d);
+}
+function applySave(d){
   Game.gold = d.gold || 0;
   Game.bag = d.bag || [];
   Game.flags = d.flags || {};
@@ -3049,15 +3115,118 @@ function loadData(slot){
     return m;
   });
   if(!Game.party.length) return false;
+  /* 呪文がない(ふっかつのじゅもん)の場合は レベルから覚え直す */
+  Game.party.forEach(function(m){ if(!m.spells || !m.spells.length){ m.spells = []; learnUpTo(m, m.lv); } });
   loadMap(MAPS[d.map] ? d.map : "mira", d.x, d.y, d.dir);
   return true;
 }
+/* テキストを見せる / 入力してもらう窓。決定・キャンセルはボタンで行う */
+function textWindow(opt){
+  var w = el("div", "win");
+  w.style.left = "calc(6*var(--u))"; w.style.right = "calc(6*var(--u))";
+  w.style.top = "calc(30*var(--u))";
+  if(opt.cap) w.appendChild(el("div", "cap", esc(opt.cap)));
+  if(opt.head) w.appendChild(el("div", "small", esc(opt.head)));
+  var ta = document.createElement("textarea");
+  ta.value = opt.value || "";
+  ta.readOnly = !!opt.readOnly;
+  ta.spellcheck = false;
+  ta.autocapitalize = "off";
+  ta.autocomplete = "off";
+  w.appendChild(ta);
+  var note = el("div", "small", "");
+  w.appendChild(note);
+  var row = el("div", "btnrow");
+  var b1 = el("button", "", opt.okLabel || "けってい");
+  var b2 = el("button", "", "とじる");
+  row.appendChild(b1); row.appendChild(b2);
+  w.appendChild(row);
+  (Game.scene === "title" ? $("title") : UI.layer).appendChild(w);
+  if(opt.readOnly){ ta.focus(); ta.select(); }
+  else ta.focus();
+  return new Promise(function(res){
+    function done(v){ w.remove(); Input.clear(); res(v); }
+    b1.addEventListener("click", function(){
+      if(opt.readOnly){
+        ta.select();
+        var okCopy = false;
+        try{ okCopy = document.execCommand("copy"); }catch(e){}
+        if(navigator.clipboard && navigator.clipboard.writeText){
+          navigator.clipboard.writeText(ta.value).then(function(){
+            note.textContent = "コピーしました。メモ帳などに はりつけて 保管してください。";
+          }, function(){
+            note.textContent = okCopy ? "コピーしました。" : "長押しして コピーしてください。";
+          });
+        } else {
+          note.textContent = okCopy ? "コピーしました。" : "長押しして コピーしてください。";
+        }
+        Snd.se("buy");
+        return;
+      }
+      done(ta.value.trim());
+    });
+    b2.addEventListener("click", function(){ Snd.se("cancel"); done(null); });
+  });
+}
+async function showSaveCode(){
+  var code = encodeSave(buildSave());
+  await textWindow({
+    cap:"ふっかつのじゅもん",
+    head:"この文字を 保管しておけば\nべつの端末や 消えたあとでも 再開できます。",
+    value:code, readOnly:true, okLabel:"コピー"
+  });
+}
+/* 入力されたじゅもんで 再開する。成功したら true */
+async function restoreFromCode(){
+  var code = await textWindow({
+    cap:"ふっかつのじゅもん",
+    head:"ひかえておいた じゅもんを はりつけてください。",
+    value:"", okLabel:"けってい"
+  });
+  if(!code) return false;
+  var d = decodeSave(code);
+  if(!d){
+    Snd.se("err");
+    await msgIn("じゅもんが ちがいます。\nもういちど たしかめてください。");
+    return false;
+  }
+  Game.slot = d.slot || 1;
+  if(!applySave(d)){
+    Snd.se("err");
+    await msgIn("じゅもんが ちがいます。");
+    return false;
+  }
+  Snd.se("levelup");
+  return true;
+}
 async function saveMenu(){
-  var ok = await UI.yesno("ぼうけんの書 " + (Game.slot || 1) + " に\nきろくを のこしますか?");
-  UI.closeMsg();
-  if(!ok) return;
-  if(saveData()){ Snd.se("levelup"); await msgIn("ぼうけんの書 " + Game.slot + " に\nきろくを のこしました。"); }
-  else await msgIn("きろくに しっぱいしました……。");
+  while(true){
+    var i = await UI.list({
+      cap:"きろく",
+      head:STORAGE_OK ? "" : "この環境では 端末に きろくを のこせません。\nふっかつのじゅもん を おつかいください。",
+      items:[
+        {l:"この たんまつに きろく", s:"書" + (Game.slot || 1), off:!STORAGE_OK},
+        {l:"ふっかつのじゅもん を みる"},
+        {l:"じゅもんで さいかい"}
+      ],
+      css:{right:"calc(5*var(--u))", bottom:"calc(5*var(--u))", minWidth:"calc(96*var(--u))"}
+    });
+    if(i < 0) return;
+    if(i === 0){
+      var ok = await UI.yesno("ぼうけんの書 " + (Game.slot || 1) + " に\nきろくを のこしますか?");
+      UI.closeMsg();
+      if(!ok) continue;
+      if(saveData()){ Snd.se("levelup"); await msgIn("ぼうけんの書 " + Game.slot + " に\nきろくを のこしました。"); }
+      else await msgIn("きろくに しっぱいしました……。\nふっかつのじゅもん を おつかいください。");
+    } else if(i === 1){
+      await showSaveCode();
+    } else {
+      if(await restoreFromCode()){
+        await msgIn("ぼうけんの しょから\nさいかいします。");
+        return;
+      }
+    }
+  }
 }
 /* ================================================================
    14. 戦闘
@@ -4525,11 +4694,26 @@ async function boot(){
   while(true){
     var hasS = hasSave();
     var i = await UI.list({
-      items:[{l:"ぼうけんを はじめる"},{l:"つづきから", off:!hasS}],
-      css:{top:"calc(150*var(--u))", minWidth:"calc(104*var(--u))"},
+      head:STORAGE_OK ? "" : "※この環境では 記録を のこせません。\n　ふっかつのじゅもん を おつかいください。",
+      items:[{l:"ぼうけんを はじめる"},{l:"つづきから", off:!hasS},{l:"ふっかつのじゅもん"}],
+      css:{top:"calc(134*var(--u))", minWidth:"calc(108*var(--u))"},
       cls:"mid", into:$("titleMenu"), index:hasS ? 1 : 0, noCancel:true
     });
     Snd.init(); Snd.resume();
+    if(i === 2){
+      /* ふっかつのじゅもん で 直接 再開する */
+      $("title").classList.add("choosing");
+      var okc = await restoreFromCode();
+      $("title").classList.remove("choosing");
+      if(!okc) continue;
+      await UI.fade(true);
+      $("title").classList.remove("on");
+      Game.scene = "field";
+      await UI.fade(false);
+      Game.lock = false;
+      await msgIn("じゅもんの とおりに\nぼうけんを さいかいします。");
+      return;
+    }
     var slot = await slotMenu(i === 1 ? "load" : "new");
     if(slot < 0) continue;              /* 書の選択を やめたら タイトルへ戻る */
     Game.slot = slot;
