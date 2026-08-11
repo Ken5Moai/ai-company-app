@@ -203,13 +203,14 @@ body{
 }
 #title .logo b{display:block;font-size:calc(11*var(--u));color:var(--gold);letter-spacing:.42em;text-indent:.4em;margin-bottom:calc(3*var(--u));text-shadow:0 calc(1*var(--u)) 0 #000}
 @keyframes logoIn{from{opacity:0;transform:translateY(calc(6*var(--u))) scale(.94);filter:blur(calc(1*var(--u)))}to{opacity:1;transform:none;filter:none}}
-#title .sub{margin-top:calc(4*var(--u));font-size:calc(7.5*var(--u));letter-spacing:.34em;color:#93a6cc}
+#title > .sub{margin-top:calc(4*var(--u));font-size:calc(7.5*var(--u));letter-spacing:.34em;color:#93a6cc}
 #title .menu{margin-top:calc(16*var(--u));width:calc(120*var(--u))}
 #title .foot{
   position:absolute;bottom:calc(5*var(--u));left:calc(6*var(--u));right:calc(6*var(--u));
   font-size:calc(6*var(--u));letter-spacing:.16em;color:#54608a;line-height:1.9;
 }
 #title .foot i{font-style:normal;display:block}
+#title.choosing > .sub,#title.choosing > .foot{display:none}
 #gameover .big{font-size:calc(16*var(--u));letter-spacing:.34em;color:#c8412f;text-shadow:0 0 calc(8*var(--u)) rgba(200,60,40,.6)}
 #ending{background:#000;overflow:hidden;justify-content:flex-start}
 #ending .roll{
@@ -272,6 +273,8 @@ body{
   padding:calc(1.5*var(--u)) calc(4*var(--u));
 }
 #sysbtn.hide{display:none}
+/* タイトル表示中は メニューボタンを出さない */
+#title.on ~ #sysbtn{display:none}
 .hint{
   position:absolute;left:0;right:0;bottom:calc(-13*var(--u));
   text-align:center;font-size:calc(6.5*var(--u));letter-spacing:.2em;color:#54608a;
@@ -294,6 +297,7 @@ body{
       <div class="foot">
         <i>いどう: ←↑↓→ / WASD　　けってい: Z・Enter　　メニュー: X・Esc</i>
         <i>スマホは 画面下の じゅうじキーと A / B ボタンで あそべます</i>
+        <i>ぼうけんの書は 3つ。ひとつの端末を 何人かで つかえます</i>
       </div>
     </div>
 
@@ -2040,7 +2044,7 @@ var Game = {
   party:[], gold:0, bag:[], flags:{}, opened:{}, book:{}, kills:0,
   lastTown:{map:"mira", x:11, y:16},
   steps:0, sinceBattle:0, noWarp:null,
-  ship:null, aboard:false,
+  ship:null, aboard:false, slot:1,
   shake:0, battle:null
 };
 
@@ -2962,9 +2966,17 @@ async function settingsMenu(){
     } else if(i === 1){
       padVisible($("pad").classList.contains("hide"));
     } else if(i === 2){
-      var ok = await UI.yesno("ぼうけんの きろくを けしますか?");
+      var items = [];
+      for(var n = 1; n <= SLOTS; n++){ var L = slotLabel(n); items.push({l:"書" + L.l, s:L.s, off:L.empty}); }
+      var si = await UI.list({cap:"どの きろくを けす?", items:items,
+        css:{left:"calc(5*var(--u))", bottom:"calc(5*var(--u))", right:"calc(5*var(--u))"}});
+      if(si < 0) continue;
+      var ok = await UI.yesno("ぼうけんの書 " + (si + 1) + " を けしますか?\nもとには もどせません。", {def:1});
       UI.closeMsg();
-      if(ok){ localStorage.removeItem(SAVE_KEY); await msgIn("きろくを けしました。"); }
+      if(ok){
+        try{ localStorage.removeItem(slotKey(si + 1)); }catch(e){}
+        await msgIn("ぼうけんの書 " + (si + 1) + " を けしました。");
+      }
     }
   }
 }
@@ -2972,23 +2984,54 @@ async function settingsMenu(){
 /* ================================================================
    13. セーブ / ロード
    ================================================================ */
-function saveData(){
+var SLOTS = 3;
+function slotKey(n){ return SAVE_KEY + "_slot" + n; }
+function readSlot(n){
+  try{ return JSON.parse(localStorage.getItem(slotKey(n))); }catch(e){ return null; }
+}
+/* 昔の1本だけの記録は 1番の書へ移す */
+function migrateSave(){
+  try{
+    var old = localStorage.getItem(SAVE_KEY);
+    if(old && !localStorage.getItem(slotKey(1))){
+      localStorage.setItem(slotKey(1), old);
+      localStorage.removeItem(SAVE_KEY);
+    }
+  }catch(e){}
+}
+/* 一覧に出す 1行ぶんの見出し */
+function slotLabel(n){
+  var d = readSlot(n);
+  if(!d || !d.party || !d.party.length) return {l:"　" + n + "　── データなし ──", s:"", empty:1};
+  var lv = d.party.reduce(function(a, m){ return Math.max(a, m.lv); }, 1);
+  var where = MAPS[d.map] ? MAPS[d.map].name : "たびのとちゅう";
+  var hero = charDef(d.party[0].id).n;
+  return {l:"　" + n + "　" + hero + "　Lv" + lv,
+          s:where + "　" + (d.party.length) + "人", d:d};
+}
+function saveData(slot){
+  var n = slot || Game.slot || 1;
   var d = {
-    v:1, map:Game.mapId, x:Game.player.x, y:Game.player.y, dir:Game.player.dir,
+    v:2, slot:n, at:Date.now(),
+    map:Game.mapId, x:Game.player.x, y:Game.player.y, dir:Game.player.dir,
     gold:Game.gold, bag:Game.bag, flags:Game.flags, opened:Game.opened, lastTown:Game.lastTown,
     steps:Game.steps, book:Game.book, kills:Game.kills, ship:Game.ship, aboard:Game.aboard,
     party:Game.party.map(function(m){
       return {id:m.id, lv:m.lv, exp:m.exp, hp:m.hp, mp:m.mp, eq:m.eq, spells:m.spells, status:m.status};
     })
   };
-  try{ localStorage.setItem(SAVE_KEY, JSON.stringify(d)); return true; }
+  try{ localStorage.setItem(slotKey(n), JSON.stringify(d)); Game.slot = n; return true; }
   catch(e){ return false; }
 }
-function hasSave(){ try{ return !!localStorage.getItem(SAVE_KEY); }catch(e){ return false; } }
-function loadData(){
-  var d;
-  try{ d = JSON.parse(localStorage.getItem(SAVE_KEY)); }catch(e){ return false; }
+function hasSave(){
+  for(var n = 1; n <= SLOTS; n++) if(readSlot(n)) return true;
+  return false;
+}
+function loadData(slot){
+  var n = slot || Game.slot || 1;
+  var d = readSlot(n);
   if(!d) return false;
+  Game.slot = n;
   Game.gold = d.gold || 0;
   Game.bag = d.bag || [];
   Game.flags = d.flags || {};
@@ -3010,10 +3053,10 @@ function loadData(){
   return true;
 }
 async function saveMenu(){
-  var ok = await UI.yesno("ぼうけんの しょに\nきろくを のこしますか?");
+  var ok = await UI.yesno("ぼうけんの書 " + (Game.slot || 1) + " に\nきろくを のこしますか?");
   UI.closeMsg();
   if(!ok) return;
-  if(saveData()){ Snd.se("levelup"); await msgIn("ぼうけんの しょに\nきろくを のこしました。"); }
+  if(saveData()){ Snd.se("levelup"); await msgIn("ぼうけんの書 " + Game.slot + " に\nきろくを のこしました。"); }
   else await msgIn("きろくに しっぱいしました……。");
 }
 /* ================================================================
@@ -4143,7 +4186,7 @@ EVENTS.church = async function(n){
       css:{right:"calc(5*var(--u))", bottom:"calc(66*var(--u))", minWidth:"calc(62*var(--u))"}});
     if(a < 0 || a === 3) break;
     if(a === 0){
-      if(saveData()){ Snd.se("levelup"); await UI.say("ぼうけんの しょに\nきろくを のこしました。", {who:n.n}); }
+      if(saveData()){ Snd.se("levelup"); await UI.say("ぼうけんの書 " + Game.slot + " に\nきろくを のこしました。", {who:n.n}); }
       else await UI.say("きろくに しっぱいしました……。", {who:n.n});
     } else if(a === 1){
       var poisoned = Game.party.filter(function(m){ return m.status === "poison"; });
@@ -4228,7 +4271,7 @@ EVENTS.statue = async function(n){
   var yes = await UI.yesno("ぼうけんの しょに\nきろくを のこしますか?");
   UI.closeMsg();
   if(yes){
-    if(saveData()){ Snd.se("levelup"); await msgIn("きろくを のこしました。"); }
+    if(saveData()){ Snd.se("levelup"); await msgIn("ぼうけんの書 " + Game.slot + " に きろくを のこしました。"); }
     else await msgIn("きろくに しっぱいしました……。");
   }
   await msgIn("──この 先に 魔王が いる。\nいのちを だいじに。");
@@ -4439,27 +4482,69 @@ async function opening(){
   UI.closeMsg();
   Game.lock = false;
 }
+/* ぼうけんの書(セーブ枠)を選ぶ。端末を貸し借りしても記録が混ざらないように3つ用意している */
+async function slotMenu(mode){
+  $("title").classList.add("choosing");
+  try{
+    return await slotMenuInner(mode);
+  } finally {
+    $("title").classList.remove("choosing");
+  }
+}
+async function slotMenuInner(mode){
+  while(true){
+    var items = [];
+    for(var n = 1; n <= SLOTS; n++){
+      var L = slotLabel(n);
+      items.push({l:L.l, s:L.s, off:(mode === "load" && L.empty)});
+    }
+    var i = await UI.list({
+      cap:"ぼうけんの書 を えらぶ",
+      head:mode === "load" ? "つづきから" : "ひとつの端末を 何人かで つかえます",
+      items:items,
+      css:{top:"calc(122*var(--u))", minWidth:"calc(148*var(--u))"},
+      cls:"mid", into:$("titleMenu")
+    });
+    if(i < 0) return -1;
+    var slot = i + 1;
+    if(mode === "new" && !slotLabel(slot).empty){
+      var ok = await UI.yesno("ぼうけんの書 " + slot + " には\nすでに きろくが あります。\n上書きして はじめますか?",
+        {css:{top:"calc(96*var(--u))", left:"0", right:"0", marginLeft:"auto", marginRight:"auto",
+              width:"max-content", minWidth:"calc(56*var(--u))"}, def:1});
+      UI.closeMsg();
+      if(!ok) continue;
+    }
+    return slot;
+  }
+}
 async function boot(){
   buildCaves();
   validateWarps();
+  migrateSave();
   Game.scene = "title";
-  var hasS = hasSave();
-  var i = await UI.list({
-    items:[{l:"ぼうけんを はじめる"},{l:"つづきから", off:!hasS}],
-    css:{top:"calc(150*var(--u))", minWidth:"calc(104*var(--u))"},
-    cls:"mid", into:$("titleMenu"), index:hasS ? 1 : 0, noCancel:true
-  });
-  Snd.init(); Snd.resume();
-  await UI.fade(true);
-  $("title").classList.remove("on");
-  Game.scene = "field";
-  if(i === 1 && loadData()){
-    await UI.fade(false);
-    Game.lock = false;
-    await msgIn("ぼうけんの しょから\nさいかいします。");
-  } else {
-    newGame();
-    await opening();
+  while(true){
+    var hasS = hasSave();
+    var i = await UI.list({
+      items:[{l:"ぼうけんを はじめる"},{l:"つづきから", off:!hasS}],
+      css:{top:"calc(150*var(--u))", minWidth:"calc(104*var(--u))"},
+      cls:"mid", into:$("titleMenu"), index:hasS ? 1 : 0, noCancel:true
+    });
+    Snd.init(); Snd.resume();
+    var slot = await slotMenu(i === 1 ? "load" : "new");
+    if(slot < 0) continue;              /* 書の選択を やめたら タイトルへ戻る */
+    Game.slot = slot;
+    await UI.fade(true);
+    $("title").classList.remove("on");
+    Game.scene = "field";
+    if(i === 1 && loadData(slot)){
+      await UI.fade(false);
+      Game.lock = false;
+      await msgIn("ぼうけんの書 " + slot + " から\nさいかいします。");
+    } else {
+      newGame();
+      await opening();
+    }
+    return;
   }
 }
 
