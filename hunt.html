@@ -2349,7 +2349,7 @@ function spawnBeast(id){
     sleep:false, air:0, canFly:!!B.look.wing,
     lean:0, jaw:0, headEx:0, tailSw:0,
     broken:{}, tailCut:false, trap:0, tranq:0, dead:false,
-    goal:null, rageCount:0,
+    goal:null, rageCount:0, fleeCount:0, healed:0,
     parts:B.parts.map(function(p){ return JSON.parse(JSON.stringify(p)); })
   };
   return m;
@@ -2371,7 +2371,7 @@ function endRage(m){
   banner(m.B.n + "は つかれている");
 }
 function wakeUp(m){
-  m.sleep = false; m.state = "idle"; m.t = 0;
+  m.sleep = false; m.state = "idle"; m.t = 0; m.cool = 30;
   banner(m.B.n + "が 目をさました!");
 }
 function killBeast(m){
@@ -2426,14 +2426,26 @@ function updateBeast(m, dt){
   switch(m.state){
     case "sleep": {
       m.vx = m.vy = 0; m.lean = 4;
-      m.hp = Math.min(m.hpMax, m.hp + m.hpMax * 0.004 * dt);
+      m.t += dt * 60;
+      /* 眠って もどせるのは ほんの少しだけ。
+         上限を つけないと、削るより 早く 回復して 永久に 終わらない */
+      var cap = m.hpMax * 0.08;                    /* 一狩りで もどせる 合計 */
+      var ceil = m.hpMax * 0.195;                  /* 瀕死の しきい値(20%)より 下で 止める。
+                                                      眠って 捕獲できなくなる ことが ないように */
+      var heal = m.hpMax * 0.0009 * dt;            /* 毎秒 0.09%。上限まで 約90秒 */
+      heal = Math.min(heal, cap - m.healed, ceil - m.hp);
+      if(heal > 0){ m.hp += heal; m.healed += heal; }
       if((m.anim % 70) < 3) FX.add({k:"p", x:m.x + 16 * m.fx, y:m.y - 14, vx:2 * m.fx, vy:-14, c:"#a8c8f0", life:1.1, sz:2, g:-4});
-      if(dist < 26 && m.anim % 30 === 0 && Math.random() < 0.04) wakeUp(m);
+      /* 近づいただけで 起きると 寝込みを 突けない。
+         長く 眠りすぎたときだけ 自分で 起きる */
+      if(m.t > 20 * 60) wakeUp(m);
       break;
     }
     case "flee": {
       var nx = G.fd.nest.x - m.x, ny = G.fd.nest.y - m.y, nd = Math.hypot(nx, ny);
       if(nd < 14){ m.sleep = true; m.state = "sleep"; m.t = 0; banner(m.B.n + "は 巣で ねむった"); break; }
+      /* 逃げている 途中で また 殴られたら 追跡に もどす */
+      if(G.sinceHit < 30){ m.state = "idle"; m.t = 0; break; }
       m.fx = nx >= 0 ? 1 : -1;
       m.vx = nx / nd * spd * 1.15; m.vy = ny / nd * spd * 1.15;
       m.mov = true; m.lean = 2;
@@ -2442,8 +2454,11 @@ function updateBeast(m, dt){
     case "idle": {
       m.lean *= 0.85; m.jaw *= 0.8; m.headEx *= 0.8;
       if(m.cool > 0) m.cool -= dt * 60;
-      /* 瀕死で しばらく 殴られていなければ 巣へ */
-      if(beastWeak(m) && m.rageT <= 0 && G.sinceHit > 5 * 60 && Math.random() < 0.02){
+      /* 瀕死で ずっと 殴られていなければ 巣へ。
+         逃げられるのは 一狩り 2回まで(いつまでも 逃げ回られると 終わらない) */
+      if(beastWeak(m) && m.rageT <= 0 && m.fleeCount < 2 &&
+         G.sinceHit > 14 * 60 && Math.random() < 0.006){
+        m.fleeCount++;
         m.state = "flee"; banner(m.B.n + "は 逃げ出した"); break;
       }
       if(dist < 190 && m.cool <= 0){
