@@ -1,0 +1,1592 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#12100e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>まちの記録係 — 写真副業の台帳</title>
+<style>
+/* ================================================================
+   まちの記録係 —「撮る・値をつける・並べる・数える」
+   通勤路の風景をストックフォトとして売るまでの、手作業だけを機械にやらせる台帳。
+   墨 × 朱印 × 金(AIカンパニーと同じ世界観)。単一HTML・外部依存なし。
+   ================================================================ */
+:root{
+  --sumi:#12100e;
+  --sumi-2:#1b1815;
+  --sumi-3:#272220;
+  --sumi-4:#37302b;
+  --kinari:#f2e9dc;
+  --hai:#8d8377;
+  --hai-2:#645c53;
+  --shu:#d8432f;
+  --shu-fukai:#a52a1c;
+  --kin:#c9a24b;
+  --kin-awai:rgba(201,162,75,.3);
+  --ao:#6f93a8;
+  --ok:#7fae7a;
+  --keikoku:#e0a13a;
+  --mincho:"Hiragino Mincho ProN","Hiragino Mincho Pro","Yu Mincho",YuMincho,"Noto Serif JP","Noto Serif CJK JP",serif;
+  --gothic:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP","Yu Gothic",sans-serif;
+  --ease:cubic-bezier(.19,1,.22,1);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{
+  background:var(--sumi);color:var(--kinari);
+  font-family:var(--gothic);font-size:15px;line-height:1.7;
+  -webkit-tap-highlight-color:transparent;
+  overscroll-behavior-y:none;
+  font-feature-settings:"palt";
+}
+button,input,textarea,select{font-family:inherit;font-size:inherit;color:inherit}
+button{cursor:pointer;background:none;border:none}
+input,textarea,select{background:var(--sumi);border:1px solid var(--sumi-4);border-radius:6px;color:var(--kinari);padding:9px 11px;width:100%;font-size:16px}
+input:focus,textarea:focus,select:focus{outline:none;border-color:var(--kin)}
+textarea{resize:vertical;line-height:1.6}
+select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--hai) 50%),linear-gradient(135deg,var(--hai) 50%,transparent 50%);background-position:calc(100% - 16px) 18px,calc(100% - 11px) 18px;background-size:5px 5px;background-repeat:no-repeat}
+a{color:var(--kin)}
+
+#app{display:flex;flex-direction:column;height:100dvh;padding-top:env(safe-area-inset-top)}
+#app::after{
+  content:"";position:fixed;inset:0;z-index:90;pointer-events:none;
+  opacity:.045;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ---------- 頭書き ---------- */
+header{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:12px 16px 10px;border-bottom:1px solid var(--sumi-3);flex:none;
+}
+.brand{font-family:var(--mincho);letter-spacing:.14em;font-size:17px;display:flex;align-items:baseline;gap:10px}
+.brand small{font-size:11px;letter-spacing:.1em;color:var(--hai);font-family:var(--gothic)}
+.hbtn{
+  border:1px solid var(--sumi-4);border-radius:999px;padding:5px 13px;
+  font-size:12px;color:var(--hai);letter-spacing:.08em;white-space:nowrap;
+}
+.hbtn.on{border-color:var(--kin);color:var(--kin)}
+
+main{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px 14px 30px}
+.view{display:none;max-width:720px;margin:0 auto}
+.view.on{display:block;animation:fade .3s var(--ease)}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* ---------- 部品 ---------- */
+h2.sec{
+  font-family:var(--mincho);font-size:13px;letter-spacing:.2em;color:var(--kin);
+  margin:22px 0 10px;display:flex;align-items:center;gap:9px;
+}
+h2.sec::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--kin-awai,rgba(201,162,75,.3)),transparent)}
+h2.sec:first-child{margin-top:4px}
+.card{background:var(--sumi-2);border:1px solid var(--sumi-3);border-radius:10px;padding:14px;margin-bottom:12px}
+.card.kin{border-color:rgba(201,162,75,.36)}
+.card h3{font-family:var(--mincho);font-size:15px;letter-spacing:.08em;margin-bottom:8px;font-weight:400}
+.muted{color:var(--hai);font-size:12.5px;line-height:1.65}
+.mini{color:var(--hai-2);font-size:11.5px;line-height:1.6}
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  border:1px solid var(--sumi-4);border-radius:8px;padding:11px 16px;
+  font-size:14px;letter-spacing:.06em;color:var(--kinari);transition:.16s var(--ease);
+}
+.btn:active{transform:scale(.985)}
+.btn.pri{background:var(--shu-fukai);border-color:var(--shu);color:#fff}
+.btn.kin{border-color:var(--kin);color:var(--kin)}
+.btn.wide{width:100%}
+.btn.sm{padding:7px 11px;font-size:12.5px;border-radius:6px}
+.btn[disabled]{opacity:.4;pointer-events:none}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap}
+.btnrow>.btn{flex:1;min-width:120px}
+.field{margin-bottom:11px}
+.field label{display:block;font-size:12px;letter-spacing:.1em;color:var(--hai);margin-bottom:5px}
+.chip{
+  display:inline-block;border:1px solid var(--sumi-4);border-radius:999px;
+  padding:3px 10px;font-size:11.5px;color:var(--hai);margin:0 5px 5px 0;
+}
+.chip.on{border-color:var(--kin);color:var(--kin)}
+.chips{display:flex;flex-wrap:wrap;margin-top:6px}
+.num{font-family:var(--mincho);color:var(--kin);letter-spacing:.04em}
+
+/* 統計 */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+@media (max-width:359px){.stats{grid-template-columns:repeat(2,1fr)}}
+.stat{background:var(--sumi-2);border:1px solid var(--sumi-3);border-radius:9px;padding:10px 6px;text-align:center}
+.stat b{display:block;font-family:var(--mincho);font-size:21px;font-weight:400;letter-spacing:.02em}
+.stat span{font-size:10.5px;color:var(--hai);letter-spacing:.06em}
+
+/* 進捗バー */
+.bar{height:6px;background:var(--sumi-3);border-radius:99px;overflow:hidden;margin:8px 0 6px}
+.bar>i{display:block;height:100%;background:linear-gradient(90deg,var(--shu-fukai),var(--kin));border-radius:99px;transition:width .5s var(--ease)}
+
+/* 一覧 */
+.plist{display:flex;flex-direction:column;gap:9px}
+.prow{display:flex;gap:11px;background:var(--sumi-2);border:1px solid var(--sumi-3);border-radius:10px;padding:9px;align-items:flex-start}
+.prow.sel{border-color:var(--kin)}
+.pth{width:78px;height:78px;flex:none;border-radius:7px;background:var(--sumi-3) center/cover no-repeat;position:relative;overflow:hidden}
+.pth i{position:absolute;left:0;bottom:0;background:rgba(0,0,0,.66);color:var(--kin);font-size:9.5px;font-style:normal;padding:1px 5px;border-top-right-radius:5px}
+.pbody{flex:1;min-width:0}
+.ptitle{font-size:13.5px;line-height:1.45;margin-bottom:3px;word-break:break-word}
+.pmeta{font-size:11px;color:var(--hai-2);display:flex;gap:8px;flex-wrap:wrap;margin-bottom:5px}
+.badge{display:inline-block;font-size:10px;letter-spacing:.06em;border-radius:4px;padding:1px 6px;border:1px solid var(--sumi-4);color:var(--hai)}
+.badge.ok{border-color:rgba(127,174,122,.5);color:var(--ok)}
+.badge.warn{border-color:rgba(224,161,58,.5);color:var(--keikoku)}
+.badge.ng{border-color:rgba(216,67,47,.6);color:var(--shu)}
+.badge.kin{border-color:rgba(201,162,75,.5);color:var(--kin)}
+.stars{color:var(--kin);font-size:11.5px;letter-spacing:.12em}
+
+/* サイト状態 */
+.sites{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
+.site{
+  border:1px solid var(--sumi-4);border-radius:5px;padding:2px 7px;font-size:10.5px;
+  color:var(--hai-2);letter-spacing:.04em;
+}
+.site.s1{border-color:var(--ao);color:var(--ao)}
+.site.s2{border-color:var(--ok);color:var(--ok);background:rgba(127,174,122,.1)}
+.site.s3{border-color:var(--shu);color:var(--shu)}
+
+/* 危険表示 */
+.risk{border-left:2px solid var(--sumi-4);padding:5px 0 5px 9px;margin-top:7px;font-size:12px;line-height:1.6}
+.risk.hi{border-color:var(--shu)}
+.risk.mid{border-color:var(--keikoku)}
+.risk.lo{border-color:var(--hai-2)}
+.risk b{font-weight:400;color:var(--kinari)}
+.risk span{color:var(--hai);display:block;font-size:11.5px}
+
+/* 帳簿の棒グラフ */
+.graph{display:flex;align-items:flex-end;gap:6px;height:132px;padding:8px 2px 0;overflow-x:auto}
+.gcol{flex:1;min-width:32px;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:4px;height:100%}
+.gcol i{display:block;width:100%;background:linear-gradient(180deg,var(--kin),var(--shu-fukai));border-radius:3px 3px 0 0;min-height:2px;transition:height .5s var(--ease)}
+.gcol u{font-size:9.5px;color:var(--hai-2);text-decoration:none;white-space:nowrap}
+.gcol b{font-size:9.5px;color:var(--kin);font-weight:400;white-space:nowrap}
+
+/* 表 */
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:7px 6px;border-bottom:1px solid var(--sumi-3);text-align:left}
+th{font-size:11px;color:var(--hai);letter-spacing:.08em;font-weight:400}
+td.r,th.r{text-align:right;font-variant-numeric:tabular-nums}
+
+/* タブ */
+nav#tabs{
+  flex:none;display:flex;border-top:1px solid var(--sumi-3);background:var(--sumi-2);
+  padding-bottom:env(safe-area-inset-bottom);
+}
+nav#tabs button{
+  flex:1;padding:9px 2px 8px;font-size:10.5px;letter-spacing:.06em;color:var(--hai-2);
+  display:flex;flex-direction:column;align-items:center;gap:3px;border-top:2px solid transparent;margin-top:-1px;
+}
+nav#tabs button b{font-family:var(--mincho);font-size:15px;font-weight:400;letter-spacing:.06em}
+nav#tabs button.on{color:var(--kin);border-top-color:var(--shu)}
+
+/* 覆い(モーダル) */
+.veil{
+  position:fixed;inset:0;z-index:100;background:rgba(8,7,6,.82);backdrop-filter:blur(3px);
+  display:none;align-items:flex-end;justify-content:center;
+}
+.veil.on{display:flex}
+.sheet{
+  background:var(--sumi-2);border:1px solid var(--sumi-3);border-radius:14px 14px 0 0;
+  width:100%;max-width:720px;max-height:92dvh;overflow-y:auto;
+  padding:16px 15px calc(24px + env(safe-area-inset-bottom));
+  animation:up .28s var(--ease);
+}
+@keyframes up{from{transform:translateY(24px);opacity:.4}to{transform:none;opacity:1}}
+.sheet h3{font-family:var(--mincho);font-size:16px;font-weight:400;letter-spacing:.1em;margin-bottom:4px}
+.shead{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;gap:10px}
+.shead .x{font-size:20px;color:var(--hai);line-height:1;padding:2px 6px}
+
+/* 覚え書き(注意) */
+.note{
+  border:1px dashed var(--sumi-4);border-radius:9px;padding:10px 12px;
+  font-size:11.5px;color:var(--hai);line-height:1.7;
+}
+.note b{color:var(--keikoku);font-weight:400}
+
+#toast{
+  position:fixed;left:50%;bottom:calc(76px + env(safe-area-inset-bottom));transform:translate(-50%,14px);
+  background:var(--sumi-3);border:1px solid var(--sumi-4);border-radius:8px;
+  padding:9px 16px;font-size:12.5px;z-index:200;opacity:0;pointer-events:none;transition:.24s var(--ease);
+  max-width:88vw;text-align:center;
+}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+
+.spin{
+  display:inline-block;width:13px;height:13px;border:2px solid var(--sumi-4);
+  border-top-color:var(--kin);border-radius:50%;animation:sp .8s linear infinite;vertical-align:-2px;
+}
+@keyframes sp{to{transform:rotate(360deg)}}
+.empty{text-align:center;color:var(--hai-2);font-size:12.5px;padding:26px 10px;line-height:1.9}
+.hr{height:1px;background:var(--sumi-3);margin:14px 0}
+.kv{display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:5px 0}
+.kv span{color:var(--hai)}
+.kv b{font-weight:400;font-variant-numeric:tabular-nums}
+</style>
+</head>
+<body>
+<div id="app">
+
+<header>
+  <div class="brand">まちの記録係<small>写真副業の台帳</small></div>
+  <button class="hbtn" id="gearBtn">設定</button>
+</header>
+
+<main>
+
+  <!-- ============ ① 記録(ホーム) ============ -->
+  <section class="view on" id="v-home">
+    <div class="card kin" id="todayCard">
+      <h3>きょうの一枚</h3>
+      <div id="todayShot" class="muted">まず「撮る」でテーマを決めてください。</div>
+      <div class="btnrow" style="margin-top:11px">
+        <button class="btn sm" id="todayDone">撮った</button>
+        <button class="btn sm" id="todaySkip">別の案</button>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><b id="stAll">0</b><span>手持ち</span></div>
+      <div class="stat"><b id="stReady">0</b><span>値付け済</span></div>
+      <div class="stat"><b id="stPost">0</b><span>投稿済</span></div>
+      <div class="stat"><b id="stLive">0</b><span>公開中</span></div>
+    </div>
+
+    <h2 class="sec">積み上げ</h2>
+    <div class="card">
+      <div class="kv"><span id="msLabel">つぎの目安</span><b id="msVal">— / 50枚</b></div>
+      <div class="bar"><i id="msBar" style="width:0%"></i></div>
+      <div class="mini" id="msNote"></div>
+    </div>
+
+    <div class="card">
+      <div class="kv"><span>今月の投稿</span><b><span id="mCount" class="num">0</span> 枚</b></div>
+      <div class="kv"><span>今月の売上</span><b><span id="mSales" class="num">0</span> 円</b></div>
+      <div class="kv"><span>累計の売上</span><b><span id="tSales" class="num">0</span> 円</b></div>
+      <div class="hr"></div>
+      <div class="kv"><span>撮った日</span><b><span id="dStreak" class="num">0</span> 日つづけて / 通算 <span id="dTotal" class="num">0</span> 日</b></div>
+    </div>
+
+    <h2 class="sec">はじめの一手</h2>
+    <div class="card">
+      <div class="btnrow">
+        <button class="btn pri" data-go="sort">写真を取り込む</button>
+        <button class="btn" data-go="plan">テーマを決める</button>
+      </div>
+      <div class="mini" style="margin-top:10px">
+        撮る → 取り込む(AIが題名・キーワード・注意点を付ける) → 書き出して各サイトへ投稿 → 帳簿に記帳。
+        この4手のうち、2手目と3手目をこのアプリが肩代わりします。
+      </div>
+    </div>
+
+    <div class="note" style="margin-top:14px">
+      <b>おことわり</b> — 枚数の目安(50 / 200 / 500枚)や金額は、参考にした解説動画で語られた
+      <b>一例</b>です。売れ方は題材・時期・サイトの審査で大きく変わり、収入を保証するものではありません。
+      AIが出す「注意点」も下読みで、最終的な判断は各サイトの規約とご自身の責任でお願いします。
+    </div>
+  </section>
+
+  <!-- ============ ② 撮る(だんどり) ============ -->
+  <section class="view" id="v-plan">
+    <h2 class="sec">テーマを決める</h2>
+    <div class="card">
+      <div class="muted" style="margin-bottom:10px">
+        毎日通る場所を書くだけで、AIが「売り物になる切り口」と撮影リストを作ります。
+        条件は3つ — <b>週3回以上通る</b> / <b>時間帯・季節で変わる</b> / <b>数年で変わりそう</b>。
+      </div>
+      <div class="field">
+        <label>あなたの通り道・生活圏</label>
+        <textarea id="planIn" rows="4" placeholder="例)埼玉県◯◯市。毎朝7時に自転車で駅まで15分。駅前は再開発中で工事が続いている。土日は川沿いの遊歩道を散歩。近くに昭和からの商店街と市役所、団地。"></textarea>
+      </div>
+      <button class="btn pri wide" id="planBtn">テーマ案をつくる</button>
+      <div class="mini" id="planCost" style="margin-top:8px"></div>
+    </div>
+    <div id="planOut"></div>
+
+    <h2 class="sec">いま追いかけているテーマ</h2>
+    <div id="themeList"></div>
+    <button class="btn wide sm" id="addThemeBtn">自分でテーマを足す</button>
+  </section>
+
+  <!-- ============ ③ 仕分け(しあげ) ============ -->
+  <section class="view" id="v-sort">
+    <h2 class="sec">写真を取り込む</h2>
+    <div class="card">
+      <div class="field">
+        <label>このひとまとまりのテーマ</label>
+        <select id="sortTheme"></select>
+      </div>
+      <input type="file" id="fileIn" accept="image/*" multiple style="display:none">
+      <input type="file" id="camIn" accept="image/*" capture="environment" style="display:none">
+      <div class="btnrow">
+        <button class="btn pri" id="pickBtn">写真を選ぶ</button>
+        <button class="btn kin" id="camBtn">その場で撮る</button>
+      </div>
+      <div class="mini" style="margin-top:9px">
+        選んだ枚数ぶん、AIが順に見て「日本語の題名 / 英語の題名 / 説明 / キーワード / 掲載の注意点 / 売れやすさ」を付けます。
+        元の写真はこの端末から出ません(AIに送るのは縮小したコピーだけ)。投稿は元データで行ってください。
+      </div>
+      <div class="mini" id="sortCost" style="margin-top:6px"></div>
+    </div>
+
+    <div id="queueCard" class="card kin" style="display:none">
+      <div class="kv"><span id="qLabel">値付け中</span><b><span id="qNow">0</span> / <span id="qAll">0</span></b></div>
+      <div class="bar"><i id="qBar" style="width:0%"></i></div>
+      <div class="mini" id="qMsg"></div>
+      <button class="btn sm" id="qStop" style="margin-top:8px">中断する</button>
+    </div>
+
+    <h2 class="sec">直近の仕上がり</h2>
+    <div id="sortList" class="plist"></div>
+  </section>
+
+  <!-- ============ ④ 台帳 ============ -->
+  <section class="view" id="v-book">
+    <h2 class="sec">写真台帳</h2>
+    <div class="card">
+      <div class="btnrow" style="margin-bottom:9px">
+        <button class="btn sm pri" id="postModeBtn">投稿モード</button>
+        <button class="btn sm" id="exportBtn">書き出し(CSV)</button>
+      </div>
+      <div class="chips" id="filterChips"></div>
+      <div class="mini" id="bookCount"></div>
+    </div>
+    <div id="bookList" class="plist"></div>
+  </section>
+
+  <!-- ============ ⑤ 帳簿 ============ -->
+  <section class="view" id="v-money">
+    <h2 class="sec">売上の記帳</h2>
+    <div class="card">
+      <div class="field">
+        <label>月</label>
+        <select id="ledMonth"></select>
+      </div>
+      <div id="ledFields"></div>
+      <button class="btn pri wide" id="ledSave">この月を記帳する</button>
+    </div>
+
+    <h2 class="sec">推移</h2>
+    <div class="card">
+      <div class="graph" id="graph"></div>
+      <div class="mini" style="margin-top:6px">金の棒=売上(円)、下の数字=その月に投稿した枚数。</div>
+    </div>
+
+    <h2 class="sec">まとめ</h2>
+    <div class="card">
+      <div class="kv"><span>累計 売上</span><b><span id="sumSales" class="num">0</span> 円</b></div>
+      <div class="kv"><span>累計 AI利用料(概算)</span><b><span id="sumCost" class="num">0</span> 円</b></div>
+      <div class="hr"></div>
+      <div class="kv"><span>差引</span><b><span id="sumNet" class="num">0</span> 円</b></div>
+      <div class="mini" style="margin-top:8px">
+        AI利用料は送受信したトークンからの概算です(1ドル=<span id="rateShow">155</span>円で換算)。
+        実際の請求額は Anthropic の明細をご確認ください。
+      </div>
+    </div>
+    <table id="siteTable" style="margin-top:6px"></table>
+  </section>
+
+</main>
+
+<nav id="tabs">
+  <button data-v="home" class="on"><b>記</b>記録</button>
+  <button data-v="plan"><b>撮</b>撮る</button>
+  <button data-v="sort"><b>仕</b>仕分け</button>
+  <button data-v="book"><b>台</b>台帳</button>
+  <button data-v="money"><b>帳</b>帳簿</button>
+</nav>
+</div>
+
+<!-- ============ 覆い ============ -->
+<div class="veil" id="veil"><div class="sheet" id="sheet"></div></div>
+<div id="toast"></div>
+
+<script>
+/* ================================================================
+   1. 下ごしらえ(道具・保存)
+   ================================================================ */
+var $ = function(id){ return document.getElementById(id); };
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, function(c){
+  return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
+function num(n){ return (Math.round(n)||0).toLocaleString("ja-JP"); }
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function ymd(d){ d = d ? new Date(d) : new Date();
+  return d.getFullYear() + "-" + ("0"+(d.getMonth()+1)).slice(-2) + "-" + ("0"+d.getDate()).slice(-2); }
+function ym(d){ return ymd(d).slice(0,7); }
+
+var toastT = null;
+function toast(msg){
+  var t = $("toast"); t.textContent = msg; t.classList.add("on");
+  clearTimeout(toastT); toastT = setTimeout(function(){ t.classList.remove("on"); }, 2600);
+}
+function copy(text, what){
+  var done = function(){ toast((what||"") + "をコピーしました"); };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(done, function(){ fallbackCopy(text, done); });
+  } else fallbackCopy(text, done);
+}
+function fallbackCopy(text, done){
+  var ta = document.createElement("textarea");
+  ta.value = text; ta.style.position="fixed"; ta.style.opacity="0";
+  document.body.appendChild(ta); ta.select();
+  try{ document.execCommand("copy"); done(); }catch(e){ toast("コピーできませんでした"); }
+  document.body.removeChild(ta);
+}
+function dl(name, text, mime){
+  var blob = new Blob([text], { type: (mime||"text/plain") + ";charset=utf-8" });
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 800);
+}
+
+/* ---------- 設定・帳簿は localStorage、写真は IndexedDB ---------- */
+var LS = { key:"mk.key", model:"mk.model", themes:"mk.themes", active:"mk.active",
+           ledger:"mk.ledger", days:"mk.days", usage:"mk.usage", seen:"mk.seen" };
+function lsGet(k, def){ try{ var v = localStorage.getItem(k); return v==null ? def : JSON.parse(v); }catch(e){ return def; } }
+function lsSet(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){ toast("この端末に保存できませんでした"); } }
+
+var S = {
+  key:    lsGet(LS.key, "") || "",
+  model:  lsGet(LS.model, "claude-opus-5"),
+  themes: lsGet(LS.themes, []),
+  active: lsGet(LS.active, ""),
+  ledger: lsGet(LS.ledger, {}),
+  days:   lsGet(LS.days, []),
+  usage:  lsGet(LS.usage, { in:0, out:0 })
+};
+var P = [];              // 写真台帳(新しい順)
+var LIVE = {};           // 解析用の大きめ画像(この画面を開いているあいだだけ)
+
+var DB = null;
+function idb(){
+  return new Promise(function(res, rej){
+    if(DB) return res(DB);
+    var rq = indexedDB.open("machi-kiroku", 1);
+    rq.onupgradeneeded = function(){
+      var db = rq.result;
+      if(!db.objectStoreNames.contains("photos")) db.createObjectStore("photos", { keyPath:"id" });
+    };
+    rq.onsuccess = function(){ DB = rq.result; res(DB); };
+    rq.onerror = function(){ rej(rq.error); };
+  });
+}
+function idbAll(){
+  return idb().then(function(db){
+    return new Promise(function(res, rej){
+      var rq = db.transaction("photos","readonly").objectStore("photos").getAll();
+      rq.onsuccess = function(){ res(rq.result || []); };
+      rq.onerror = function(){ rej(rq.error); };
+    });
+  });
+}
+function idbPut(rec){
+  return idb().then(function(db){
+    return new Promise(function(res, rej){
+      var tx = db.transaction("photos","readwrite");
+      tx.objectStore("photos").put(rec);
+      tx.oncomplete = res; tx.onerror = function(){ rej(tx.error); };
+    });
+  });
+}
+function idbDel(id){
+  return idb().then(function(db){
+    return new Promise(function(res, rej){
+      var tx = db.transaction("photos","readwrite");
+      tx.objectStore("photos").delete(id);
+      tx.oncomplete = res; tx.onerror = function(){ rej(tx.error); };
+    });
+  });
+}
+function savePhoto(p){ p.savedAt = Date.now(); return idbPut(p).catch(function(){ toast("写真の保存に失敗しました(容量不足かもしれません)"); }); }
+
+/* ---------- 撮った日の記録 ---------- */
+function markDay(){
+  var t = ymd();
+  if(S.days.indexOf(t) === -1){ S.days.push(t); S.days.sort(); lsSet(LS.days, S.days); }
+}
+function streak(){
+  if(!S.days.length) return 0;
+  var d = new Date(), n = 0;
+  if(S.days.indexOf(ymd(d)) === -1) d.setDate(d.getDate()-1);   // 今日まだでも昨日まで続いていれば継続
+  while(S.days.indexOf(ymd(d)) !== -1){ n++; d.setDate(d.getDate()-1); }
+  return n;
+}
+
+/* ================================================================
+   2. サイトと分類の下敷き
+   ================================================================ */
+var SITES = [
+  { k:"pixta",   name:"PIXTA",        lang:"ja" },
+  { k:"photoac", name:"写真AC",       lang:"ja" },
+  { k:"adobe",   name:"Adobe Stock",  lang:"en" },
+  { k:"shutter", name:"Shutterstock", lang:"en" }
+];
+var ST = ["未投稿","投稿済","公開中","却下"];   // 0..3
+
+var ADOBE_CAT = ["","動物","建物と建築","ビジネス","飲み物","環境","心の状態","食べ物","素材","趣味と余暇",
+  "産業","風景","ライフスタイル","人物","植物と花","文化と宗教","科学","社会問題","スポーツ","技術","交通","旅行"];
+var SS_CAT = ["Abstract","Animals/Wildlife","Backgrounds/Textures","Beauty/Fashion","Buildings/Landmarks",
+  "Business/Finance","Education","Food and Drink","Healthcare/Medical","Holidays","Industrial","Interiors",
+  "Miscellaneous","Nature","Objects","Parks/Outdoor","People","Religion","Science","Signs/Symbols",
+  "Sports","Technology","Transportation","Vintage"];
+
+/* ================================================================
+   3. Claude API(この端末 → Anthropic に直接)
+   ================================================================ */
+var MODELS = {
+  "claude-opus-5":    { label:"Claude Opus 5 — 目利きを最優先", in:5,  out:25 },
+  "claude-sonnet-5":  { label:"Claude Sonnet 5 — 品質と費用の均衡", in:3, out:15 },
+  "claude-haiku-4-5": { label:"Claude Haiku 4.5 — 速さと安さ", in:1, out:5 }
+};
+var USDJPY = 155;
+function costYen(model, i, o){
+  var m = MODELS[model] || MODELS["claude-opus-5"];
+  return (i/1e6*m.in + o/1e6*m.out) * USDJPY;
+}
+function addUsage(i, o){
+  S.usage.in += i||0; S.usage.out += o||0; lsSet(LS.usage, S.usage);
+}
+function usageYen(){ return costYen(S.model, S.usage.in, S.usage.out); }
+
+function apiErr(status, body){
+  try{ var j = JSON.parse(body); if(j.error && j.error.message) return j.error.message; }catch(e){}
+  return "HTTP " + status;
+}
+/* 画像つき・JSONスキーマ固定の一往復。返り値は素の JavaScript オブジェクト。 */
+async function send(body){
+  var res;
+  try{
+    res = await fetch("https://api.anthropic.com/v1/messages", {
+      method:"POST",
+      headers:{
+        "content-type":"application/json",
+        "x-api-key": S.key,
+        "anthropic-version":"2023-06-01",
+        "anthropic-dangerous-direct-browser-access":"true"
+      },
+      body: JSON.stringify(body)
+    });
+  }catch(e){ throw new Error("通信できませんでした。電波の良いところで、もう一度お試しください。"); }
+
+  if(!res.ok){
+    var txt = await res.text(), msg = apiErr(res.status, txt);
+    if(res.status === 401) throw new Error("APIキーが違うようです。設定を確かめてください。");
+    if(res.status === 429) throw new Error("短時間に送りすぎです。少し待ってから続けてください。");
+    if(res.status === 529) throw new Error("APIが混み合っています。少し待ってからお試しください。");
+    if(/credit balance|billing/i.test(msg)) throw new Error("Anthropic の残高が足りないようです。");
+    var e2 = new Error(msg); e2.status = res.status; throw e2;
+  }
+  return res.json();
+}
+function pickJson(j){
+  var text = "";
+  (j.content||[]).forEach(function(b){ if(b.type === "text") text += b.text; });
+  try{ return JSON.parse(text); }
+  catch(e){
+    var a = text.indexOf("{"), b2 = text.lastIndexOf("}");
+    if(a >= 0 && b2 > a){ try{ return JSON.parse(text.slice(a, b2+1)); }catch(e2){} }
+    throw new Error("AIの返事を読み取れませんでした。もう一度お試しください。");
+  }
+}
+async function ask(opts){
+  var body = {
+    model: S.model,
+    max_tokens: opts.max || 4000,
+    system: opts.system,
+    messages: [{ role:"user", content: opts.content }],
+    output_config: { format: { type:"json_schema", schema: opts.schema } }
+  };
+  // Haiku 4.5 は effort / adaptive thinking に非対応のため付けない
+  if(S.model.indexOf("haiku") === -1){
+    body.thinking = { type:"adaptive" };
+    body.output_config.effort = opts.effort || "medium";
+  }
+  var j;
+  try{
+    j = await send(body);
+  }catch(e){
+    // 仕様変更などで細かい指定が弾かれたときは、素の形で言い直す
+    if(e.status !== 400) throw e;
+    var plain = {
+      model: S.model, max_tokens: opts.max || 4000,
+      system: opts.system + "\n\n返事は JSON オブジェクトひとつだけにしてください。前置きも説明も付けないこと。",
+      messages: [{ role:"user", content: opts.content }]
+    };
+    j = await send(plain);
+  }
+  if(j.usage) addUsage((j.usage.input_tokens||0) + (j.usage.cache_read_input_tokens||0), j.usage.output_tokens||0);
+  if(j.stop_reason === "refusal") throw new Error("この内容はAIの方針で扱えませんでした。");
+  return pickJson(j);
+}
+
+/* ================================================================
+   4. 写真の下ごしらえと、AIによる値付け
+   ================================================================ */
+function shrink(file, max, q){
+  return new Promise(function(res, rej){
+    var url = URL.createObjectURL(file), img = new Image();
+    img.onload = function(){
+      var w = img.naturalWidth, h = img.naturalHeight;
+      var sc = Math.min(1, max / Math.max(w, h));
+      var cv = document.createElement("canvas");
+      cv.width = Math.max(1, Math.round(w*sc)); cv.height = Math.max(1, Math.round(h*sc));
+      cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+      URL.revokeObjectURL(url);
+      res({ url: cv.toDataURL("image/jpeg", q), w:w, h:h });
+    };
+    img.onerror = function(){ URL.revokeObjectURL(url); rej(new Error("読み込めません")); };
+    img.src = url;
+  });
+}
+
+var ANALYSIS_SCHEMA = {
+  type:"object",
+  properties:{
+    title_ja:  { type:"string" },
+    title_en:  { type:"string" },
+    caption_ja:{ type:"string" },
+    caption_en:{ type:"string" },
+    keywords_ja:{ type:"array", items:{ type:"string" } },
+    keywords_en:{ type:"array", items:{ type:"string" } },
+    adobe_category:{ type:"integer" },
+    ss_category:{ type:"string" },
+    score:      { type:"integer" },
+    score_reason:{ type:"string" },
+    editorial:  { type:"boolean" },
+    risks:{ type:"array", items:{
+      type:"object",
+      properties:{ level:{ type:"string" }, what:{ type:"string" }, fix:{ type:"string" } },
+      required:["level","what","fix"], additionalProperties:false } },
+    next_shot:  { type:"string" }
+  },
+  required:["title_ja","title_en","caption_ja","caption_en","keywords_ja","keywords_en","adobe_category",
+            "ss_category","score","score_reason","editorial","risks","next_shot"],
+  additionalProperties:false
+};
+
+var ANALYSIS_SYS =
+"あなたは日本のストックフォト(PIXTA・写真AC・Adobe Stock・Shutterstock)の審査と検索傾向に詳しい編集者です。" +
+"送られてくるのは、会社員が通勤路や生活圏で撮った日常風景の写真です。" +
+"芸術性ではなく「企業がチラシ・記事・資料で説明に使えるか」という観点だけで値を付けてください。\n\n" +
+"守ること:\n" +
+"1. 題名は、写っているものが一読で分かる説明文にする。詩的な表現・感想・比喩は使わない。" +
+"日本語の題名は全角30字以内、英語の題名は英語圏の購買者が検索する語で12語以内。\n" +
+"2. 説明文は日本語(caption_ja)と英語(caption_en)の両方を書く。" +
+"caption_ja は被写体・場所の性格・時間帯・季節・使えそうな用途を60〜110字で。" +
+"caption_en は英語圏の購買者に向けた1文(25語以内)。日本語の直訳ではなく、検索されそうな語を含める。\n" +
+"3. キーワードは検索される順に並べる。日本語は20〜30語、英語は25〜40語。" +
+"被写体そのもの / 場所の種類 / 時間帯・天気・季節 / 人の気配や暮らし / 用途や連想語(例: 地方創生、通勤、再開発、少子高齢化) を混ぜる。" +
+"写っていないものは決して入れない。固有名詞は、看板等で明確に読み取れる地名だけにする。\n" +
+"4. risks には掲載時に問題になり得る点だけを挙げる。" +
+"顔が判別できる人物、車のナンバープレート、店名・商品名・ロゴ・商標、キャラクター、他人の著作物(彫刻・絵・建築意匠)、" +
+"私有地からの撮影、撮影禁止が疑われる場所など。level は 高 / 中 / 低。fix には具体的な対処(その部分をぼかす、寄りで撮り直す、報道用途限定で出す等)。" +
+"問題がなければ空の配列にする。指摘を水増ししない。\n" +
+"5. editorial は、商用利用が難しく報道・記事用途に限定すべき写真なら true。\n" +
+"6. score は 1〜5 の見込み(5=企業の需要が高く繰り返し売れそう / 1=買い手が想像しにくい)。score_reason は40字以内で率直に。\n" +
+"7. next_shot には「同じ場所で次に撮ると売り物が増えるカット」を一つだけ、30字以内で。\n" +
+"8. adobe_category は次の番号から一つ選ぶ: " +
+ADOBE_CAT.map(function(c,i){ return i ? i+"="+c : ""; }).filter(Boolean).join(" / ") + "\n" +
+"9. ss_category は次から一つだけ選ぶ: " + SS_CAT.join(" / ");
+
+async function analyze(p){
+  var img = LIVE[p.id] || p.thumb;
+  var theme = p.theme ? "撮影者が追いかけているテーマ: " + p.theme + "\n" : "";
+  var when  = p.shotAt ? "撮影日時: " + new Date(p.shotAt).toLocaleString("ja-JP") + "\n" : "";
+  var res = await ask({
+    system: ANALYSIS_SYS,
+    effort: "low",
+    max: 3000,
+    schema: ANALYSIS_SCHEMA,
+    content: [
+      { type:"image", source:{ type:"base64", media_type:"image/jpeg", data: img.split(",")[1] } },
+      { type:"text", text: theme + when + "この1枚に、上の決まりどおり値を付けてください。" }
+    ]
+  });
+  res.keywords_ja = (res.keywords_ja||[]).slice(0,30);
+  res.keywords_en = (res.keywords_en||[]).slice(0,40);
+  return res;
+}
+
+/* 鍵がないときの下見用(通信しません) */
+function demoAnalyze(p){
+  var n = (p.name||"").length + (p.size||0);
+  var base = p.theme || "通勤路の風景";
+  var kw = ["日本","風景","街並み","日常","朝","通勤","地方都市","駅前","舗装路","電柱","看板","空",
+            "生活感","住宅街","歩道","記録","無人","昼","くもり","街角"];
+  return {
+    title_ja: base + "(見本の値付け)",
+    title_en: "Everyday townscape in a Japanese suburb",
+    caption_ja: "通勤路でよく見かける" + base + "。地域の暮らしや再開発の記事、自治体の資料などの説明に使える一枚。",
+    caption_en: "An ordinary street scene in a Japanese suburb, useful for articles about local life and redevelopment.",
+    keywords_ja: kw,
+    keywords_en: ["japan","townscape","daily life","commute","suburb","street","morning","local","road",
+                  "utility pole","signboard","sky","residential","sidewalk","no people","record","cloudy"],
+    adobe_category: 2, ss_category:"Buildings/Landmarks",
+    score: 3 + (n % 2), score_reason:"見本のため固定値です",
+    editorial: false,
+    risks: (n % 3 === 0) ? [{ level:"中", what:"見本の指摘: 人物の顔が写り込んでいる可能性", fix:"顔が判別できないカットで撮り直すか、ぼかす" }] : [],
+    next_shot: "同じ場所を夕方と雨の日にもう一度",
+    demo: true
+  };
+}
+
+/* ---------- 値付けのあいだ画面を起こしておく ---------- */
+var wakeL = null;
+async function keepAwake(on){
+  try{
+    if(on && !wakeL && navigator.wakeLock){
+      wakeL = await navigator.wakeLock.request("screen");
+      wakeL.addEventListener("release", function(){ wakeL = null; });
+    }else if(!on && wakeL){ wakeL.release(); wakeL = null; }
+  }catch(e){ /* 対応していない端末では何もしない */ }
+}
+document.addEventListener("visibilitychange", function(){
+  if(document.visibilityState === "visible" && Q.run) keepAwake(true);
+});
+
+/* ---------- 取り込み → 順番に値付け ---------- */
+var Q = { list:[], i:0, run:false, stop:false };
+
+async function importFiles(files){
+  var theme = $("sortTheme").value || "";
+  var added = [];
+  for(var i=0;i<files.length;i++){
+    var f = files[i];
+    if(!/^image\//.test(f.type)) continue;
+    try{
+      var big = await shrink(f, 1000, 0.82);
+      var th  = await shrink(f, 512, 0.72);
+      var p = {
+        id: uid(), name: f.name || ("photo-" + (i+1) + ".jpg"), size: f.size,
+        w: big.w, h: big.h, shotAt: f.lastModified || Date.now(),
+        theme: theme, thumb: th.url, ai: null,
+        sites: { pixta:0, photoac:0, adobe:0, shutter:0 },
+        createdAt: Date.now() + i
+      };
+      LIVE[p.id] = big.url;
+      await savePhoto(p);
+      P.unshift(p); added.push(p);
+    }catch(e){ /* 読めない画像は飛ばす */ }
+  }
+  markDay(); renderAll();
+  if(!added.length){ toast("読み込める写真がありませんでした"); return; }
+  toast(added.length + "枚を取り込みました");
+  runQueue(added);
+}
+
+async function runQueue(list){
+  Q.list = list.filter(function(p){ return !p.ai; });
+  Q.i = 0; Q.stop = false;
+  if(!Q.list.length) return;
+  Q.run = true; renderQueue(); keepAwake(true);
+  for(var i=0;i<Q.list.length;i++){
+    if(Q.stop) break;
+    Q.i = i; renderQueue();
+    var p = Q.list[i];
+    try{
+      p.ai = S.key ? await analyze(p) : (await new Promise(function(r){ setTimeout(function(){ r(demoAnalyze(p)); }, 450); }));
+      p.aiAt = Date.now();
+      await savePhoto(p);
+    }catch(e){
+      p.aiError = e.message || "値付けに失敗しました";
+      renderQueue(e.message);
+      if(/APIキー|残高/.test(p.aiError)) { Q.stop = true; toast(p.aiError); }
+      else if(/送りすぎ|混み合/.test(p.aiError) && !p._retry){ p._retry = 1; await new Promise(function(r){ setTimeout(r, 5000); }); i--; continue; }
+    }
+    renderSort(); renderHome();
+  }
+  Q.run = false; Q.i = Q.list.length; renderQueue(); keepAwake(false);
+  renderAll();
+  if(!Q.stop) toast("値付けが終わりました");
+}
+
+/* ================================================================
+   5. 画面(記録・撮る)
+   ================================================================ */
+function countLive(){ return P.filter(function(p){ return anySite(p) >= 2; }).length; }
+function anySite(p){
+  var m = 0; SITES.forEach(function(s){ m = Math.max(m, (p.sites && p.sites[s.k]) || 0); }); return m;
+}
+function postedCount(){ return P.filter(function(p){ return anySite(p) >= 1; }).length; }
+function readyCount(){ return P.filter(function(p){ return !!p.ai; }).length; }
+function monthSales(m){
+  var e = S.ledger[m]; if(!e) return 0;
+  return SITES.reduce(function(a, s){ return a + (Number(e[s.k]) || 0); }, 0);
+}
+function totalSales(){ return Object.keys(S.ledger).reduce(function(a, m){ return a + monthSales(m); }, 0); }
+function monthPhotos(m){ return P.filter(function(p){ return ym(p.createdAt) === m; }).length; }
+
+var MILE = [50, 200, 500, 1000, 2000];
+var todayIdx = 0;
+
+function activeTheme(){
+  if(!S.themes.length) return null;
+  var t = S.themes.filter(function(x){ return x.id === S.active; })[0];
+  return t || S.themes[0];
+}
+function renderHome(){
+  var t = activeTheme();
+  var host = $("todayShot");
+  if(!t){
+    host.innerHTML = '<span class="muted">まず「撮る」でテーマを決めてください。テーマが決まると、毎朝ここに撮るカットが1つ出ます。</span>';
+  }else{
+    var undone = (t.shots||[]).filter(function(s){ return !s.done; });
+    if(!undone.length){
+      host.innerHTML = '<b>' + esc(t.name) + '</b><br><span class="muted">撮影リストは撮り切りました。「撮る」でカットを足すか、同じ場所を別の時間帯・天気でもう一巡してください。</span>';
+    }else{
+      var day = Math.floor(Date.now()/864e5);
+      var s = undone[(day + todayIdx) % undone.length];
+      host.innerHTML = '<div style="font-size:15px;line-height:1.6">' + esc(s.t) + '</div>' +
+        '<div class="mini" style="margin-top:5px">テーマ: ' + esc(t.name) + ' ・ 残り ' + undone.length + ' カット</div>';
+      host.dataset.shot = s.t;
+    }
+  }
+  $("stAll").textContent   = P.length;
+  $("stReady").textContent = readyCount();
+  $("stPost").textContent  = postedCount();
+  $("stLive").textContent  = countLive();
+
+  var posted = postedCount(), goal = MILE.filter(function(n){ return n > posted; })[0] || (posted + 500);
+  $("msVal").textContent = posted + " / " + goal + "枚";
+  $("msBar").style.width = Math.min(100, posted / goal * 100) + "%";
+  $("msNote").textContent = posted < 50
+    ? "解説動画の例では、最初のひと月はほとんど売れていません。50枚までは「売れたか」ではなく「並べたか」だけを数えます。"
+    : (posted < 200 ? "50枚を越えました。同じ場所の時間帯・季節ちがいを足すと、枚数は一気に伸びます。"
+                    : "枚数が効いてくる段階です。売れた題材の近くを厚く撮り足してください。");
+
+  var m = ym();
+  $("mCount").textContent = monthPhotos(m);
+  $("mSales").textContent = num(monthSales(m));
+  $("tSales").textContent = num(totalSales());
+  $("dStreak").textContent = streak();
+  $("dTotal").textContent  = S.days.length;
+}
+
+function themeCard(t){
+  var done = (t.shots||[]).filter(function(s){ return s.done; }).length;
+  var all  = (t.shots||[]).length;
+  return '<div class="card' + (t.id === S.active ? " kin" : "") + '" data-theme="' + t.id + '">' +
+    '<h3>' + esc(t.name) + (t.id === S.active ? ' <span class="badge kin">追跡中</span>' : '') + '</h3>' +
+    (t.why ? '<div class="muted">' + esc(t.why) + '</div>' : '') +
+    (t.spots && t.spots.length ? '<div class="chips">' + t.spots.map(function(s){ return '<span class="chip">' + esc(s) + '</span>'; }).join("") + '</div>' : '') +
+    '<div class="bar"><i style="width:' + (all ? done/all*100 : 0) + '%"></i></div>' +
+    '<div class="mini">撮影リスト ' + done + " / " + all + ' カット</div>' +
+    '<div class="btnrow" style="margin-top:10px">' +
+      '<button class="btn sm" data-act="shots" data-id="' + t.id + '">撮影リスト</button>' +
+      (t.id === S.active ? '' : '<button class="btn sm kin" data-act="pick" data-id="' + t.id + '">これを追う</button>') +
+      '<button class="btn sm" data-act="delth" data-id="' + t.id + '">削除</button>' +
+    '</div></div>';
+}
+function renderThemes(){
+  var host = $("themeList");
+  if(!S.themes.length){ host.innerHTML = '<div class="empty">テーマがまだありません。<br>上の欄に通り道を書いて「テーマ案をつくる」を押してください。</div>'; return; }
+  host.innerHTML = S.themes.map(themeCard).join("");
+}
+
+var PLAN_SCHEMA = {
+  type:"object",
+  properties:{ themes:{ type:"array", items:{
+    type:"object",
+    properties:{
+      name:{ type:"string" }, why:{ type:"string" },
+      spots:{ type:"array", items:{ type:"string" } },
+      buyer:{ type:"string" },
+      shots:{ type:"array", items:{ type:"string" } }
+    },
+    required:["name","why","spots","buyer","shots"], additionalProperties:false } } },
+  required:["themes"], additionalProperties:false
+};
+var PLAN_SYS =
+"あなたは日本のストックフォトに詳しい編集者です。撮影者は40〜50代の会社員で、機材はスマートフォンだけ、" +
+"時間は通勤と週末の散歩しかありません。書かれた生活圏の情報から、続けられて、かつ企業に売れるテーマを3つ提案してください。\n\n" +
+"テーマの条件(3つとも満たすこと):\n" +
+"・週3回以上その人が通る場所であること\n" +
+"・時間帯や季節で表情が変わり、同じ場所から何十枚も撮れること\n" +
+"・数年で姿が変わりそうで、今しか撮れない価値があること\n\n" +
+"観光名所や映える構図は狙わない。駅前・商店街・工事現場・団地・川沿い・役所や図書館まわりのような、" +
+"どこにでもある暮らしの風景を対象にする。\n" +
+"name は15字以内。why は なぜ売れるかを60字以内。buyer は 買いそうな相手と用途を40字以内(例: 自治体の広報誌、不動産会社の資料)。" +
+"spots は具体的な撮影地点を3〜5個。shots は実際に撮るカットの指示を12個、" +
+"「何を・どの時間帯や天気で・どんな画角で」が分かる25字前後の文で書く。";
+
+async function makePlan(){
+  var txt = ($("planIn").value || "").trim();
+  if(txt.length < 8){ toast("通り道の様子を、もう少し書いてください"); return; }
+  var btn = $("planBtn");
+  btn.disabled = true; btn.innerHTML = '<span class="spin"></span> 考えています…';
+  try{
+    var out;
+    if(S.key){
+      out = await ask({ system: PLAN_SYS, effort:"high", max: 6000, schema: PLAN_SCHEMA,
+        content: [{ type:"text", text: "生活圏の情報:\n" + txt }] });
+    }else{
+      await new Promise(function(r){ setTimeout(r, 700); });
+      out = { themes:[{ name:"駅前の再開発(見本)", why:"数年で消える工事中の景色は、あとから撮れない資料になるため。",
+        spots:["駅の北口ロータリー","工事の仮囲い","歩道橋の上","バス乗り場"], buyer:"自治体の広報誌・不動産会社の資料",
+        shots:["朝の通勤時間、仮囲い越しに駅舎を水平で","夕方、重機とビル影を広角で","雨の日、濡れた舗装と信号を低い位置から",
+               "歩道橋から見下ろすロータリー全景","バス待ちの列(顔が写らない後ろ姿)","工事看板と迂回路の案内",
+               "早朝の無人のロータリー","昼の商業ビルと空を縦位置で","夜、街灯と工事灯","解体前の建物の正面",
+               "季節の街路樹と歩道","駅名標と時刻表(掲示物は寄りすぎない)"] }] };
+    }
+    (out.themes||[]).forEach(function(t){
+      t.id = uid();
+      t.shots = (t.shots||[]).map(function(s){ return { t:s, done:false }; });
+      t.createdAt = Date.now();
+    });
+    $("planOut").innerHTML = '<h2 class="sec">できた案</h2>' + (out.themes||[]).map(function(t, i){
+      return '<div class="card">' +
+        '<h3>' + esc(t.name) + '</h3>' +
+        '<div class="muted">' + esc(t.why) + '</div>' +
+        '<div class="mini" style="margin-top:6px">買いそうな相手: ' + esc(t.buyer) + '</div>' +
+        '<div class="chips">' + (t.spots||[]).map(function(s){ return '<span class="chip">' + esc(s) + '</span>'; }).join("") + '</div>' +
+        '<div class="mini">撮影カット ' + t.shots.length + ' 件</div>' +
+        '<button class="btn sm kin" style="margin-top:9px" data-adopt="' + i + '">このテーマを採用する</button>' +
+      '</div>';
+    }).join("");
+    $("planOut").dataset.json = JSON.stringify(out.themes||[]);
+    if(!S.key) toast("見本です。設定でAPIキーを入れると、あなたの土地に合わせた案が出ます");
+  }catch(e){ toast(e.message); }
+  btn.disabled = false; btn.textContent = "テーマ案をつくる";
+  renderMoney();
+}
+
+/* ================================================================
+   6. 画面(仕分け・台帳)
+   ================================================================ */
+function stars(n){ n = Math.max(0, Math.min(5, n||0)); return "★★★★★".slice(0, n) + "☆☆☆☆☆".slice(0, 5-n); }
+function riskLevel(p){
+  if(!p.ai || !p.ai.risks || !p.ai.risks.length) return 0;
+  return p.ai.risks.some(function(r){ return r.level === "高"; }) ? 2 : 1;
+}
+function photoRow(p){
+  var a = p.ai, rl = riskLevel(p);
+  var head = a ? esc(a.title_ja) : (p.aiError ? '<span style="color:var(--shu)">値付けに失敗: ' + esc(p.aiError) + '</span>' : '<span class="muted">値付け待ち…</span>');
+  return '<div class="prow" data-id="' + p.id + '">' +
+    '<div class="pth" style="background-image:url(' + p.thumb + ')">' + (a ? '<i>' + stars(a.score) + '</i>' : '') + '</div>' +
+    '<div class="pbody">' +
+      '<div class="ptitle">' + head + '</div>' +
+      '<div class="pmeta">' +
+        '<span>' + esc(p.name) + '</span>' +
+        (p.theme ? '<span>' + esc(p.theme) + '</span>' : '') +
+        '<span>' + ymd(p.shotAt) + '</span>' +
+      '</div>' +
+      (a && a.demo ? '<span class="badge">見本</span> ' : '') +
+      (rl === 2 ? '<span class="badge ng">要注意</span> ' : (rl === 1 ? '<span class="badge warn">確認あり</span> ' : '')) +
+      (a && a.editorial ? '<span class="badge warn">報道用途向き</span> ' : '') +
+      '<div class="sites">' + SITES.map(function(s){
+        var v = (p.sites && p.sites[s.k]) || 0;
+        return '<span class="site s' + v + '">' + s.name + (v ? " " + ST[v] : "") + '</span>';
+      }).join("") + '</div>' +
+    '</div></div>';
+}
+function renderSort(){
+  var recent = P.slice(0, 12);
+  $("sortList").innerHTML = recent.length ? recent.map(photoRow).join("")
+    : '<div class="empty">まだ写真がありません。<br>通勤路で撮った1枚から始めてください。</div>';
+  var sel = $("sortTheme"), cur = sel.value;
+  sel.innerHTML = '<option value="">(テーマなし)</option>' + S.themes.map(function(t){
+    return '<option value="' + esc(t.name) + '">' + esc(t.name) + '</option>'; }).join("");
+  var at = activeTheme();
+  sel.value = cur || (at ? at.name : "");
+  // 1枚あたりの目安(画像約1000px と指示で入力2,200、題名とキーワードで出力1,000トークン前後)
+  var per = costYen(S.model, 2200, 1000);
+  $("sortCost").textContent = S.key
+    ? "AI利用料の目安: 1枚あたり約 " + per.toFixed(1) + " 円(100枚で約 " + num(per*100) + " 円)"
+    : "いまは見本モードです。設定でAPIキーを入れると、実際の値付けが始まります。";
+  $("planCost").textContent = S.key ? "" : "いまは見本モードです。設定でAPIキーを入れると、あなたの土地に合わせた案になります。";
+}
+function renderQueue(msg){
+  var c = $("queueCard");
+  if(!Q.list.length){ c.style.display = "none"; return; }
+  c.style.display = "";
+  $("qLabel").textContent = Q.run ? "値付け中" : "値付けを終えました";
+  $("qNow").textContent = Math.min(Q.i + (Q.run ? 0 : 1), Q.list.length);
+  $("qAll").textContent = Q.list.length;
+  $("qBar").style.width = (Q.list.length ? (Q.i / Q.list.length * 100) : 0) + "%";
+  $("qMsg").textContent = msg || (Q.run ? "この画面を開いたままにしてください。1枚あたり10〜30秒ほどです。" : "台帳から中身を確かめてください。");
+  $("qStop").style.display = Q.run ? "" : "none";
+}
+
+var FILTERS = [
+  { k:"all",   name:"すべて",     f:function(){ return true; } },
+  { k:"todo",  name:"値付け待ち", f:function(p){ return !p.ai; } },
+  { k:"risk",  name:"要注意",     f:function(p){ return riskLevel(p) > 0; } },
+  { k:"ready", name:"投稿できる", f:function(p){ return p.ai && riskLevel(p) < 2 && anySite(p) === 0; } },
+  { k:"sent",  name:"投稿済",     f:function(p){ return anySite(p) >= 1; } },
+  { k:"live",  name:"公開中",     f:function(p){ return anySite(p) >= 2; } }
+];
+var filterK = "all";
+function renderBook(){
+  $("filterChips").innerHTML = FILTERS.map(function(f){
+    var n = P.filter(f.f).length;
+    return '<span class="chip' + (f.k === filterK ? " on" : "") + '" data-f="' + f.k + '">' + f.name + ' ' + n + '</span>';
+  }).join("");
+  var fn = FILTERS.filter(function(f){ return f.k === filterK; })[0].f;
+  var list = P.filter(fn);
+  $("bookCount").textContent = "全 " + P.length + " 枚のうち " + list.length + " 枚を表示しています。行をタップすると中身を直せます。";
+  $("bookList").innerHTML = list.length ? list.slice(0, 200).map(photoRow).join("")
+    : '<div class="empty">この条件の写真はありません。</div>';
+}
+
+/* ---------- 写真1枚の中身 ---------- */
+function openPhoto(id){
+  var p = P.filter(function(x){ return x.id === id; })[0];
+  if(!p) return;
+  var a = p.ai;
+  var risks = (a && a.risks || []).map(function(r){
+    var cls = r.level === "高" ? "hi" : (r.level === "中" ? "mid" : "lo");
+    return '<div class="risk ' + cls + '"><b>[' + esc(r.level) + '] ' + esc(r.what) + '</b><span>' + esc(r.fix) + '</span></div>';
+  }).join("") || '<div class="mini">目立った注意点は挙がりませんでした。</div>';
+
+  sheet(
+    '<div class="shead"><div><h3>' + (a ? "写真の値付け" : "値付け前の写真") + '</h3>' +
+    '<div class="mini">' + esc(p.name) + ' ・ ' + p.w + '×' + p.h + ' ・ ' + ymd(p.shotAt) + '</div></div>' +
+    '<button class="x" data-close>×</button></div>' +
+    '<img src="' + p.thumb + '" style="width:100%;max-height:38dvh;object-fit:contain;background:var(--sumi);border-radius:9px;margin-bottom:12px">' +
+    (a ? (
+      '<div class="field"><label>日本語の題名(PIXTA・写真AC)</label><input id="e_tja" value="' + esc(a.title_ja) + '"></div>' +
+      '<div class="field"><label>英語の題名(Adobe Stock・Shutterstock)</label><input id="e_ten" value="' + esc(a.title_en) + '"></div>' +
+      '<div class="field"><label>説明文(日本語)</label><textarea id="e_cap" rows="3">' + esc(a.caption_ja) + '</textarea></div>' +
+      '<div class="field"><label>説明文(英語)</label><textarea id="e_cen" rows="2">' + esc(a.caption_en || "") + '</textarea></div>' +
+      '<div class="field"><label>日本語キーワード(読点区切り・' + (a.keywords_ja||[]).length + '語)</label>' +
+        '<textarea id="e_kja" rows="3">' + esc((a.keywords_ja||[]).join("、")) + '</textarea></div>' +
+      '<div class="field"><label>英語キーワード(コンマ区切り・' + (a.keywords_en||[]).length + '語)</label>' +
+        '<textarea id="e_ken" rows="3">' + esc((a.keywords_en||[]).join(", ")) + '</textarea></div>' +
+      '<div class="kv"><span>売れ見込み</span><b class="stars">' + stars(a.score) + '</b></div>' +
+      '<div class="mini">' + esc(a.score_reason) + '</div>' +
+      '<div class="kv" style="margin-top:6px"><span>分類</span><b>' + esc(ADOBE_CAT[a.adobe_category] || "—") + ' / ' + esc(a.ss_category || "—") + '</b></div>' +
+      '<div class="kv"><span>用途</span><b>' + (a.editorial ? "報道・記事用途に限定" : "商用でも可(要確認)") + '</b></div>' +
+      '<h2 class="sec">掲載前の確認</h2>' + risks +
+      '<h2 class="sec">次に撮るなら</h2><div class="muted">' + esc(a.next_shot || "—") + '</div>'
+    ) : '<div class="empty">まだ値付けされていません。<br>下の「値付けする」を押すと、AIがこの1枚を見ます。</div>') +
+
+    '<h2 class="sec">投稿の状態(押すたびに変わります)</h2>' +
+    '<div class="sites" id="siteBtns">' + SITES.map(function(s){
+      var v = (p.sites && p.sites[s.k]) || 0;
+      return '<button class="site s' + v + '" data-site="' + s.k + '" style="padding:6px 10px;font-size:12px">' + s.name + ' — ' + ST[v] + '</button>';
+    }).join("") + '</div>' +
+
+    '<div class="btnrow" style="margin-top:16px">' +
+      (a ? '<button class="btn sm pri" data-act="save">直しを保存</button>' : '') +
+      '<button class="btn sm" data-act="re">' + (a ? "値付けし直す" : "値付けする") + '</button>' +
+      '<button class="btn sm" data-act="del">削除</button>' +
+    '</div>',
+    function(root){
+      root.addEventListener("click", async function(ev){
+        var st = ev.target.closest("[data-site]");
+        if(st){
+          var k = st.dataset.site;
+          p.sites[k] = ((p.sites[k]||0) + 1) % 4;
+          st.className = "site s" + p.sites[k];
+          st.style.padding = "6px 10px"; st.style.fontSize = "12px";
+          st.textContent = SITES.filter(function(s){ return s.k===k; })[0].name + " — " + ST[p.sites[k]];
+          await savePhoto(p); renderAll(); return;
+        }
+        var b = ev.target.closest("[data-act]"); if(!b) return;
+        var act = b.dataset.act;
+        if(act === "save"){
+          p.ai.title_ja = $("e_tja").value.trim();
+          p.ai.title_en = $("e_ten").value.trim();
+          p.ai.caption_ja = $("e_cap").value.trim();
+          p.ai.caption_en = $("e_cen").value.trim();
+          p.ai.keywords_ja = $("e_kja").value.split(/[、,\n]/).map(function(s){ return s.trim(); }).filter(Boolean);
+          p.ai.keywords_en = $("e_ken").value.split(/[,、\n]/).map(function(s){ return s.trim(); }).filter(Boolean);
+          delete p.ai.demo;
+          await savePhoto(p); closeSheet(); renderAll(); toast("直しを保存しました");
+        }
+        if(act === "re"){
+          b.disabled = true; b.innerHTML = '<span class="spin"></span> 値付け中';
+          try{
+            p.ai = S.key ? await analyze(p) : demoAnalyze(p);
+            p.aiAt = Date.now(); delete p.aiError;
+            await savePhoto(p); closeSheet(); renderAll(); openPhoto(p.id);
+          }catch(e){ toast(e.message); b.disabled = false; b.textContent = "値付けする"; }
+        }
+        if(act === "del"){
+          if(!confirm("この写真を台帳から削除します。よろしいですか?(端末の写真そのものは消えません)")) return;
+          await idbDel(p.id);
+          P = P.filter(function(x){ return x.id !== p.id; });
+          closeSheet(); renderAll(); toast("削除しました");
+        }
+      });
+    }
+  );
+}
+
+/* ================================================================
+   7. 覆い(モーダル)・投稿モード・書き出し
+   ================================================================ */
+function sheet(html, after){
+  // 器ごと作り直す。前に開いた覆いの聞き耳が残っていると、押し間違いのもとになる。
+  var old = $("sheet"), host = old.cloneNode(false);
+  host.innerHTML = html;
+  old.replaceWith(host);
+  $("veil").classList.add("on");
+  host.scrollTop = 0;
+  host.querySelectorAll("[data-close]").forEach(function(b){ b.addEventListener("click", closeSheet); });
+  if(after) after(host);
+}
+function closeSheet(){ $("veil").classList.remove("on"); $("sheet").innerHTML = ""; }
+$("veil").addEventListener("click", function(e){ if(e.target === this) closeSheet(); });
+
+var SITE_URL = {
+  pixta:"https://creator.pixta.jp/", photoac:"https://www.photo-ac.com/",
+  adobe:"https://contributor.stock.adobe.com/", shutter:"https://submit.shutterstock.com/"
+};
+function openPost(){
+  sheet('<div class="shead"><div><h3>投稿モード</h3><div class="mini">サイトを選ぶと、まだ投稿していない写真を1枚ずつ出します。</div></div><button class="x" data-close>×</button></div>' +
+    SITES.map(function(s){
+      var n = P.filter(function(p){ return p.ai && riskLevel(p) < 2 && !(p.sites && p.sites[s.k]); }).length;
+      return '<button class="btn wide" style="margin-bottom:8px;justify-content:space-between" data-site="' + s.k + '">' +
+        '<span>' + s.name + '</span><span class="num">' + n + ' 枚</span></button>';
+    }).join("") +
+    '<div class="note" style="margin-top:10px">値付け済みで、注意点が「高」でない写真だけを出します。' +
+    '写真そのものは各サイトの画面から、<b>スマホに入っている元データ</b>を選んでアップロードしてください。' +
+    'ここでコピーするのは題名・説明・キーワードです。</div>',
+    function(root){
+      root.addEventListener("click", function(e){
+        var b = e.target.closest("[data-site]"); if(!b) return;
+        postCard(b.dataset.site, 0);
+      });
+    });
+}
+function postCard(siteK, idx){
+  var site = SITES.filter(function(s){ return s.k === siteK; })[0];
+  var list = P.filter(function(p){ return p.ai && riskLevel(p) < 2 && !(p.sites && p.sites[siteK]); });
+  if(!list.length){ sheet('<div class="shead"><h3>' + site.name + '</h3><button class="x" data-close>×</button></div>' +
+    '<div class="empty">投稿できる写真がありません。<br>「仕分け」で写真を取り込むか、値付けを済ませてください。</div>'); return; }
+  if(idx >= list.length){ closeSheet(); renderAll(); toast(site.name + " への投稿分をすべて出しました"); return; }
+  var p = list[idx], a = p.ai, ja = site.lang === "ja";
+  var title = ja ? a.title_ja : a.title_en;
+  var kw    = ja ? (a.keywords_ja||[]).join(",") : (a.keywords_en||[]).join(", ");
+  var desc  = ja ? a.caption_ja : (a.caption_en || a.title_en);
+  sheet(
+    '<div class="shead"><div><h3>' + site.name + ' へ投稿</h3>' +
+    '<div class="mini">' + (idx+1) + ' / ' + list.length + ' 枚目 ・ ' + esc(p.name) + '</div></div>' +
+    '<button class="x" data-close>×</button></div>' +
+    '<img src="' + p.thumb + '" style="width:100%;max-height:38dvh;object-fit:contain;background:var(--sumi);border-radius:9px;margin-bottom:12px">' +
+    (a.editorial ? '<div class="note" style="margin-bottom:10px"><b>報道・記事用途向き</b>と判定されています。各サイトの「編集用途(エディトリアル)」で登録してください。</div>' : '') +
+    (a.risks && a.risks.length ? '<div class="note" style="margin-bottom:10px"><b>確認</b> ' + esc(a.risks.map(function(r){ return r.what; }).join(" / ")) + '</div>' : '') +
+    '<div class="field"><label>題名</label><textarea id="c_t" rows="2">' + esc(title) + '</textarea>' +
+      '<button class="btn sm wide" style="margin-top:5px" data-cp="c_t">題名をコピー</button></div>' +
+    '<div class="field"><label>説明</label><textarea id="c_d" rows="3">' + esc(desc) + '</textarea>' +
+      '<button class="btn sm wide" style="margin-top:5px" data-cp="c_d">説明をコピー</button></div>' +
+    '<div class="field"><label>キーワード</label><textarea id="c_k" rows="4">' + esc(kw) + '</textarea>' +
+      '<button class="btn sm wide" style="margin-top:5px" data-cp="c_k">キーワードをコピー</button></div>' +
+    '<a class="btn sm wide" href="' + SITE_URL[siteK] + '" target="_blank" rel="noopener" style="margin-bottom:12px">' + site.name + ' を開く</a>' +
+    '<div class="btnrow">' +
+      '<button class="btn pri" data-next="1">投稿した → 次の写真</button>' +
+      '<button class="btn" data-next="0">とばす</button>' +
+    '</div>',
+    function(root){
+      root.addEventListener("click", async function(e){
+        var cp = e.target.closest("[data-cp]");
+        if(cp){ copy($(cp.dataset.cp).value, cp.textContent.replace("をコピー","")); return; }
+        var nx = e.target.closest("[data-next]"); if(!nx) return;
+        if(nx.dataset.next === "1"){
+          p.sites[siteK] = 1; await savePhoto(p); markDay(); renderAll();
+          postCard(siteK, idx);          // 投稿済になった分、同じ番号が次の写真になる
+        }else{
+          postCard(siteK, idx + 1);
+        }
+      });
+    });
+}
+
+/* ---------- 書き出し ---------- */
+function cq(s){ return '"' + String(s==null?"":s).replace(/"/g,'""') + '"'; }
+function withAi(){ return P.filter(function(p){ return !!p.ai; }); }
+function adobeCsv(){
+  var rows = ["Filename,Title,Keywords,Category,Releases"];
+  withAi().forEach(function(p){
+    rows.push([cq(p.name), cq(p.ai.title_en), cq((p.ai.keywords_en||[]).join(", ")),
+               cq(p.ai.adobe_category || ""), cq("")].join(","));
+  });
+  return rows.join("\r\n");
+}
+function ssCsv(){
+  var rows = ["Filename,Description,Keywords,Categories,Editorial,Mature content,Illustration"];
+  withAi().forEach(function(p){
+    rows.push([cq(p.name), cq(p.ai.caption_en || p.ai.title_en), cq((p.ai.keywords_en||[]).join(", ")),
+               cq(p.ai.ss_category || ""), cq(p.ai.editorial ? "yes" : "no"), cq("no"), cq("no")].join(","));
+  });
+  return rows.join("\r\n");
+}
+function jaCsv(){
+  var rows = ["ファイル名,タイトル,説明,キーワード,分類,撮影日,テーマ,売れ見込み,確認事項,PIXTA,写真AC,Adobe Stock,Shutterstock"];
+  withAi().forEach(function(p){
+    rows.push([cq(p.name), cq(p.ai.title_ja), cq(p.ai.caption_ja), cq((p.ai.keywords_ja||[]).join(",")),
+               cq(ADOBE_CAT[p.ai.adobe_category] || ""), cq(ymd(p.shotAt)), cq(p.theme),
+               cq(p.ai.score), cq((p.ai.risks||[]).map(function(r){ return "[" + r.level + "]" + r.what; }).join(" / ")),
+               cq(ST[p.sites.pixta||0]), cq(ST[p.sites.photoac||0]),
+               cq(ST[p.sites.adobe||0]), cq(ST[p.sites.shutter||0])].join(","));
+  });
+  return "﻿" + rows.join("\r\n");
+}
+function backupJson(){
+  return JSON.stringify({
+    v:1, at:new Date().toISOString(),
+    themes:S.themes, ledger:S.ledger, days:S.days, usage:S.usage,
+    photos: P.map(function(p){
+      var c = {}; for(var k in p){ if(k !== "thumb") c[k] = p[k]; } return c;
+    })
+  }, null, 1);
+}
+function openExport(){
+  var n = withAi().length;
+  sheet('<div class="shead"><div><h3>書き出し</h3><div class="mini">値付け済みの ' + n + ' 枚が対象です。</div></div><button class="x" data-close>×</button></div>' +
+    '<button class="btn wide" style="margin-bottom:8px" data-x="adobe">Adobe Stock 用 CSV</button>' +
+    '<button class="btn wide" style="margin-bottom:8px" data-x="ss">Shutterstock 用 CSV</button>' +
+    '<button class="btn wide" style="margin-bottom:8px" data-x="ja">日本語CSV(PIXTA・写真AC の下書き / Excel用)</button>' +
+    '<div class="hr"></div>' +
+    '<button class="btn wide kin" style="margin-bottom:8px" data-x="json">台帳まるごと控え(JSON)</button>' +
+    '<div class="note">CSV の列は各サイトの一括登録に合わせた一般的な形です。' +
+    '仕様は変わることがあるので、初回は数枚で試してから本番にお使いください。' +
+    'PIXTA と 写真AC はサイトの入力欄に貼る前提なので、日本語CSV は下書き・控えとしてお使いください。' +
+    '控え(JSON)には写真の画像は含まれません(題名・キーワード・状態などの文字だけ)。</div>',
+    function(root){
+      root.addEventListener("click", function(e){
+        var b = e.target.closest("[data-x]"); if(!b) return;
+        var d = ymd().replace(/-/g,"");
+        if(b.dataset.x === "adobe") dl("adobe-stock-" + d + ".csv", adobeCsv(), "text/csv");
+        if(b.dataset.x === "ss")    dl("shutterstock-" + d + ".csv", ssCsv(), "text/csv");
+        if(b.dataset.x === "ja")    dl("machi-kiroku-" + d + ".csv", jaCsv(), "text/csv");
+        if(b.dataset.x === "json")  dl("machi-kiroku-backup-" + d + ".json", backupJson(), "application/json");
+        toast("書き出しました");
+      });
+    });
+}
+
+/* ================================================================
+   8. 帳簿
+   ================================================================ */
+function monthsBack(n){
+  var out = [], d = new Date();
+  for(var i=0;i<n;i++){ out.unshift(ym(d)); d.setMonth(d.getMonth()-1); }
+  Object.keys(S.ledger).forEach(function(m){ if(out.indexOf(m) === -1) out.unshift(m); });
+  return out.sort();
+}
+function renderMoney(){
+  var sel = $("ledMonth"), months = monthsBack(12), cur = sel.value || ym();
+  sel.innerHTML = months.map(function(m){ return '<option value="' + m + '">' + m.replace("-","年") + '月</option>'; }).join("");
+  sel.value = cur;
+  var e = S.ledger[cur] || {};
+  $("ledFields").innerHTML = SITES.map(function(s){
+    return '<div class="field"><label>' + s.name + ' の売上(円)</label>' +
+      '<input type="number" inputmode="numeric" id="led_' + s.k + '" value="' + (e[s.k] || "") + '" placeholder="0"></div>';
+  }).join("") +
+  '<div class="field"><label>覚え書き</label><input id="led_memo" value="' + esc(e.memo || "") + '" placeholder="例)駅前の工事写真が3枚売れた"></div>' +
+  '<div class="mini">この月に取り込んだ写真: ' + monthPhotos(cur) + ' 枚</div>';
+
+  var last = monthsBack(12).slice(-12);
+  var max = Math.max.apply(null, last.map(monthSales).concat([1]));
+  $("graph").innerHTML = last.map(function(m){
+    var v = monthSales(m);
+    var lab = v >= 10000 ? (Math.round(v/1000)/10) + "万" : (v >= 1000 ? Math.round(v/1000) + "千" : (v || ""));
+    return '<div class="gcol"><b>' + lab + '</b>' +
+      '<i style="height:' + (v/max*100) + '%"></i>' +
+      '<u>' + m.slice(5) + '月<br>' + monthPhotos(m) + '枚</u></div>';
+  }).join("");
+
+  var tot = totalSales(), cost = usageYen();
+  $("sumSales").textContent = num(tot);
+  $("sumCost").textContent  = num(cost);
+  $("sumNet").textContent   = num(tot - cost);
+  $("rateShow").textContent = USDJPY;
+
+  var per = {};
+  SITES.forEach(function(s){ per[s.k] = 0; });
+  Object.keys(S.ledger).forEach(function(m){
+    SITES.forEach(function(s){ per[s.k] += Number(S.ledger[m][s.k]) || 0; });
+  });
+  $("siteTable").innerHTML = "<tr><th>サイト</th><th class='r'>累計売上</th><th class='r'>投稿済</th><th class='r'>公開中</th></tr>" +
+    SITES.map(function(s){
+      var sent = P.filter(function(p){ return (p.sites && p.sites[s.k]) >= 1; }).length;
+      var live = P.filter(function(p){ return (p.sites && p.sites[s.k]) === 2; }).length;
+      return "<tr><td>" + s.name + "</td><td class='r'>" + num(per[s.k]) + " 円</td><td class='r'>" + sent + "</td><td class='r'>" + live + "</td></tr>";
+    }).join("");
+}
+$("ledMonth").addEventListener("change", renderMoney);
+$("ledSave").addEventListener("click", function(){
+  var m = $("ledMonth").value, e = {};
+  SITES.forEach(function(s){ var v = Number($("led_" + s.k).value) || 0; if(v) e[s.k] = v; });
+  var memo = $("led_memo").value.trim(); if(memo) e.memo = memo;
+  if(Object.keys(e).length) S.ledger[m] = e; else delete S.ledger[m];
+  lsSet(LS.ledger, S.ledger); renderAll(); toast(m + " を記帳しました");
+});
+
+/* ================================================================
+   9. 設定
+   ================================================================ */
+function openSettings(){
+  sheet('<div class="shead"><div><h3>設定</h3><div class="mini">鍵はこの端末の中だけに残ります。送り先は Anthropic の API だけです。</div></div><button class="x" data-close>×</button></div>' +
+    '<div class="field"><label>Anthropic APIキー</label><input id="setKey" type="password" placeholder="sk-ant-…" value="' + esc(S.key) + '"></div>' +
+    '<div class="field"><label>使うモデル</label><select id="setModel">' +
+      Object.keys(MODELS).map(function(k){
+        return '<option value="' + k + '"' + (k === S.model ? " selected" : "") + '>' + MODELS[k].label + '</option>'; }).join("") +
+    '</select></div>' +
+    '<div class="btnrow" style="margin-bottom:12px">' +
+      '<button class="btn pri" data-s="save">保存する</button>' +
+      '<button class="btn" data-s="test">つながるか試す</button>' +
+    '</div>' +
+    '<div class="mini" id="setMsg"></div>' +
+    '<div class="hr"></div>' +
+    '<div class="kv"><span>これまでのAI利用料(概算)</span><b><span class="num">' + num(usageYen()) + '</span> 円</b></div>' +
+    '<div class="mini">入力 ' + num(S.usage.in) + " / 出力 " + num(S.usage.out) + ' トークン</div>' +
+    '<div class="hr"></div>' +
+    '<h3 style="font-size:14px;margin-bottom:8px">控えと片づけ</h3>' +
+    '<div class="btnrow">' +
+      '<button class="btn sm" data-s="out">控えを書き出す</button>' +
+      '<button class="btn sm" data-s="in">控えを読み込む</button>' +
+      '<button class="btn sm" data-s="wipe">全部消す</button>' +
+    '</div>' +
+    '<input type="file" id="restoreIn" accept="application/json,.json" style="display:none">' +
+    '<div class="note" style="margin-top:12px">APIキーは <a href="https://platform.claude.com" target="_blank" rel="noopener">platform.claude.com</a> で発行できます。' +
+    'キーを入れないあいだは<b>見本モード</b>で、通信せずに全部の流れを試せます。' +
+    '控えの読み込みでは、写真の画像は戻りません(題名・キーワード・記帳などの文字だけが戻ります)。</div>',
+    function(root){
+      root.addEventListener("click", async function(e){
+        var b = e.target.closest("[data-s]"); if(!b) return;
+        var act = b.dataset.s;
+        if(act === "save"){
+          S.key = $("setKey").value.trim(); S.model = $("setModel").value;
+          lsSet(LS.key, S.key); lsSet(LS.model, S.model);
+          renderAll(); toast(S.key ? "保存しました" : "見本モードに戻しました");
+        }
+        if(act === "test"){
+          var k = $("setKey").value.trim();
+          if(!k){ $("setMsg").textContent = "キーが空です。"; return; }
+          b.disabled = true; $("setMsg").innerHTML = '<span class="spin"></span> 確かめています…';
+          try{
+            var r = await fetch("https://api.anthropic.com/v1/messages", {
+              method:"POST",
+              headers:{ "content-type":"application/json", "x-api-key":k,
+                "anthropic-version":"2023-06-01", "anthropic-dangerous-direct-browser-access":"true" },
+              body: JSON.stringify({ model:$("setModel").value, max_tokens:16, messages:[{ role:"user", content:"ok" }] })
+            });
+            $("setMsg").textContent = r.ok ? "つながりました。「保存する」を押してください。" : "つながりません: " + apiErr(r.status, await r.text());
+          }catch(err){ $("setMsg").textContent = "通信できませんでした。"; }
+          b.disabled = false;
+        }
+        if(act === "out"){ dl("machi-kiroku-backup-" + ymd().replace(/-/g,"") + ".json", backupJson(), "application/json"); toast("控えを書き出しました"); }
+        if(act === "in"){ $("restoreIn").click(); }
+        if(act === "wipe"){
+          if(!confirm("この端末に貯めた写真台帳・テーマ・記帳をすべて消します。元に戻せません。よろしいですか?")) return;
+          var db = await idb();
+          await new Promise(function(res){ var tx = db.transaction("photos","readwrite"); tx.objectStore("photos").clear(); tx.oncomplete = res; });
+          [LS.themes, LS.active, LS.ledger, LS.days, LS.usage].forEach(function(k){ localStorage.removeItem(k); });
+          P = []; S.themes = []; S.active = ""; S.ledger = {}; S.days = []; S.usage = { in:0, out:0 };
+          closeSheet(); renderAll(); toast("消しました");
+        }
+      });
+      root.querySelector("#restoreIn").addEventListener("change", function(){
+        var f = this.files[0]; if(!f) return;
+        var fr = new FileReader();
+        fr.onload = async function(){
+          try{
+            var j = JSON.parse(fr.result);
+            if(j.themes){ S.themes = j.themes; lsSet(LS.themes, S.themes); }
+            if(j.ledger){ S.ledger = j.ledger; lsSet(LS.ledger, S.ledger); }
+            if(j.days){ S.days = j.days; lsSet(LS.days, S.days); }
+            if(j.usage){ S.usage = j.usage; lsSet(LS.usage, S.usage); }
+            var add = 0;
+            for(var i=0;i<(j.photos||[]).length;i++){
+              var p = j.photos[i];
+              if(P.some(function(x){ return x.id === p.id; })) continue;
+              if(!p.thumb) p.thumb = "data:image/svg+xml;base64," + btoa('<svg xmlns="http://www.w3.org/2000/svg" width="120" height="120"><rect width="120" height="120" fill="#272220"/><text x="60" y="64" fill="#8d8377" font-size="11" text-anchor="middle">no image</text></svg>');
+              await savePhoto(p); P.push(p); add++;
+            }
+            P.sort(function(a,b){ return b.createdAt - a.createdAt; });
+            closeSheet(); renderAll(); toast("控えを読み込みました(写真 " + add + " 件)");
+          }catch(e){ toast("この控えは読み込めませんでした"); }
+        };
+        fr.readAsText(f);
+      });
+    });
+}
+
+/* ================================================================
+   10. 撮影リスト
+   ================================================================ */
+var SHOTS_SCHEMA = { type:"object", properties:{ shots:{ type:"array", items:{ type:"string" } } },
+                     required:["shots"], additionalProperties:false };
+function openShots(id){
+  var t = S.themes.filter(function(x){ return x.id === id; })[0]; if(!t) return;
+  var draw = function(){
+    return (t.shots||[]).map(function(s, i){
+      return '<div class="prow" data-i="' + i + '" style="align-items:center;padding:8px 10px">' +
+        '<div style="flex:none;width:22px;text-align:center;color:' + (s.done ? "var(--ok)" : "var(--hai-2)") + '">' + (s.done ? "✓" : "□") + '</div>' +
+        '<div class="pbody"><div class="ptitle" style="' + (s.done ? "color:var(--hai-2);text-decoration:line-through" : "") + '">' + esc(s.t) + '</div></div>' +
+        '<button class="btn sm" data-del="' + i + '" style="flex:none;padding:4px 8px">×</button></div>';
+    }).join("") || '<div class="empty">カットがありません。</div>';
+  };
+  sheet('<div class="shead"><div><h3>' + esc(t.name) + '</h3><div class="mini">撮ったカットを押して消し込みます。</div></div><button class="x" data-close>×</button></div>' +
+    '<div class="plist" id="shotList">' + draw() + '</div>' +
+    '<div class="field" style="margin-top:12px"><label>カットを足す</label><input id="shotNew" placeholder="例)雨の日の夕方、バス停の行列を後ろから"></div>' +
+    '<div class="btnrow">' +
+      '<button class="btn sm" data-a="add">足す</button>' +
+      '<button class="btn sm kin" data-a="ai">AIに12個ふやしてもらう</button>' +
+    '</div>',
+    function(root){
+      var list = root.querySelector("#shotList");
+      var redraw = function(){ list.innerHTML = draw(); lsSet(LS.themes, S.themes); renderAll(); };
+      list.addEventListener("click", function(e){
+        var d = e.target.closest("[data-del]");
+        if(d){ t.shots.splice(Number(d.dataset.del), 1); redraw(); return; }
+        var row = e.target.closest("[data-i]"); if(!row) return;
+        var s = t.shots[Number(row.dataset.i)];
+        s.done = !s.done; if(s.done) markDay();
+        redraw();
+      });
+      root.addEventListener("click", async function(e){
+        var b = e.target.closest("[data-a]"); if(!b) return;
+        if(b.dataset.a === "add"){
+          var v = root.querySelector("#shotNew").value.trim();
+          if(!v) return;
+          t.shots.push({ t:v, done:false }); root.querySelector("#shotNew").value = ""; redraw();
+        }
+        if(b.dataset.a === "ai"){
+          b.disabled = true; b.innerHTML = '<span class="spin"></span> 考えています';
+          try{
+            var out;
+            if(S.key){
+              out = await ask({ system: PLAN_SYS, effort:"medium", max:2500, schema: SHOTS_SCHEMA,
+                content:[{ type:"text", text:"テーマ「" + t.name + "」(" + (t.why||"") + ")、撮影地点: " +
+                  (t.spots||[]).join("・") + "。\nすでにある指示: " + (t.shots||[]).map(function(s){ return s.t; }).join(" / ") +
+                  "\nこれと重ならない撮影カットの指示を12個、shots に入れて返してください。" }] });
+            }else{
+              await new Promise(function(r){ setTimeout(r, 500); });
+              out = { shots:["朝いちばんの無人の通りを水平で","昼の人影と建物の影を対角に","夕方の逆光でシルエットを",
+                "雨上がりの水たまりに映る街を","雪または落ち葉など季節のしるしを足元に","工事の進み具合を同じ立ち位置から",
+                "看板や案内表示を斜めから(商標は避ける)","歩道と車道の境目を低い位置から","夜の街灯と窓明かりを",
+                "空を広くとった縦位置","足元のマンホールや舗装の継ぎ目","遠景に山や高架を入れた引きの1枚"] };
+            }
+            (out.shots||[]).forEach(function(s){ t.shots.push({ t:s, done:false }); });
+            redraw();
+          }catch(err){ toast(err.message); }
+          b.disabled = false; b.textContent = "AIに12個ふやしてもらう";
+        }
+      });
+    });
+}
+function openNewTheme(){
+  sheet('<div class="shead"><h3>テーマを足す</h3><button class="x" data-close>×</button></div>' +
+    '<div class="field"><label>テーマ名</label><input id="nt_name" placeholder="例)◯◯駅前の再開発"></div>' +
+    '<div class="field"><label>なぜ売れそうか</label><input id="nt_why" placeholder="例)数年で景色が変わるため"></div>' +
+    '<div class="field"><label>撮影地点(読点区切り)</label><input id="nt_spots" placeholder="例)北口ロータリー、歩道橋、仮囲い"></div>' +
+    '<div class="field"><label>撮るカット(1行に1つ)</label><textarea id="nt_shots" rows="5"></textarea></div>' +
+    '<button class="btn pri wide" data-a="ok">加える</button>',
+    function(root){
+      root.querySelector("[data-a]").addEventListener("click", function(){
+        var name = root.querySelector("#nt_name").value.trim();
+        if(!name){ toast("テーマ名を入れてください"); return; }
+        S.themes.push({ id:uid(), name:name,
+          why: root.querySelector("#nt_why").value.trim(),
+          spots: root.querySelector("#nt_spots").value.split(/[、,]/).map(function(s){ return s.trim(); }).filter(Boolean),
+          shots: root.querySelector("#nt_shots").value.split("\n").map(function(s){ return s.trim(); }).filter(Boolean)
+                   .map(function(s){ return { t:s, done:false }; }),
+          createdAt: Date.now() });
+        if(!S.active) S.active = S.themes[S.themes.length-1].id;
+        lsSet(LS.themes, S.themes); lsSet(LS.active, S.active);
+        closeSheet(); renderAll(); toast("テーマを加えました");
+      });
+    });
+}
+
+/* ================================================================
+   11. 配線
+   ================================================================ */
+function renderAll(){ renderHome(); renderThemes(); renderSort(); renderBook(); renderMoney(); }
+function go(v){
+  document.querySelectorAll(".view").forEach(function(s){ s.classList.toggle("on", s.id === "v-" + v); });
+  document.querySelectorAll("#tabs button").forEach(function(b){ b.classList.toggle("on", b.dataset.v === v); });
+  document.querySelector("main").scrollTop = 0;
+}
+document.querySelectorAll("#tabs button").forEach(function(b){
+  b.addEventListener("click", function(){ go(b.dataset.v); });
+});
+document.querySelectorAll("[data-go]").forEach(function(b){
+  b.addEventListener("click", function(){ go(b.dataset.go); });
+});
+$("gearBtn").addEventListener("click", openSettings);
+$("postModeBtn").addEventListener("click", openPost);
+$("exportBtn").addEventListener("click", openExport);
+$("addThemeBtn").addEventListener("click", openNewTheme);
+$("planBtn").addEventListener("click", makePlan);
+$("pickBtn").addEventListener("click", function(){ $("fileIn").click(); });
+$("camBtn").addEventListener("click", function(){ $("camIn").click(); });
+["fileIn","camIn"].forEach(function(id){
+  $(id).addEventListener("change", function(){
+    var files = [].slice.call(this.files); this.value = "";
+    if(files.length) importFiles(files);
+  });
+});
+$("qStop").addEventListener("click", function(){ Q.stop = true; toast("値付けを中断します"); });
+$("todaySkip").addEventListener("click", function(){ todayIdx++; renderHome(); });
+$("todayDone").addEventListener("click", function(){
+  var t = activeTheme(); if(!t) { go("plan"); return; }
+  var shot = $("todayShot").dataset.shot;
+  (t.shots||[]).forEach(function(s){ if(s.t === shot) s.done = true; });
+  lsSet(LS.themes, S.themes); markDay(); todayIdx = 0; renderAll();
+  go("sort"); toast("記録しました。撮った写真をここから取り込んでください");
+});
+$("planOut").addEventListener("click", function(e){
+  var b = e.target.closest("[data-adopt]"); if(!b) return;
+  var arr = JSON.parse($("planOut").dataset.json || "[]");
+  var t = arr[Number(b.dataset.adopt)]; if(!t) return;
+  if(S.themes.some(function(x){ return x.name === t.name; })){ toast("同じ名前のテーマがあります"); return; }
+  S.themes.push(t); S.active = t.id;
+  lsSet(LS.themes, S.themes); lsSet(LS.active, S.active);
+  renderAll(); toast("「" + t.name + "」を追いかけます");
+});
+$("themeList").addEventListener("click", function(e){
+  var b = e.target.closest("[data-act]"); if(!b) return;
+  var id = b.dataset.id;
+  if(b.dataset.act === "shots") openShots(id);
+  if(b.dataset.act === "pick"){ S.active = id; lsSet(LS.active, S.active); renderAll(); toast("追いかけるテーマを変えました"); }
+  if(b.dataset.act === "delth"){
+    if(!confirm("このテーマを消します。よろしいですか?(写真は消えません)")) return;
+    S.themes = S.themes.filter(function(x){ return x.id !== id; });
+    if(S.active === id) S.active = S.themes.length ? S.themes[0].id : "";
+    lsSet(LS.themes, S.themes); lsSet(LS.active, S.active); renderAll();
+  }
+});
+$("filterChips").addEventListener("click", function(e){
+  var c = e.target.closest("[data-f]"); if(!c) return;
+  filterK = c.dataset.f; renderBook();
+});
+["sortList","bookList"].forEach(function(id){
+  $(id).addEventListener("click", function(e){
+    var r = e.target.closest("[data-id]"); if(!r) return;
+    openPhoto(r.dataset.id);
+  });
+});
+
+/* ---------- はじめの案内 ---------- */
+function welcome(){
+  sheet('<div class="shead"><div><h3>まちの記録係</h3><div class="mini">通勤路の風景を、売り物として並べていくための台帳です。</div></div><button class="x" data-close>×</button></div>' +
+    '<div class="card"><h3>やることは4手だけ</h3><div class="muted">' +
+    '① 通勤路で撮る<br>② ここに取り込む(AIが題名・キーワード・掲載の注意点を付ける)<br>' +
+    '③ 各サイトに投稿する(コピーと書き出しで手間を減らします)<br>④ 売れたら記帳する</div></div>' +
+    '<div class="card"><h3>はじめに知っておくこと</h3><div class="muted">' +
+    '最初のひと月は、ほとんど売れないのが普通です。<br>' +
+    'このアプリが数えるのは「売れたか」ではなく「並べたか」。<br>' +
+    '枚数が積み上がるまで、記録係の仕事を淡々と続けてください。</div></div>' +
+    '<div class="note">キーがなくても<b>見本モード</b>で全部の流れを試せます。' +
+    '本番の値付けには、設定から Anthropic の APIキーを登録してください。</div>' +
+    '<button class="btn pri wide" data-close style="margin-top:14px">はじめる</button>');
+  lsSet(LS.seen, 1);
+}
+
+/* ---------- 起ち上げ ---------- */
+(async function(){
+  try{
+    var all = await idbAll();
+    P = all.sort(function(a,b){ return b.createdAt - a.createdAt; });
+  }catch(e){ toast("この端末では写真を保存できません(プライベートモードの可能性)"); }
+  renderAll();
+  if(!lsGet(LS.seen, 0)) welcome();
+})();
+</script>
+</body>
+</html>
