@@ -43,7 +43,7 @@ body{
 }
 button,input,textarea,select{font-family:inherit;font-size:inherit;color:inherit}
 button{cursor:pointer;background:none;border:none}
-input,textarea,select{background:var(--sumi);border:1px solid var(--sumi-4);border-radius:6px;color:var(--kinari);padding:9px 11px;width:100%}
+input,textarea,select{background:var(--sumi);border:1px solid var(--sumi-4);border-radius:6px;color:var(--kinari);padding:9px 11px;width:100%;font-size:16px}
 input:focus,textarea:focus,select:focus{outline:none;border-color:var(--kin)}
 textarea{resize:vertical;line-height:1.6}
 select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--hai) 50%),linear-gradient(135deg,var(--hai) 50%,transparent 50%);background-position:calc(100% - 16px) 18px,calc(100% - 11px) 18px;background-size:5px 5px;background-repeat:no-repeat}
@@ -111,6 +111,7 @@ h2.sec:first-child{margin-top:4px}
 
 /* 統計 */
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+@media (max-width:359px){.stats{grid-template-columns:repeat(2,1fr)}}
 .stat{background:var(--sumi-2);border:1px solid var(--sumi-3);border-radius:9px;padding:10px 6px;text-align:center}
 .stat b{display:block;font-family:var(--mincho);font-size:21px;font-weight:400;letter-spacing:.02em}
 .stat span{font-size:10.5px;color:var(--hai);letter-spacing:.06em}
@@ -315,7 +316,11 @@ nav#tabs button.on{color:var(--kin);border-top-color:var(--shu)}
         <select id="sortTheme"></select>
       </div>
       <input type="file" id="fileIn" accept="image/*" multiple style="display:none">
-      <button class="btn pri wide" id="pickBtn">スマホの写真を選ぶ</button>
+      <input type="file" id="camIn" accept="image/*" capture="environment" style="display:none">
+      <div class="btnrow">
+        <button class="btn pri" id="pickBtn">写真を選ぶ</button>
+        <button class="btn kin" id="camBtn">その場で撮る</button>
+      </div>
       <div class="mini" style="margin-top:9px">
         選んだ枚数ぶん、AIが順に見て「日本語の題名 / 英語の題名 / 説明 / キーワード / 掲載の注意点 / 売れやすさ」を付けます。
         元の写真はこの端末から出ません(AIに送るのは縮小したコピーだけ)。投稿は元データで行ってください。
@@ -725,6 +730,20 @@ function demoAnalyze(p){
   };
 }
 
+/* ---------- 値付けのあいだ画面を起こしておく ---------- */
+var wakeL = null;
+async function keepAwake(on){
+  try{
+    if(on && !wakeL && navigator.wakeLock){
+      wakeL = await navigator.wakeLock.request("screen");
+      wakeL.addEventListener("release", function(){ wakeL = null; });
+    }else if(!on && wakeL){ wakeL.release(); wakeL = null; }
+  }catch(e){ /* 対応していない端末では何もしない */ }
+}
+document.addEventListener("visibilitychange", function(){
+  if(document.visibilityState === "visible" && Q.run) keepAwake(true);
+});
+
 /* ---------- 取り込み → 順番に値付け ---------- */
 var Q = { list:[], i:0, run:false, stop:false };
 
@@ -759,7 +778,7 @@ async function runQueue(list){
   Q.list = list.filter(function(p){ return !p.ai; });
   Q.i = 0; Q.stop = false;
   if(!Q.list.length) return;
-  Q.run = true; renderQueue();
+  Q.run = true; renderQueue(); keepAwake(true);
   for(var i=0;i<Q.list.length;i++){
     if(Q.stop) break;
     Q.i = i; renderQueue();
@@ -776,7 +795,7 @@ async function runQueue(list){
     }
     renderSort(); renderHome();
   }
-  Q.run = false; Q.i = Q.list.length; renderQueue();
+  Q.run = false; Q.i = Q.list.length; renderQueue(); keepAwake(false);
   renderAll();
   if(!Q.stop) toast("値付けが終わりました");
 }
@@ -1495,9 +1514,12 @@ $("exportBtn").addEventListener("click", openExport);
 $("addThemeBtn").addEventListener("click", openNewTheme);
 $("planBtn").addEventListener("click", makePlan);
 $("pickBtn").addEventListener("click", function(){ $("fileIn").click(); });
-$("fileIn").addEventListener("change", function(){
-  var files = [].slice.call(this.files); this.value = "";
-  if(files.length) importFiles(files);
+$("camBtn").addEventListener("click", function(){ $("camIn").click(); });
+["fileIn","camIn"].forEach(function(id){
+  $(id).addEventListener("change", function(){
+    var files = [].slice.call(this.files); this.value = "";
+    if(files.length) importFiles(files);
+  });
 });
 $("qStop").addEventListener("click", function(){ Q.stop = true; toast("値付けを中断します"); });
 $("todaySkip").addEventListener("click", function(){ todayIdx++; renderHome(); });
@@ -1506,7 +1528,7 @@ $("todayDone").addEventListener("click", function(){
   var shot = $("todayShot").dataset.shot;
   (t.shots||[]).forEach(function(s){ if(s.t === shot) s.done = true; });
   lsSet(LS.themes, S.themes); markDay(); todayIdx = 0; renderAll();
-  toast("記録しました。写真は「仕分け」から取り込めます");
+  go("sort"); toast("記録しました。撮った写真をここから取り込んでください");
 });
 $("planOut").addEventListener("click", function(e){
   var b = e.target.closest("[data-adopt]"); if(!b) return;
