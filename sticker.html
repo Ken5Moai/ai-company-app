@@ -357,7 +357,9 @@ pre.prompt{
       <label>見本から始める(押すと下が埋まります)</label>
       <div class="chips" id="chSeeds"></div>
       <p class="mini">どれも「まるいシルエット・点の目・平塗り」で、生成が崩れにくい型です。
-        名前と細かいところは、埋まってから好きに書き替えてください。</p>
+        名前と細かいところは、埋まってから好きに書き替えてください。<br>
+        <b>好きなスタンプに似せないこと。</b>参考にしてよいのは頭身や線の太さまでで、
+        髪型・服・持ち物の組み合わせまで写すと、その子の模倣になります(審査でも弾かれます)。</p>
     </div>
     <div class="field">
       <label>キャラクターの名前</label>
@@ -365,7 +367,7 @@ pre.prompt{
     </div>
     <div class="field">
       <label>どんな見た目か(思いつく限り)</label>
-      <textarea id="chDesc" rows="4" placeholder="例:おかっぱ頭の女の子。白いTシャツに紺のブルマ、裸足。目は黒い点をふたつ、離して置く。口は小さい。ほっぺに丸いチーク。手足は短く、指は描かない。"></textarea>
+      <textarea id="chDesc" rows="4" placeholder="例:卵形の大きな頭をした子。額を広くとり、目・鼻・口は顔の下のほうに小さくまとめる。目は黒い点をふたつ、離して置く。服は無地の一色。手足は短く、指は描かない。"></textarea>
     </div>
     <div class="row2">
       <div class="field">
@@ -536,11 +538,11 @@ pre.prompt{
       </div>
       <div class="field">
         <label>どこまでを背景とみなすか</label>
-        <div class="slide"><input type="range" id="cvNear" min="4" max="80" value="34"><b id="cvNearV">34</b></div>
+        <div class="slide"><input type="range" id="cvNear" min="4" max="80" value="26"><b id="cvNearV">26</b></div>
       </div>
       <div class="field">
         <label>どこからを絵とみなすか</label>
-        <div class="slide"><input type="range" id="cvFar" min="10" max="160" value="78"><b id="cvFarV">78</b></div>
+        <div class="slide"><input type="range" id="cvFar" min="10" max="160" value="60"><b id="cvFarV">60</b></div>
       </div>
       <div class="field">
         <label>色かぶりを抑える</label>
@@ -1287,8 +1289,10 @@ function chroma(r,g,b){
 function keyOut(im, opt){
   opt = opt || {};
   var key = opt.key || guessKey(im);
-  var near = opt.near===undefined ? 34 : opt.near;
-  var far  = opt.far===undefined  ? 78 : opt.far;
+  /* 抜く幅は狭めにとる。広げると、黄緑やオリーブどころか紺まで背景ごと抜けてしまう。
+     実測(圧縮のゆれ±8):幅78では黄緑の99%・オリーブの37%が消えた。幅60ならどれも残る。 */
+  var near = opt.near===undefined ? 26 : opt.near;
+  var far  = opt.far===undefined  ? 60 : opt.far;
   var spill= opt.spill===undefined? 0.9: opt.spill;
   if(far <= near) far = near + 1;
   var kc = chroma(key.r, key.g, key.b);
@@ -1390,10 +1394,25 @@ function fillInnerHoles(im, coef){
   for(c=0;c<R.big.length;c++) bigPx += R.big[c].length;
   if(!R.small.length) return { filled:0, big:R.big.length, bigPx:bigPx };
 
-  /* 色を借りてよいのは、もともと完全に不透明だった画素だけ。
-     さらに、穴のふちの2画素ぶんは背景の色が混じっているので種にしない。 */
+  /* 色を借りてよいのは、絵の「中身」の画素だけ。
+     透明に接している画素——つまり輪郭線——を種にすると、
+     埋めた跡が濃い線の色の塊になる。透明から2画素ぶんは種にしない。 */
+  var nearT = new Uint8Array(n);
+  for(i=0;i<n;i++) if(d[i*4+3] < 255) nearT[i] = 1;
+  for(var g=0; g<2; g++){
+    var ring = [];
+    for(i=0;i<n;i++){
+      if(!nearT[i]) continue;
+      x = i % w; y = (i - x)/w;
+      if(x>0   && !nearT[i-1]) ring.push(i-1);
+      if(x<w-1 && !nearT[i+1]) ring.push(i+1);
+      if(y>0   && !nearT[i-w]) ring.push(i-w);
+      if(y<h-1 && !nearT[i+w]) ring.push(i+w);
+    }
+    for(var t3=0;t3<ring.length;t3++) nearT[ring[t3]] = 1;
+  }
   var known = new Uint8Array(n);
-  for(i=0;i<n;i++) known[i] = (!R.outside[i] && d[i*4+3] === 255) ? 1 : 0;
+  for(i=0;i<n;i++) known[i] = (d[i*4+3] === 255 && !nearT[i]) ? 1 : 0;
 
   var repaint = new Uint8Array(n), filled = 0;
   for(c=0;c<R.small.length;c++){
@@ -1458,6 +1477,33 @@ function holeReport(im, ignore, coef){
 }
 function countInnerHoles(im, ignore, coef){ return holeReport(im, ignore, coef).small; }
 
+/* 絵の中に「抜く色に近い色」があると、そこがまだらに抜ける。
+   輪郭の外側のぼかしは正常なので、透明から2画素より内側にある
+   半端な透明度だけを数える。ここが多いときは、服の色か背景の緑を変えるしかない。 */
+function keyRisk(im){
+  var w=im.w, h=im.h, d=im.data, n=w*h, i, x, y;
+  var nearT = new Uint8Array(n);
+  for(i=0;i<n;i++) if(d[i*4+3] === 0) nearT[i] = 1;
+  for(var g=0; g<2; g++){
+    var ring = [];
+    for(i=0;i<n;i++){
+      if(!nearT[i]) continue;
+      x = i % w; y = (i - x)/w;
+      if(x>0   && !nearT[i-1]) ring.push(i-1);
+      if(x<w-1 && !nearT[i+1]) ring.push(i+1);
+      if(y>0   && !nearT[i-w]) ring.push(i-w);
+      if(y<h-1 && !nearT[i+w]) ring.push(i+w);
+    }
+    for(var t=0;t<ring.length;t++) nearT[ring[t]] = 1;
+  }
+  var risky = 0, solid = 0;
+  for(i=0;i<n;i++){
+    if(nearT[i] || d[i*4+3] === 0) continue;
+    solid++;
+    if(d[i*4+3] < 250) risky++;
+  }
+  return { risky:risky, solid:solid };
+}
 /* 目に見えない半端な透明度を、はっきり 0 か 255 に寄せる。
    「見えないほど薄い穴」が残るのを防ぐための、いちばん効く一手。 */
 function snapAlpha(im){
@@ -1815,7 +1861,7 @@ var S = {
   moves: lsGet(LS.moves, []),
   reels: lsGet(LS.reels, []),
   pick:  lsGet(LS.pick, []),
-  cfg:   lsGet(LS.cfg, { key:"#00b140", near:34, far:78, spill:90, choke:0,
+  cfg:   lsGet(LS.cfg, { key:"#00b140", near:26, far:60, spill:90, choke:0,
                          dur:2000, frames:12, uniform:0, cuts:10, len:1.5, trim:0.08,
                          text:true, side:"right", font:"丸ゴシック — やさしい",
                          ink:"#241f1c", edge:"#ffffff", tsize:100, tone:"sunao", holes:"auto" }),
@@ -2144,6 +2190,9 @@ CUTE_JA.map(function(t, i){ return "・" + t; }).join("\n") + "\n\n" +
 "4. 配色見本 — 体・輪郭線・ほお・差し色を四角で並べ、それぞれの色番号を書き添える\n" +
 "5. 背丈の目安 — 正面の全身に、頭いくつぶんかが分かる目盛りを添える\n\n" +
 "■ 必ず守ること\n" +
+"・実在のLINEスタンプ・漫画・アニメのキャラクターに似せない。\n" +
+"  髪型・服・持ち物の組み合わせを借りると、それは『その子』になってしまう\n" +
+"・借りてよいのは、頭身・線の太さ・塗りの平らさといった、どのキャラにも当てはまる作りだけ\n" +
 "・背景は白一色。影を落とさない\n" +
 "・絵の中に文字を入れない(配色見本の色番号だけは可)\n" +
 "・1枚の中で、顔の部品の大きさと位置を変えない。ここがぶれると別人に見える\n" +
@@ -2170,6 +2219,9 @@ CUTE_EN.map(function(t){ return "- " + t; }).join("\n") + "\n\n" +
 "4. Colour swatches for body, outline, cheeks and accent, each labelled with its hex code\n" +
 "5. A height scale showing how many head-heights tall the character is\n\n" +
 "HARD RULES\n" +
+"- Do NOT resemble any existing sticker, manga or anime character. Borrowing a\n" +
+"  recognisable combination of hairstyle, outfit and props makes it that character\n" +
+"- Only borrow generic construction: head-to-body ratio, line weight, flatness of fill\n" +
 "- Plain white background, no cast shadows\n" +
 "- No text anywhere except the hex codes on the swatches\n" +
 "- Keep the size and position of every facial feature identical across the sheet\n" +
@@ -2217,7 +2269,9 @@ function reelPrompt(reel, moves, cfg, chara){
 "・動きは大げさに。手足は画面を横切るくらい大きく振る\n" +
 "・絵の中に文字・台詞・吹き出しを一切入れない(文字はあとで焼き込みます)\n" +
 "・キャラクターを画面の外に出さない。影を床に落とさない\n" +
-"・キャラクターの色に、背景の緑を混ぜない\n\n" +
+"・キャラクターの色に、背景の緑を混ぜない\n" +
+"・キャラクターに、背景の緑に近い色(黄緑・オリーブ・青緑)を使わない。\n" +
+"  近い色は、あとで背景と一緒に抜けてしまい、まだらになる\n\n" +
 "■ 可愛さを崩さないために(ここが崩れると全部やり直しになります)\n" +
 "・目は黒い点のまま。白目・瞳孔・光の点を足さない\n" +
 "・顔の部品の大きさと位置を、どのカットでも変えない\n" +
@@ -2247,7 +2301,9 @@ function reelPrompt(reel, moves, cfg, chara){
 "- Exaggerate the motion; limbs should sweep across a large part of the frame\n" +
 "- Absolutely no text, letters, speech bubbles or logos anywhere in the image\n" +
 "- The character never leaves the frame and never casts a shadow on the green\n" +
-"- Do not let the green tint bleed into the character's colours\n\n" +
+"- Do not let the green tint bleed into the character's colours\n" +
+"- Never give the character colours close to the key green (yellow-green, olive, teal):\n" +
+"  they get keyed out together with the background and come out blotchy\n\n" +
 "KEEP IT CUTE (breaking these ruins the whole reel)\n" +
 "- Eyes stay as plain solid dots: never add whites, pupils or highlights\n" +
 "- The size and position of every facial feature stays identical in every cut\n" +
@@ -2357,8 +2413,8 @@ var SEEDS = [
   { key:"ちびくま", name:"くまお",
     desc:"クリーム色のまるい子ぐま。耳は小さな半円がふたつ。鼻は小さな茶色の三角、口はその下に小さく。おなかがぽってりして、手足は短い。目は黒い点。ほおに丸いチーク。",
     style:"ふんわり — 丸ゴシックのような柔らかい線", head:"2頭身(顔が大きい)" },
-  { key:"おかっぱの子", name:"ぶるまちゃん",
-    desc:"おかっぱ頭の子ども。白いシャツに紺のブルマ、裸足。目は黒い点をふたつ、大きく離して低い位置に。口は小さい。ほおに丸いチーク。手はミトンで指を描かない。",
+  { key:"のっぺりの子", name:"のっぺ",
+    desc:"卵形の大きな頭をした子。額をとても広くとり、目・鼻・口は顔の下のほうに小さくまとめる。髪は頭のてっぺんに三本だけ。目は黒い点をふたつ。口は小さい。服は無地の一色で、上下ひとつづき。手足は短くて細い。",
     style:"ゆるかわ — 太い黒線・平塗り・点の目", head:"2.5頭身" },
   { key:"まめしば", name:"まめすけ",
     desc:"黄土色の子犬。垂れ耳、口のまわりと眉の点だけ白い。しっぽはくるりと巻いている。目は黒い点、鼻は黒くて小さい。体はまるく、足は短い。",
@@ -2366,12 +2422,9 @@ var SEEDS = [
   { key:"ねこもち", name:"もちねこ",
     desc:"白い餅のようなねこ。耳は小さな三角がふたつ。ひげは片側三本ずつ、細い線で。しっぽは細く長い。目は黒い点、口はωのかたち。ほおに薄桃のチーク。",
     style:"へたうま — わざと不器用な、震える線", head:"2頭身(顔が大きい)" },
-  { key:"しんだ目のおかっぱ", name:"ぶるま",
-    desc:"おかっぱ頭の子。髪は真っ黒のひとつの塊で、前髪はまっすぐ切りそろえ、もみあげは頬の横まで下りている。毛の流れは描かない。目は短い線を二本だけ(点の目にしない)。細い鼻すじが一本、口は小さな線。白いシャツに紺のブルマ、胸に小さな四角のポケット。手足は短く肌色のまま。ぜったいに笑わない。",
+  { key:"しんだ目の子", name:"むひょう",
+    desc:"卵形の大きな頭をした子。額が広く、顔の造作は下のほうに寄っている。目は短い線を二本だけ(点の目にしない)。細い鼻すじが一本、口は小さな線。髪は頭のてっぺんに三本だけ。服は無地のくすんだ一色。手足は短くて細い。ぜったいに笑わない。",
     style:"濃いめ — 線だけの目と、真っ黒の髪の塊", head:"2.5頭身" },
-  { key:"パーマのおばちゃん", name:"かあちゃん",
-    desc:"パーマのかかった真っ黒な髪を、頭のまわりに大きく広げたおばちゃん。眉は太く短い線、目は細い線一本、口は赤くて小さい。ほうれい線を一本だけ入れる。黄色い長袖に水色のエプロン。上半身だけ。にこりともしない。",
-    style:"こってり — 濃い顔で笑わせる劇画調", head:"3頭身" },
   { key:"たまごちゃん", name:"たまご",
     desc:"卵のかたちをした小さな生きもの。殻はなめらかな白、頭のてっぺんに小さな緑の芽がひとつ。手足はごく短く、先はまるい。目は黒い点、口は小さな線。",
     style:"ふんわり — 丸ゴシックのような柔らかい線", head:"2頭身(顔が大きい)" }
@@ -2894,6 +2947,7 @@ function cvPaint(){
   im.data.set(keyed.data);
   ctx.putImageData(im, 0, 0);
   var box = unionBox([keyed], 8);
+  var risk = keyRisk(keyed);
   var reel = S.reels[$("cvReel").value|0];
   var m = reel ? S.moves.filter(function(x){ return x.id===reel.cuts[VID.cut]; })[0] : null;
   $("cvInfo").innerHTML = (VID.file ? esc(VID.file.name) + " — " : "") +
@@ -2901,7 +2955,12 @@ function cvPaint(){
     (VID.cut+1) + "カット目" + (m ? "【" + esc(m.name) + "】" : "") +
     (box.empty ? " — <b style='color:var(--keikoku)'>中身が見つかりません。抜きすぎです</b>"
                : " — 絵の大きさ " + box.w + "×" + box.h + "、ふさいだ内部の透過 " + holes + "px" +
-                 (rep.big ? "(絵の隙間 " + rep.big + " か所は、そのまま残しました)" : ""));
+                 (rep.big ? "(絵の隙間 " + rep.big + " か所は、そのまま残しました)" : "")) +
+    (risk.solid && risk.risky/risk.solid > 0.02
+      ? "<br><b style='color:var(--keikoku)'>絵の中に、抜く色に近い色があります</b>(" +
+        Math.round(risk.risky/risk.solid*100) + "%)。そこがまだらに抜けます。" +
+        "服や小物の色を変えるか、背景の緑を変えて撮り直してください。"
+      : "");
 }
 /* 抜き加減と文字の位置は、出来上がりの形で見ないと判断できない。
    真ん中の一コマだけ、本番と同じ組み方で合成して見せる。 */
@@ -3384,7 +3443,7 @@ async function boot(){
     CANDS = []; dropUrls();
     [LS.chara, LS.moves, LS.reels, LS.pick, LS.cfg].forEach(function(k){ localStorage.removeItem(k); });
     S.chara = null; S.moves = []; S.reels = []; S.pick = [];
-    S.cfg = { key:"#00b140", near:34, far:78, spill:90, choke:0, dur:2000, frames:12,
+    S.cfg = { key:"#00b140", near:26, far:60, spill:90, choke:0, dur:2000, frames:12,
               uniform:0, cuts:10, len:1.5, trim:0.08, text:true, side:"right",
               font:"丸ゴシック — やさしい", ink:"#241f1c", edge:"#ffffff", tsize:100, tone:"sunao", holes:"auto" };
     drawSet(); showView("home"); toast("まっさらにしました");
