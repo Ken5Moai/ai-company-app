@@ -354,6 +354,12 @@ pre.prompt{
 
   <div class="card" style="margin-top:12px">
     <div class="field">
+      <label>見本から始める(押すと下が埋まります)</label>
+      <div class="chips" id="chSeeds"></div>
+      <p class="mini">どれも「まるいシルエット・点の目・平塗り」で、生成が崩れにくい型です。
+        名前と細かいところは、埋まってから好きに書き替えてください。</p>
+    </div>
+    <div class="field">
       <label>キャラクターの名前</label>
       <input id="chName" placeholder="例:もちうさ">
     </div>
@@ -2169,6 +2175,7 @@ function showView(v){
   });
   document.querySelector("main").scrollTop = 0;
   if(v==="home") drawHome();
+  if(v==="chara") drawSeeds();
   if(v==="moves") drawMoves();
   if(v==="reels") drawReels();
   if(v==="conv") drawConv();
@@ -2233,6 +2240,28 @@ function drawHome(){
 /* ================================================================
    11. 工程一 — キャラクターシート
    ================================================================ */
+/* 可愛くて、しかも動画生成で崩れにくい型の見本。
+   まるいシルエット・点の目・平塗り・短い手足、という共通項でそろえてある。 */
+var SEEDS = [
+  { key:"まるうさぎ", name:"もちうさ",
+    desc:"白いまんまるのうさぎ。長い耳の内側だけ薄桃色。目は黒い点をふたつ、離して低い位置に。口は小さく、鼻は描かない。ほおに丸いチーク。手足は短く先は丸い。輪郭線は真っ黒でなく濃い茶。",
+    style:"ゆるかわ — 太い黒線・平塗り・点の目", head:"2頭身(顔が大きい)" },
+  { key:"ちびくま", name:"くまお",
+    desc:"クリーム色のまるい子ぐま。耳は小さな半円がふたつ。鼻は小さな茶色の三角、口はその下に小さく。おなかがぽってりして、手足は短い。目は黒い点。ほおに丸いチーク。",
+    style:"ふんわり — 丸ゴシックのような柔らかい線", head:"2頭身(顔が大きい)" },
+  { key:"おかっぱの子", name:"ぶるまちゃん",
+    desc:"おかっぱ頭の子ども。白いシャツに紺のブルマ、裸足。目は黒い点をふたつ、大きく離して低い位置に。口は小さい。ほおに丸いチーク。手はミトンで指を描かない。",
+    style:"ゆるかわ — 太い黒線・平塗り・点の目", head:"2.5頭身" },
+  { key:"まめしば", name:"まめすけ",
+    desc:"黄土色の子犬。垂れ耳、口のまわりと眉の点だけ白い。しっぽはくるりと巻いている。目は黒い点、鼻は黒くて小さい。体はまるく、足は短い。",
+    style:"ゆるアニマル — 犬猫うさぎのまるい体", head:"2頭身(顔が大きい)" },
+  { key:"ねこもち", name:"もちねこ",
+    desc:"白い餅のようなねこ。耳は小さな三角がふたつ。ひげは片側三本ずつ、細い線で。しっぽは細く長い。目は黒い点、口はωのかたち。ほおに薄桃のチーク。",
+    style:"へたうま — わざと不器用な、震える線", head:"2頭身(顔が大きい)" },
+  { key:"たまごちゃん", name:"たまご",
+    desc:"卵のかたちをした小さな生きもの。殻はなめらかな白、頭のてっぺんに小さな緑の芽がひとつ。手足はごく短く、先はまるい。目は黒い点、口は小さな線。",
+    style:"ふんわり — 丸ゴシックのような柔らかい線", head:"2頭身(顔が大きい)" }
+];
 var STYLE_EN = {
   "ゆるかわ — 太い黒線・平塗り・点の目":"simple kawaii sticker art: thick even outline, flat fills, dot eyes, no shading",
   "へたうま — わざと不器用な、震える線":"naive on-purpose-clumsy style, wobbly hand-drawn line, charmingly awkward shapes",
@@ -2259,7 +2288,26 @@ function charaGo(){
   markNav();
   toast("注文書ができました");
 }
+function drawSeeds(){
+  var box = $("chSeeds");
+  if(box.children.length) return;
+  box.innerHTML = SEEDS.map(function(sd, i){
+    return '<button class="chip" data-seed="' + i + '">' + esc(sd.key) + "</button>";
+  }).join("");
+  Array.prototype.forEach.call(box.children, function(b){
+    b.onclick = function(){
+      var sd = SEEDS[b.dataset.seed|0];
+      $("chName").value = sd.name;
+      $("chDesc").value = sd.desc;
+      $("chStyle").value = sd.style;
+      $("chHead").value = sd.head;
+      Array.prototype.forEach.call(box.children, function(o){ o.classList.toggle("on", o===b); });
+      toast("「" + sd.key + "」を下に入れました");
+    };
+  });
+}
 function drawChara(){
+  drawSeeds();
   if(!S.chara) return;
   $("chName").value = S.chara.name || "";
   $("chDesc").value = S.chara.desc || "";
