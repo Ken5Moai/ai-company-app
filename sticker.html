@@ -385,6 +385,7 @@ pre.prompt{
       <div class="field">
         <label>頭身</label>
         <select id="chHead">
+          <option>1.7頭身(スタンプ向き・実測)</option>
           <option>2頭身(顔が大きい)</option>
           <option>2.5頭身</option>
           <option>3頭身</option>
@@ -2147,6 +2148,7 @@ function stockMoves(tone){
 /* 可愛さの正体は、描き込みの多さではなく「省き方」にある。
    売れているスタンプに共通する省き方を、そのまま注文書に書き下す。 */
 var CUTE_JA = [
+  "頭を、全体の高さの6割ほどにする(およそ1.7頭身)。売れているスタンプを実測した値で、\n  目分量で描くと必ず胴が長くなる",
   "顔の造作は、顔の下半分に寄せる(幼く見える)",
   "目は黒い点をふたつ、または短い線を二本だけ。白目・瞳孔・光の点は描かない。左右に大きく離す",
   "口は小さく。笑うときだけ大きく開ける。鼻は描かないか、点ひとつ",
@@ -2160,6 +2162,7 @@ var CUTE_JA = [
   "左右を完璧な対称にしない。少しゆがんでいるほうが可愛い"
 ];
 var CUTE_EN = [
+  "Make the head about 58% of the total height (~1.7 heads tall). This is measured from\n  best-selling stickers; drawing by eye always ends up with too long a body",
   "Place the facial features low on the head - it reads younger and cuter",
   "Eyes are two solid dots - or two short strokes - set wide apart. No whites, no pupils, no highlights",
   "Small mouth, opened wide only when laughing. No nose, or a single dot",
@@ -2415,7 +2418,7 @@ var SEEDS = [
     style:"ふんわり — 丸ゴシックのような柔らかい線", head:"2頭身(顔が大きい)" },
   { key:"のっぺりの子", name:"のっぺ",
     desc:"卵形の大きな頭をした子。額をとても広くとり、目・鼻・口は顔の下のほうに小さくまとめる。髪は頭のてっぺんに三本だけ。目は黒い点をふたつ。口は小さい。服は無地の一色で、上下ひとつづき。手足は短くて細い。",
-    style:"ゆるかわ — 太い黒線・平塗り・点の目", head:"2.5頭身" },
+    style:"ゆるかわ — 太い黒線・平塗り・点の目", head:"1.7頭身(スタンプ向き・実測)" },
   { key:"まめしば", name:"まめすけ",
     desc:"黄土色の子犬。垂れ耳、口のまわりと眉の点だけ白い。しっぽはくるりと巻いている。目は黒い点、鼻は黒くて小さい。体はまるく、足は短い。",
     style:"ゆるアニマル — 犬猫うさぎのまるい体", head:"2頭身(顔が大きい)" },
@@ -2424,7 +2427,7 @@ var SEEDS = [
     style:"へたうま — わざと不器用な、震える線", head:"2頭身(顔が大きい)" },
   { key:"しんだ目の子", name:"むひょう",
     desc:"卵形の大きな頭をした子。額が広く、顔の造作は下のほうに寄っている。目は短い線を二本だけ(点の目にしない)。細い鼻すじが一本、口は小さな線。髪は頭のてっぺんに三本だけ。服は無地のくすんだ一色。手足は短くて細い。ぜったいに笑わない。",
-    style:"濃いめ — 線だけの目と、真っ黒の髪の塊", head:"2.5頭身" },
+    style:"濃いめ — 線だけの目と、真っ黒の髪の塊", head:"1.7頭身(スタンプ向き・実測)" },
   { key:"たまごちゃん", name:"たまご",
     desc:"卵のかたちをした小さな生きもの。殻はなめらかな白、頭のてっぺんに小さな緑の芽がひとつ。手足はごく短く、先はまるい。目は黒い点、口は小さな線。",
     style:"ふんわり — 丸ゴシックのような柔らかい線", head:"2頭身(顔が大きい)" }
@@ -2438,7 +2441,8 @@ var STYLE_EN = {
   "ダサかわ — 昭和レトロな柄と濃い顔":"deliberately tacky retro Showa style: loud patterns, strong features, comedic charm",
   "こってり — 濃い顔で笑わせる劇画調":"bold comedic gekiga faces, heavy line, exaggerated features, flat colour"
 };
-var HEAD_EN = { "2頭身(顔が大きい)":"2 heads tall (very large head)", "2.5頭身":"2.5 heads tall",
+var HEAD_EN = { "1.7頭身(スタンプ向き・実測)":"1.7 heads tall - the head is ~58% of the total height",
+                "2頭身(顔が大きい)":"2 heads tall (very large head)", "2.5頭身":"2.5 heads tall",
                 "3頭身":"3 heads tall", "4頭身":"4 heads tall" };
 function charaGo(){
   var name = $("chName").value.trim(), desc = $("chDesc").value.trim();
