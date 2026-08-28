@@ -372,6 +372,7 @@ pre.prompt{
         <label>絵の調子</label>
         <select id="chStyle">
           <option>ゆるかわ — 太い黒線・平塗り・点の目</option>
+          <option>濃いめ — 線だけの目と、真っ黒の髪の塊</option>
           <option>へたうま — わざと不器用な、震える線</option>
           <option>ふんわり — 丸ゴシックのような柔らかい線</option>
           <option>ゆるアニマル — 犬猫うさぎのまるい体</option>
@@ -2101,24 +2102,26 @@ function stockMoves(tone){
    売れているスタンプに共通する省き方を、そのまま注文書に書き下す。 */
 var CUTE_JA = [
   "顔の造作は、顔の下半分に寄せる(幼く見える)",
-  "目は黒い点をふたつだけ。白目・瞳孔・光の点は描かない。左右に大きく離す",
+  "目は黒い点をふたつ、または短い線を二本だけ。白目・瞳孔・光の点は描かない。左右に大きく離す",
   "口は小さく。笑うときだけ大きく開ける。鼻は描かないか、点ひとつ",
   "ほおに、丸いチークをふたつ",
   "輪郭線は太く、太さを変えない。真っ黒より少し濃い墨色。角は丸く",
   "線はほんの少し震える手描きに。定規で引いたような線にしない",
   "平塗り。影・ぼかし・光沢・質感を入れない",
+  "髪はひとつの真っ黒な塊にする。毛の流れや束を描き込まない(輪郭線と同じ色で、そのままシルエットになる)",
   "使う色は3〜4色まで。塗り分けを増やさない",
   "手足は短く、先は丸く。指は描き分けず、ミトンのようにまとめる",
   "左右を完璧な対称にしない。少しゆがんでいるほうが可愛い"
 ];
 var CUTE_EN = [
   "Place the facial features low on the head - it reads younger and cuter",
-  "Eyes are two solid dots, set wide apart. No whites, no pupils, no highlights",
+  "Eyes are two solid dots - or two short strokes - set wide apart. No whites, no pupils, no highlights",
   "Small mouth, opened wide only when laughing. No nose, or a single dot",
   "Two round blush circles on the cheeks",
   "Thick outline of constant weight, dark charcoal rather than pure black, rounded corners",
   "Slightly wobbly hand-drawn line; never ruler-straight",
   "Flat fills only - no shading, gradients, gloss or texture",
+  "Draw hair as one solid black mass - no strands, no highlights; it doubles as the silhouette",
   "Three or four colours in total; do not add more colour breaks",
   "Short limbs with rounded ends; hands are mitten shapes, no separated fingers",
   "Avoid perfect symmetry - a little lopsidedness reads as charm"
@@ -2363,15 +2366,19 @@ var SEEDS = [
   { key:"ねこもち", name:"もちねこ",
     desc:"白い餅のようなねこ。耳は小さな三角がふたつ。ひげは片側三本ずつ、細い線で。しっぽは細く長い。目は黒い点、口はωのかたち。ほおに薄桃のチーク。",
     style:"へたうま — わざと不器用な、震える線", head:"2頭身(顔が大きい)" },
-  { key:"しんだ目のひよこ", name:"ぴよ",
-    desc:"うすい黄色のひよこ。2頭身で、頭は胴より大きい。目は上まぶたの太い線と、そのすこし下に小さすぎる点をひとつ。目の下にうっすらクマ。くちばしは小さなだいだい色のひし形。頭のてっぺんに冠羽が一本、先がへたっている。羽は胴の横につく小さなひれのような形。足はだいだい色で指は三本。ほおにうっすら赤み。けっして笑わない。",
-    style:"ゆるかわ — 太い黒線・平塗り・点の目", head:"2頭身(顔が大きい)" },
+  { key:"しんだ目のおかっぱ", name:"ぶるま",
+    desc:"おかっぱ頭の子。髪は真っ黒のひとつの塊で、前髪はまっすぐ切りそろえ、もみあげは頬の横まで下りている。毛の流れは描かない。目は短い線を二本だけ(点の目にしない)。細い鼻すじが一本、口は小さな線。白いシャツに紺のブルマ、胸に小さな四角のポケット。手足は短く肌色のまま。ぜったいに笑わない。",
+    style:"濃いめ — 線だけの目と、真っ黒の髪の塊", head:"2.5頭身" },
+  { key:"パーマのおばちゃん", name:"かあちゃん",
+    desc:"パーマのかかった真っ黒な髪を、頭のまわりに大きく広げたおばちゃん。眉は太く短い線、目は細い線一本、口は赤くて小さい。ほうれい線を一本だけ入れる。黄色い長袖に水色のエプロン。上半身だけ。にこりともしない。",
+    style:"こってり — 濃い顔で笑わせる劇画調", head:"3頭身" },
   { key:"たまごちゃん", name:"たまご",
     desc:"卵のかたちをした小さな生きもの。殻はなめらかな白、頭のてっぺんに小さな緑の芽がひとつ。手足はごく短く、先はまるい。目は黒い点、口は小さな線。",
     style:"ふんわり — 丸ゴシックのような柔らかい線", head:"2頭身(顔が大きい)" }
 ];
 var STYLE_EN = {
   "ゆるかわ — 太い黒線・平塗り・点の目":"simple kawaii sticker art: thick even outline, flat fills, dot eyes, no shading",
+  "濃いめ — 線だけの目と、真っ黒の髪の塊":"deadpan Japanese sticker style: eyes drawn as two short strokes (never dots), a thin nose line, hair as one solid black mass, thick outline, flat fills",
   "へたうま — わざと不器用な、震える線":"naive on-purpose-clumsy style, wobbly hand-drawn line, charmingly awkward shapes",
   "ふんわり — 丸ゴシックのような柔らかい線":"soft rounded style, gentle thick line, pastel flat fills",
   "ゆるアニマル — 犬猫うさぎのまるい体":"simple round animal mascot, thick outline, flat fills, tiny dot eyes",
