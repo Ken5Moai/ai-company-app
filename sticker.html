@@ -1,0 +1,2854 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#12100e">
+<title>うごく判子 — 動くLINEスタンプの工房</title>
+<style>
+/* ================================================================
+   うごく判子 —「描く・動かす・抜く・選ぶ・出す」
+   動くLINEスタンプを1セット24個ぶん仕立てるまでの、
+   機械にやらせられるところを全部やらせる工房。
+   墨 × 朱印 × 金 に、背景を抜くための若草を一色。単一HTML・外部依存なし。
+   ================================================================ */
+:root{
+  --sumi:#12100e;
+  --sumi-2:#1b1815;
+  --sumi-3:#272220;
+  --sumi-4:#37302b;
+  --kinari:#f2e9dc;
+  --hai:#8d8377;
+  --hai-2:#645c53;
+  --shu:#d8432f;
+  --shu-fukai:#a52a1c;
+  --kin:#c9a24b;
+  --kin-awai:rgba(201,162,75,.3);
+  --midori:#5fae72;
+  --midori-fukai:#2f6b41;
+  --ao:#6f93a8;
+  --ok:#7fae7a;
+  --keikoku:#e0a13a;
+  --mincho:"Hiragino Mincho ProN","Hiragino Mincho Pro","Yu Mincho",YuMincho,"Noto Serif JP","Noto Serif CJK JP",serif;
+  --gothic:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP","Yu Gothic",sans-serif;
+  --ease:cubic-bezier(.19,1,.22,1);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{
+  background:var(--sumi);color:var(--kinari);
+  font-family:var(--gothic);font-size:15px;line-height:1.7;
+  -webkit-tap-highlight-color:transparent;
+  overscroll-behavior-y:none;
+  font-feature-settings:"palt";
+}
+button,input,textarea,select{font-family:inherit;font-size:inherit;color:inherit}
+button{cursor:pointer;background:none;border:none}
+input,textarea,select{background:var(--sumi);border:1px solid var(--sumi-4);border-radius:6px;color:var(--kinari);padding:9px 11px;width:100%;font-size:16px}
+input:focus,textarea:focus,select:focus{outline:none;border-color:var(--kin)}
+textarea{resize:vertical;line-height:1.6}
+select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--hai) 50%),linear-gradient(135deg,var(--hai) 50%,transparent 50%);background-position:calc(100% - 16px) 18px,calc(100% - 11px) 18px;background-size:5px 5px;background-repeat:no-repeat}
+input[type=range]{padding:0;height:26px;background:none;border:none;appearance:none}
+input[type=range]::-webkit-slider-runnable-track{height:3px;background:var(--sumi-4);border-radius:2px}
+input[type=range]::-webkit-slider-thumb{appearance:none;width:18px;height:18px;margin-top:-7.5px;border-radius:50%;background:var(--kin)}
+input[type=range]::-moz-range-track{height:3px;background:var(--sumi-4);border-radius:2px}
+input[type=range]::-moz-range-thumb{width:18px;height:18px;border:none;border-radius:50%;background:var(--kin)}
+input[type=color]{padding:2px;height:38px;width:52px}
+a{color:var(--kin)}
+
+#app{display:flex;flex-direction:column;height:100dvh;padding-top:env(safe-area-inset-top)}
+#app::after{
+  content:"";position:fixed;inset:0;z-index:90;pointer-events:none;
+  opacity:.045;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ---------- 頭書き ---------- */
+header{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:12px 16px 10px;border-bottom:1px solid var(--sumi-3);flex:none;
+}
+.brand{font-family:var(--mincho);letter-spacing:.14em;font-size:17px;display:flex;align-items:baseline;gap:10px}
+.brand small{font-size:11px;letter-spacing:.1em;color:var(--hai);font-family:var(--gothic)}
+.hbtn{
+  border:1px solid var(--sumi-4);border-radius:999px;padding:5px 13px;
+  font-size:12px;color:var(--hai);letter-spacing:.08em;white-space:nowrap;
+}
+.hbtn.on{border-color:var(--kin);color:var(--kin)}
+
+/* ---------- 工程の帯 ---------- */
+nav{
+  display:flex;gap:0;flex:none;overflow-x:auto;-webkit-overflow-scrolling:touch;
+  border-bottom:1px solid var(--sumi-3);scrollbar-width:none;
+}
+nav::-webkit-scrollbar{display:none}
+nav button{
+  flex:1 0 auto;min-width:74px;padding:9px 10px 8px;text-align:center;
+  border-bottom:2px solid transparent;color:var(--hai-2);transition:.18s var(--ease);
+}
+nav button b{display:block;font-family:var(--mincho);font-size:13.5px;font-weight:400;letter-spacing:.06em}
+nav button span{display:block;font-size:9.5px;letter-spacing:.14em;color:var(--hai-2);margin-bottom:1px}
+nav button.on{color:var(--kin);border-bottom-color:var(--kin)}
+nav button.on span{color:var(--kin)}
+nav button.done span::after{content:"　済";color:var(--midori)}
+
+main{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px 14px 40px}
+.view{display:none;max-width:760px;margin:0 auto}
+.view.on{display:block;animation:fade .3s var(--ease)}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* ---------- 部品 ---------- */
+h2.sec{
+  font-family:var(--mincho);font-size:13px;letter-spacing:.2em;color:var(--kin);
+  margin:22px 0 10px;display:flex;align-items:center;gap:9px;
+}
+h2.sec::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--kin-awai),transparent)}
+h2.sec:first-child{margin-top:4px}
+.card{background:var(--sumi-2);border:1px solid var(--sumi-3);border-radius:10px;padding:14px;margin-bottom:12px}
+.card.kin{border-color:rgba(201,162,75,.36)}
+.card.midori{border-color:rgba(95,174,114,.36)}
+.card h3{font-family:var(--mincho);font-size:15px;letter-spacing:.08em;margin-bottom:8px;font-weight:400}
+.muted{color:var(--hai);font-size:12.5px;line-height:1.65}
+.mini{color:var(--hai-2);font-size:11.5px;line-height:1.6}
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  border:1px solid var(--sumi-4);border-radius:8px;padding:11px 16px;
+  font-size:14px;letter-spacing:.06em;color:var(--kinari);transition:.16s var(--ease);
+}
+.btn:active{transform:scale(.985)}
+.btn.pri{background:var(--shu-fukai);border-color:var(--shu);color:#fff}
+.btn.kin{border-color:var(--kin);color:var(--kin)}
+.btn.midori{border-color:var(--midori);color:var(--midori)}
+.btn.wide{width:100%}
+.btn.sm{padding:7px 11px;font-size:12.5px;border-radius:6px}
+.btn[disabled]{opacity:.4;pointer-events:none}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap}
+.btnrow>.btn{flex:1;min-width:120px}
+.field{margin-bottom:11px}
+.field label{display:block;font-size:12px;letter-spacing:.1em;color:var(--hai);margin-bottom:5px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.row3{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+.chip{
+  display:inline-block;border:1px solid var(--sumi-4);border-radius:999px;
+  padding:3px 10px;font-size:11.5px;color:var(--hai);margin:0 5px 5px 0;
+}
+.chip.on{border-color:var(--kin);color:var(--kin)}
+.chips{display:flex;flex-wrap:wrap;margin-top:6px}
+.num{font-family:var(--mincho);color:var(--kin);letter-spacing:.04em}
+.slide{display:flex;align-items:center;gap:10px}
+.slide input[type=range]{flex:1}
+.slide b{font-family:var(--mincho);font-weight:400;color:var(--kin);min-width:44px;text-align:right;font-size:13px}
+
+/* 統計 */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+@media (max-width:359px){.stats{grid-template-columns:repeat(2,1fr)}}
+.stat{background:var(--sumi-2);border:1px solid var(--sumi-3);border-radius:9px;padding:10px 6px;text-align:center}
+.stat b{display:block;font-family:var(--mincho);font-size:21px;font-weight:400;letter-spacing:.02em}
+.stat span{font-size:10.5px;color:var(--hai);letter-spacing:.06em}
+.bar{height:6px;background:var(--sumi-3);border-radius:99px;overflow:hidden;margin:8px 0 6px}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--shu),var(--kin));border-radius:99px;transition:width .5s var(--ease)}
+.bar.midori i{background:linear-gradient(90deg,var(--midori-fukai),var(--midori))}
+
+/* 工程の道しるべ */
+.road{display:flex;flex-direction:column;gap:0;margin:4px 0 6px}
+.road div{
+  display:flex;gap:11px;align-items:flex-start;padding:9px 0 9px 2px;
+  border-left:1px solid var(--sumi-3);margin-left:9px;padding-left:18px;position:relative;
+}
+.road div::before{
+  content:"";position:absolute;left:-5px;top:14px;width:9px;height:9px;border-radius:50%;
+  background:var(--sumi);border:1px solid var(--sumi-4);
+}
+.road div.done::before{background:var(--midori);border-color:var(--midori)}
+.road div.now::before{background:var(--shu);border-color:var(--shu);box-shadow:0 0 0 4px rgba(216,67,47,.18)}
+.road b{font-weight:400;font-family:var(--mincho);letter-spacing:.06em;font-size:14px}
+.road p{font-size:12px;color:var(--hai);margin-top:2px}
+.road .go{margin-left:auto;flex:none;align-self:center}
+
+/* 動きの一覧 */
+.moves{display:flex;flex-direction:column;gap:6px}
+.move{
+  display:flex;gap:9px;align-items:center;background:var(--sumi-2);
+  border:1px solid var(--sumi-3);border-radius:8px;padding:8px 10px;
+}
+.move.off{opacity:.38}
+.move .no{font-family:var(--mincho);color:var(--kin);font-size:12px;min-width:22px;text-align:right}
+.move .body{flex:1;min-width:0}
+.move .body b{display:block;font-weight:400;font-size:14px;letter-spacing:.03em}
+.move .body span{display:block;font-size:11.5px;color:var(--hai);line-height:1.5}
+.move .cat{font-size:10px;color:var(--hai-2);border:1px solid var(--sumi-4);border-radius:4px;padding:1px 5px;white-space:nowrap}
+.move .x{color:var(--hai-2);font-size:17px;padding:0 4px;line-height:1}
+
+/* 台本(動画1本ぶん) */
+.reel{background:var(--sumi-2);border:1px solid var(--sumi-3);border-radius:10px;padding:12px;margin-bottom:10px}
+.reel.done{border-color:rgba(95,174,114,.4)}
+.reel h4{font-family:var(--mincho);font-weight:400;font-size:14.5px;letter-spacing:.08em;margin-bottom:4px;display:flex;gap:8px;align-items:center}
+.reel h4 em{font-style:normal;font-size:10.5px;color:var(--midori);border:1px solid var(--midori-fukai);border-radius:4px;padding:0 5px}
+.reel ol{margin:8px 0 0 18px;font-size:12px;color:var(--hai);line-height:1.6}
+pre.prompt{
+  background:var(--sumi);border:1px solid var(--sumi-4);border-radius:7px;padding:11px;
+  font-size:11.5px;line-height:1.65;white-space:pre-wrap;word-break:break-word;
+  max-height:260px;overflow:auto;color:var(--kinari);font-family:ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+
+/* 変換 */
+.stage{
+  position:relative;background:
+    linear-gradient(45deg,#1a1714 25%,transparent 25%,transparent 75%,#1a1714 75%),
+    linear-gradient(45deg,#1a1714 25%,#161311 25%,#161311 75%,#1a1714 75%);
+  background-size:16px 16px;background-position:0 0,8px 8px;
+  border:1px solid var(--sumi-3);border-radius:9px;overflow:hidden;
+  display:flex;align-items:center;justify-content:center;min-height:170px;
+}
+.stage canvas,.stage video,.stage img{max-width:100%;display:block}
+.stage.pick{cursor:crosshair}
+.cutbar{display:flex;gap:3px;margin:9px 0 4px;flex-wrap:wrap}
+.cutbar button{
+  flex:1;min-width:34px;border:1px solid var(--sumi-4);border-radius:5px;
+  padding:5px 2px;font-size:11px;color:var(--hai);font-family:var(--mincho);
+}
+.cutbar button.on{border-color:var(--kin);color:var(--kin)}
+.cutbar button.made{border-color:var(--midori-fukai);color:var(--midori)}
+
+/* 候補の格子 */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:9px}
+.cand{
+  position:relative;background:
+    linear-gradient(45deg,#1a1714 25%,transparent 25%,transparent 75%,#1a1714 75%),
+    linear-gradient(45deg,#1a1714 25%,#161311 25%,#161311 75%,#1a1714 75%);
+  background-size:14px 14px;background-position:0 0,7px 7px;
+  border:1px solid var(--sumi-3);border-radius:9px;overflow:hidden;
+  aspect-ratio:320/270;display:flex;align-items:center;justify-content:center;
+}
+.cand img{max-width:100%;max-height:100%;display:block;pointer-events:none}
+.cand.on{border-color:var(--kin);box-shadow:0 0 0 1px var(--kin) inset}
+.cand .ord{
+  position:absolute;top:5px;left:5px;min-width:21px;height:21px;border-radius:50%;
+  background:var(--shu-fukai);border:1px solid var(--shu);color:#fff;
+  font-family:var(--mincho);font-size:11.5px;display:flex;align-items:center;justify-content:center;
+}
+.cand .meta{
+  position:absolute;left:0;right:0;bottom:0;padding:3px 6px;font-size:9.5px;
+  color:var(--hai);background:linear-gradient(transparent,rgba(18,16,14,.92) 45%);text-align:right;
+}
+.cand .name{
+  position:absolute;left:0;right:0;top:0;padding:4px 6px 8px;font-size:10px;
+  color:var(--kinari);background:linear-gradient(rgba(18,16,14,.9),transparent);
+  text-align:center;pointer-events:none;
+}
+.cand .del{position:absolute;top:3px;right:3px;width:22px;height:22px;border-radius:50%;background:rgba(18,16,14,.75);color:var(--hai);font-size:13px;line-height:22px;text-align:center}
+.cand.warn{border-color:var(--keikoku)}
+
+/* 点検表 */
+.check{display:flex;flex-direction:column;gap:5px;margin-top:4px}
+.check div{display:flex;gap:9px;align-items:flex-start;font-size:12.5px;line-height:1.6}
+.check i{font-style:normal;flex:none;width:16px;text-align:center}
+.check .ok i{color:var(--midori)}
+.check .ng i{color:var(--shu)}
+.check .ng{color:var(--keikoku)}
+
+/* 覆い・報せ */
+#toast{
+  position:fixed;left:50%;bottom:calc(26px + env(safe-area-inset-bottom));transform:translateX(-50%);
+  background:var(--sumi-3);border:1px solid var(--sumi-4);border-radius:8px;padding:9px 16px;
+  font-size:13px;z-index:120;opacity:0;pointer-events:none;transition:.28s var(--ease);max-width:88vw;text-align:center;
+}
+#toast.on{opacity:1;transform:translateX(-50%) translateY(-6px)}
+#busy{
+  position:fixed;inset:0;background:rgba(18,16,14,.86);z-index:110;
+  display:none;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:30px;
+}
+#busy.on{display:flex}
+#busy .mark{
+  width:46px;height:46px;border:1px solid var(--kin);border-radius:6px;
+  display:flex;align-items:center;justify-content:center;font-family:var(--mincho);color:var(--kin);
+  animation:pulse 1.5s var(--ease) infinite;
+}
+@keyframes pulse{0%,100%{opacity:.35;transform:scale(.96)}50%{opacity:1;transform:scale(1)}}
+#busy p{font-size:13px;color:var(--hai);text-align:center;max-width:340px}
+#busy .bar{width:min(300px,80vw)}
+</style>
+</head>
+<body>
+<div id="app">
+
+<header>
+  <div class="brand">うごく判子 <small>動くLINEスタンプの工房</small></div>
+  <button class="hbtn" id="btnSet">設定</button>
+</header>
+
+<nav id="nav">
+  <button data-v="home"><span>工房</span><b>支度</b></button>
+  <button data-v="chara"><span>工程一</span><b>姿</b></button>
+  <button data-v="moves"><span>工程二</span><b>動き</b></button>
+  <button data-v="reels"><span>工程三</span><b>台本</b></button>
+  <button data-v="conv"><span>工程四</span><b>抜き</b></button>
+  <button data-v="pick"><span>工程五</span><b>選び</b></button>
+  <button data-v="ship"><span>工程六</span><b>納め</b></button>
+</nav>
+
+<main>
+
+<!-- ============================ 支度 ============================ -->
+<section class="view on" id="v-home">
+  <div class="stats">
+    <div class="stat"><b id="hMoves" class="num">0</b><span>動きの案</span></div>
+    <div class="stat"><b id="hCands" class="num">0</b><span>スタンプ候補</span></div>
+    <div class="stat"><b id="hPick" class="num">0</b><span>選んだ数</span></div>
+    <div class="stat"><b id="hShip" class="num">—</b><span>申請</span></div>
+  </div>
+
+  <h2 class="sec">六つの工程</h2>
+  <div class="road" id="road"></div>
+
+  <div class="card">
+    <h3>この工房がやること</h3>
+    <p class="muted">
+      動くLINEスタンプは「1セット24個」。作り方そのものは単純ですが、
+      <b>24個ぶんの規格合わせ</b>が途方もなく面倒です。
+      この工房は、そのうち機械にできるところ——
+      動きの立案、動画の台本づくり、緑背景の抜き、APNGへの変換、規格の点検、申請用の一式づくり——
+      をまとめて引き受けます。
+    </p>
+    <p class="mini" style="margin-top:8px">
+      人の手が要るのは2つだけ。<b>動画を作ること</b>と、<b>最後に24個を選ぶこと</b>です。
+    </p>
+  </div>
+
+  <div class="card midori">
+    <h3>文字を入れない、そのかわり動きを大きく</h3>
+    <p class="muted">
+      LINEの利用者はおよそ2億人。うち半分は日本の外にいます(タイ・台湾・インドネシアなど)。
+      絵の中に日本語を書き込まなければ、そのまま海外の会話でも使えます。
+      そのぶん、感情は<b>動きの大きさ</b>で伝えるしかありません。
+      この工房が出す動きの案は、すべて<b>文字なしで意味が通ること</b>を条件にしています。
+    </p>
+  </div>
+
+  <div class="card">
+    <h3>要るもの</h3>
+    <p class="muted">
+      画像生成AI(キャラクターシート用)/ 動画生成AI(グリーンバックの動画用)/ このページ。<br>
+      工程一〜三の下書きは Claude が手伝います(設定でAPIキーを登録。未登録でも、備え付けの案60個でそのまま進められます)。<br>
+      工程四〜六は、この端末の中だけで完結します。<b>動画も画像もどこにも送りません。</b>
+    </p>
+  </div>
+
+  <div class="card">
+    <h3>作り方より、売り方</h3>
+    <p class="mini">
+      仕上げの質にこだわるほど人の目で確かめる手間は増えます。この工房は「80点を速く」に寄せた道具です。
+      そして売上を決めるのは、作り方以上に <b>並び順・題名・宣伝といった売り方</b> のほうです。
+      収益を保証するものではありません。
+    </p>
+  </div>
+</section>
+
+<!-- ============================ 工程一 姿 ============================ -->
+<section class="view" id="v-chara">
+  <h2 class="sec">工程一 — キャラクターシート</h2>
+  <p class="muted">
+    先に「見た目の基準」を1枚に固めます。これがないと、6本の動画でキャラの顔が少しずつ変わります。
+    下に書いた特徴から、画像生成AIに渡す<b>注文書</b>を組み立てます。
+  </p>
+
+  <div class="card" style="margin-top:12px">
+    <div class="field">
+      <label>キャラクターの名前</label>
+      <input id="chName" placeholder="例:もちうさ">
+    </div>
+    <div class="field">
+      <label>どんな見た目か(思いつく限り)</label>
+      <textarea id="chDesc" rows="4" placeholder="例:白いまるい うさぎ。耳は短めで先だけ薄桃色。ほっぺに赤い丸。手足は短く、いつも裸足。表情は太い線で、目は点、口は小さい。"></textarea>
+    </div>
+    <div class="row2">
+      <div class="field">
+        <label>絵の調子</label>
+        <select id="chStyle">
+          <option>ゆるい手描き風・太い輪郭線</option>
+          <option>アニメ調・くっきりした彩色</option>
+          <option>ドット絵風</option>
+          <option>水彩・にじみのある線</option>
+          <option>3Dっぽい ぷにぷに</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>頭身</label>
+        <select id="chHead">
+          <option>2頭身(顔が大きい)</option>
+          <option>2.5頭身</option>
+          <option>3頭身</option>
+          <option>4頭身</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn pri wide" id="chGo">注文書を組み立てる</button>
+    <p class="mini" style="margin-top:8px">
+      すでに絵がある方は、その画像を画像生成AIに渡して「これでキャラクターシートを作って」と言うだけでも構いません。
+    </p>
+  </div>
+
+  <div id="chOut" style="display:none">
+    <h2 class="sec">画像生成AIへの注文書</h2>
+    <div class="card kin">
+      <h3>日本語</h3>
+      <pre class="prompt" id="chJa"></pre>
+      <div class="btnrow" style="margin-top:9px">
+        <button class="btn sm kin" data-copy="chJa">写す</button>
+      </div>
+    </div>
+    <div class="card">
+      <h3>English(英語のほうが崩れにくい生成AIも多い)</h3>
+      <pre class="prompt" id="chEn"></pre>
+      <div class="btnrow" style="margin-top:9px">
+        <button class="btn sm" data-copy="chEn">写す</button>
+      </div>
+    </div>
+    <div class="card">
+      <h3>出来上がりの見どころ</h3>
+      <div class="check" id="chCheck"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ 工程二 動き ============================ -->
+<section class="view" id="v-moves">
+  <h2 class="sec">工程二 — 動きを60個ならべる</h2>
+  <p class="muted">
+    最後に残るのは24個ですが、ここでは<b>60個</b>出します。
+    「これは生成が安定しなさそう」と思っても、この段階では間引かないこと。
+    崩れたぶんは工程五で落とせば済みます。
+  </p>
+
+  <div class="btnrow" style="margin:12px 0">
+    <button class="btn pri" id="mvGen">AIに60個 考えてもらう</button>
+    <button class="btn" id="mvDefault">備え付けの60個を使う</button>
+  </div>
+  <div class="btnrow" style="margin-bottom:12px">
+    <button class="btn sm" id="mvAdd">1つ書き足す</button>
+    <button class="btn sm" id="mvSort">よく使う順にならべる</button>
+    <button class="btn sm" id="mvClear">まっさらにする</button>
+  </div>
+
+  <div class="chips" id="mvCats"></div>
+  <div class="moves" id="mvList"></div>
+  <p class="mini" id="mvNote" style="margin-top:10px"></p>
+</section>
+
+<!-- ============================ 工程三 台本 ============================ -->
+<section class="view" id="v-reels">
+  <h2 class="sec">工程三 — 動画6本ぶんの台本</h2>
+  <p class="muted">
+    1本の動画に10カット詰めれば、動画6本で60個ぶんになります。
+    1カットおよそ1.5秒、全体で15秒。<b>背景は緑一色、カメラは固定</b>——
+    この2つさえ守れれば、動画生成AIはどれでも構いません。
+  </p>
+
+  <div class="row2" style="margin:12px 0">
+    <div class="field">
+      <label>1本あたりのカット数</label>
+      <select id="rlCuts"><option>8</option><option selected>10</option><option>12</option></select>
+    </div>
+    <div class="field">
+      <label>1カットの長さ</label>
+      <select id="rlLen"><option>1.2</option><option selected>1.5</option><option>2.0</option></select>
+    </div>
+  </div>
+  <div class="field">
+    <label>背景に使う緑(この色をあとで抜きます)</label>
+    <div style="display:flex;gap:9px;align-items:center">
+      <input type="color" id="rlKey" value="#00b140">
+      <span class="mini" id="rlKeyNote">#00B140 — 放送用の標準的な緑。肌にも髪にも被りにくい色です。</span>
+    </div>
+  </div>
+
+  <button class="btn pri wide" id="rlGo" style="margin-bottom:14px">台本を組み立てる</button>
+  <div id="rlList"></div>
+</section>
+
+<!-- ============================ 工程四 抜き ============================ -->
+<section class="view" id="v-conv">
+  <h2 class="sec">工程四 — 動画をスタンプに変える</h2>
+  <p class="muted">
+    出来上がった動画を1本ずつ読ませます。緑を抜き、余白を刈り、規格に収まるAPNGへ変換します。
+    <b>動画はこの端末から出ません。</b>
+  </p>
+
+  <div class="card" style="margin-top:12px">
+    <div class="field">
+      <label>どの台本の動画か</label>
+      <select id="cvReel"></select>
+    </div>
+    <div class="field">
+      <label>動画を選ぶ</label>
+      <input type="file" id="cvFile" accept="video/*">
+    </div>
+    <p class="mini" id="cvInfo">まだ読み込んでいません。</p>
+  </div>
+
+  <div id="cvBody" style="display:none">
+    <h2 class="sec">切り分け</h2>
+    <div class="row3">
+      <div class="field">
+        <label>カット数</label>
+        <input type="number" id="cvCuts" value="10" min="1" max="20">
+      </div>
+      <div class="field">
+        <label>前後を削る</label>
+        <select id="cvTrim">
+          <option value="0">削らない</option>
+          <option value="0.08" selected>8%</option>
+          <option value="0.15">15%</option>
+          <option value="0.22">22%</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>いま見るカット</label>
+        <input type="number" id="cvCut" value="1" min="1">
+      </div>
+    </div>
+    <div class="cutbar" id="cvBar"></div>
+
+    <h2 class="sec">緑を抜く</h2>
+    <div class="stage pick" id="cvStage"><canvas id="cvCanvas"></canvas></div>
+    <p class="mini" style="margin-top:6px">絵の上をタップすると、そこの色を「抜く色」にできます。</p>
+
+    <div class="card" style="margin-top:10px">
+      <div class="field">
+        <label>抜く色</label>
+        <div style="display:flex;gap:9px;align-items:center">
+          <input type="color" id="cvKey" value="#00b140">
+          <button class="btn sm" id="cvAuto">四辺から推し量る</button>
+        </div>
+      </div>
+      <div class="field">
+        <label>どこまでを背景とみなすか</label>
+        <div class="slide"><input type="range" id="cvNear" min="4" max="80" value="34"><b id="cvNearV">34</b></div>
+      </div>
+      <div class="field">
+        <label>どこからを絵とみなすか</label>
+        <div class="slide"><input type="range" id="cvFar" min="10" max="160" value="78"><b id="cvFarV">78</b></div>
+      </div>
+      <div class="field">
+        <label>色かぶりを抑える</label>
+        <div class="slide"><input type="range" id="cvSpill" min="0" max="100" value="90"><b id="cvSpillV">90</b></div>
+      </div>
+      <div class="field">
+        <label>ふちを削る(緑の縁取りが残るとき)</label>
+        <div class="slide"><input type="range" id="cvChoke" min="0" max="3" value="0"><b id="cvChokeV">0</b></div>
+      </div>
+    </div>
+
+    <h2 class="sec">スタンプの規格</h2>
+    <div class="row3">
+      <div class="field">
+        <label>再生時間</label>
+        <select id="cvDur"><option value="1000">1秒</option><option value="2000" selected>2秒</option><option value="3000">3秒</option><option value="4000">4秒</option></select>
+      </div>
+      <div class="field">
+        <label>コマ数</label>
+        <select id="cvFrames"><option>5</option><option>8</option><option>10</option><option selected>12</option><option>15</option><option>18</option><option>20</option></select>
+      </div>
+      <div class="field">
+        <label>大きさ</label>
+        <select id="cvUniform">
+          <option value="0" selected>絵に合わせて刈る</option>
+          <option value="1">全部320×270に統一</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="btnrow" style="margin-top:6px">
+      <button class="btn kin" id="cvTest">このカットだけ試す</button>
+      <button class="btn pri" id="cvAll">全カットを変換する</button>
+    </div>
+
+    <div id="cvResult" style="display:none;margin-top:14px">
+      <h2 class="sec">試し刷り</h2>
+      <div class="stage" id="cvOutStage"></div>
+      <p class="mini" id="cvOutInfo" style="margin-top:7px"></p>
+    </div>
+  </div>
+</section>
+
+<!-- ============================ 工程五 選び ============================ -->
+<section class="view" id="v-pick">
+  <h2 class="sec">工程五 — 24個を選ぶ</h2>
+  <p class="muted">
+    ここだけは人の目です。動いているところを見て、使う24個をタップで選びます。
+    数字は<b>並び順</b>。選んだ順に番号が付きます。
+  </p>
+
+  <div class="bar midori"><i id="pkBar" style="width:0%"></i></div>
+  <p class="mini" id="pkCount">まだ1つも選んでいません。</p>
+
+  <div class="btnrow" style="margin:12px 0">
+    <button class="btn kin" id="pkAuto">並び順をととのえる</button>
+    <button class="btn sm" id="pkClear">選び直す</button>
+    <button class="btn sm" id="pkStill">動きを止める</button>
+  </div>
+  <div class="chips" id="pkFilter"></div>
+  <div class="grid" id="pkGrid"></div>
+  <p class="mini" id="pkEmpty" style="margin-top:14px"></p>
+
+  <div class="card" style="margin-top:16px">
+    <h3>並び順の勘どころ</h3>
+    <p class="mini">
+      ・1個目は<b>セットの顔</b>。一覧でいちばん最初に目に入ります<br>
+      ・前半に、よく使われるもの(あいさつ・返事・笑い・ありがとう)を固める<br>
+      ・似た絵柄・似た動きが<b>隣り合わないように散らす</b><br>
+      「並び順をととのえる」は、この3つに沿って選んだものを並べ替えます。
+    </p>
+  </div>
+</section>
+
+<!-- ============================ 工程六 納め ============================ -->
+<section class="view" id="v-ship">
+  <h2 class="sec">工程六 — 申請用の一式をつくる</h2>
+  <p class="muted">
+    LINE Creators Market に出すための zip を組み立てます。
+    中身は <b>main.png(240×240)</b>・<b>tab.png(96×74)</b>・<b>01.png〜24.png</b>。
+  </p>
+
+  <div class="card" style="margin-top:12px">
+    <h3>いまの状態</h3>
+    <div class="check" id="shCheck"></div>
+  </div>
+
+  <div class="card">
+    <div class="field">
+      <label>メイン画像(一覧の顔)に使うもの</label>
+      <select id="shMain"></select>
+    </div>
+    <div class="field">
+      <label>タブ画像に使うもの</label>
+      <select id="shTab"></select>
+    </div>
+    <button class="btn pri wide" id="shGo">点検して zip を作る</button>
+  </div>
+
+  <div id="shOut" style="display:none">
+    <h2 class="sec">出来上がり</h2>
+    <div class="row2">
+      <div class="card" style="text-align:center">
+        <p class="mini">main.png 240×240</p>
+        <div class="stage" id="shMainOut" style="min-height:120px;margin-top:7px"></div>
+      </div>
+      <div class="card" style="text-align:center">
+        <p class="mini">tab.png 96×74</p>
+        <div class="stage" id="shTabOut" style="min-height:120px;margin-top:7px"></div>
+      </div>
+    </div>
+    <div class="card kin">
+      <h3>最後の点検</h3>
+      <div class="check" id="shFinal"></div>
+    </div>
+    <button class="btn pri wide" id="shDl">zip を保存する</button>
+  </div>
+
+  <div class="card" style="margin-top:16px">
+    <h3>審査で弾かれやすいところ</h3>
+    <p class="mini">
+      いちばん多いのが<b>「イラストの内部が透過されています」</b>。
+      緑を抜くときに、キャラの内側にも目に見えない小さな穴が空いてしまう事故です。
+      この工房は変換のたびに<b>外からたどり着けない透明</b>を探して埋め、
+      zipを作るときにもう一度だけ数え直します。<br>
+      ほかに多いのは、再生時間が1・2・3・4秒ちょうどでない / 1ファイルが300KBを超える /
+      コマ数が5〜20から外れる、の3つ。いずれもここで先に弾いています。
+    </p>
+  </div>
+</section>
+
+<!-- ============================ 設定 ============================ -->
+<section class="view" id="v-set">
+  <h2 class="sec">設定</h2>
+  <div class="card">
+    <h3>Claude APIキー</h3>
+    <p class="mini" style="margin-bottom:9px">
+      工程一〜三(注文書・動きの案・台本)の下書きに使います。<b>使わなくても工房は動きます。</b>
+      キーはこの端末のブラウザ内にだけ残り、送信先は Anthropic だけです。
+    </p>
+    <div class="field"><input type="password" id="setKey" placeholder="sk-ant-..." autocomplete="off"></div>
+    <div class="field">
+      <label>使うモデル</label>
+      <select id="setModel"></select>
+    </div>
+    <div class="btnrow">
+      <button class="btn pri" id="setSave">保存して確かめる</button>
+      <button class="btn sm" id="setForget">キーを消す</button>
+    </div>
+    <p class="mini" id="setState" style="margin-top:9px"></p>
+  </div>
+
+  <div class="card">
+    <h3>この端末に残っているもの</h3>
+    <p class="mini" id="setUse"></p>
+    <div class="btnrow" style="margin-top:10px">
+      <button class="btn sm" id="setWipeCand">スタンプ候補を全部消す</button>
+      <button class="btn sm" id="setWipeAll">工房ごと まっさらにする</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>おことわり</h3>
+    <p class="mini">
+      LINEスタンプの規格・審査基準は運営の都合で変わります。最新の条件は
+      LINE Creators Market の案内でお確かめください。この工房が出す点検結果は下読みであって、
+      審査の通過を約束するものではありません。<br>
+      また、記事にあった売上はあくまで一例です。売れ方は題材・時期・宣伝で大きく変わります。
+    </p>
+  </div>
+</section>
+
+</main>
+</div>
+
+<div id="toast"></div>
+<div id="busy">
+  <div class="mark">工</div>
+  <p id="busyMsg">支度しています</p>
+  <div class="bar" style="display:none" id="busyBarWrap"><i id="busyBar" style="width:0%"></i></div>
+</div>
+<script>
+/* ================================================================
+   1. 書き出し — PNG / APNG / ZIP
+   LINEスタンプの規格に合わせて、外部ライブラリなしで組み立てる。
+   ・APNG(拡張子は .png)/ 最大320×270 / 5〜20コマ
+   ・再生時間はループ込みで 1・2・3・4秒ちょうど / 1ファイル300KB以下
+   ================================================================ */
+
+/* ---------- CRC32 と Adler32 ---------- */
+var CRC_T = (function(){
+  var t = new Uint32Array(256), c, n, k;
+  for(n=0;n<256;n++){ c=n; for(k=0;k<8;k++) c = (c&1) ? (0xEDB88320 ^ (c>>>1)) : (c>>>1); t[n]=c>>>0; }
+  return t;
+})();
+function crcAdd(buf, prev){
+  var c = (prev===undefined ? 0xFFFFFFFF : prev)>>>0, i, n=buf.length;
+  for(i=0;i<n;i++) c = CRC_T[(c ^ buf[i]) & 255] ^ (c>>>8);
+  return c>>>0;
+}
+function crc32(buf){ return (crcAdd(buf) ^ 0xFFFFFFFF)>>>0; }
+function adler32(b){
+  var a=1, s=0, i=0, n=b.length, k;
+  while(i<n){ k=Math.min(n, i+3000); for(;i<k;i++){ a+=b[i]; s+=a; } a%=65521; s%=65521; }
+  return ((s<<16)|a)>>>0;
+}
+
+/* ---------- zlib(圧縮はブラウザ内蔵の CompressionStream に任せる) ---------- */
+function deflateStore(b){                 /* 内蔵がない環境むけの無圧縮フォールバック */
+  var n=b.length, blocks=Math.max(1, Math.ceil(n/65535));
+  var out=new Uint8Array(2+n+blocks*5+4), p=0, i=0;
+  out[p++]=0x78; out[p++]=0x01;
+  do{
+    var len=Math.min(65535, n-i), last=(i+len>=n)?1:0;
+    out[p++]=last; out[p++]=len&255; out[p++]=(len>>8)&255;
+    out[p++]=(~len)&255; out[p++]=((~len)>>8)&255;
+    if(len){ out.set(b.subarray(i,i+len), p); p+=len; }
+    i+=len;
+  }while(i<n);
+  var ad=adler32(b);
+  out[p++]=(ad>>>24)&255; out[p++]=(ad>>>16)&255; out[p++]=(ad>>>8)&255; out[p++]=ad&255;
+  return out.subarray(0,p);
+}
+async function zlibDeflate(b){
+  if(typeof CompressionStream === "function"){
+    try{
+      var cs = new CompressionStream("deflate");
+      var w = cs.writable.getWriter();
+      w.write(b); w.close();
+      var buf = await new Response(cs.readable).arrayBuffer();
+      return new Uint8Array(buf);
+    }catch(e){}
+  }
+  return deflateStore(b);
+}
+
+/* ---------- バイト並べの小道具 ---------- */
+function u32(v){ return new Uint8Array([(v>>>24)&255,(v>>>16)&255,(v>>>8)&255,v&255]); }
+function u16(v){ return new Uint8Array([(v>>>8)&255, v&255]); }
+function cat(list){
+  var n=0, i;
+  for(i=0;i<list.length;i++) n += list[i].length;
+  var out=new Uint8Array(n), p=0;
+  for(i=0;i<list.length;i++){ out.set(list[i], p); p += list[i].length; }
+  return out;
+}
+function ascii(s){
+  var out=new Uint8Array(s.length), i;
+  for(i=0;i<s.length;i++) out[i]=s.charCodeAt(i)&255;
+  return out;
+}
+function chunk(type, data){
+  var body = cat([ascii(type), data || new Uint8Array(0)]);
+  return cat([u32(body.length-4), body, u32(crc32(body))]);
+}
+
+/* ---------- 走査線のフィルタ(PNGの圧縮率はここでほぼ決まる) ---------- */
+function paeth(a,b,c){
+  var p=a+b-c, pa=Math.abs(p-a), pb=Math.abs(p-b), pc=Math.abs(p-c);
+  return (pa<=pb && pa<=pc) ? a : (pb<=pc ? b : c);
+}
+function filterRows(raw, w, h, bpp){
+  var stride = w*bpp;
+  var out = new Uint8Array((stride+1)*h);
+  var prev = new Uint8Array(stride);
+  var cand = [new Uint8Array(stride), new Uint8Array(stride), new Uint8Array(stride),
+              new Uint8Array(stride), new Uint8Array(stride)];
+  var y, x, i, f, v, sum, best, bestSum, row;
+  for(y=0;y<h;y++){
+    row = raw.subarray(y*stride, y*stride+stride);
+    for(x=0;x<stride;x++){
+      var a = x>=bpp ? row[x-bpp] : 0;
+      var b = prev[x];
+      var c = x>=bpp ? prev[x-bpp] : 0;
+      cand[0][x] = row[x];
+      cand[1][x] = (row[x]-a) & 255;
+      cand[2][x] = (row[x]-b) & 255;
+      cand[3][x] = (row[x]-((a+b)>>1)) & 255;
+      cand[4][x] = (row[x]-paeth(a,b,c)) & 255;
+    }
+    best=0; bestSum=Infinity;
+    for(f=0;f<5;f++){
+      sum=0;
+      for(x=0;x<stride;x++){ v=cand[f][x]; sum += v<128 ? v : 256-v; }
+      if(sum<bestSum){ bestSum=sum; best=f; }
+    }
+    i=y*(stride+1);
+    out[i]=best;
+    out.set(cand[best], i+1);
+    prev.set(row);
+  }
+  return out;
+}
+
+/* ---------- 減色(全コマ共通のパレットを1つ作る) ---------- */
+function buildHistogram(frames){
+  var hist = new Map(), reduced = false, f, d, i, key;
+  for(f=0; f<frames.length; f++){
+    d = frames[f].data;
+    for(i=0;i<d.length;i+=4){
+      key = d[i+3]===0 ? 0 : (((d[i]<<24)|(d[i+1]<<16)|(d[i+2]<<8)|d[i+3])>>>0);
+      hist.set(key, (hist.get(key)||0)+1);
+      if(hist.size > 150000){ reduced = true; break; }
+    }
+    if(reduced) break;
+  }
+  if(!reduced) return hist;
+  /* 色数が多すぎるときだけ、6bitに丸めてから数え直す(動画由来のノイズ落としも兼ねる) */
+  hist = new Map();
+  for(f=0; f<frames.length; f++){
+    d = frames[f].data;
+    for(i=0;i<d.length;i+=4){
+      if(d[i+3]===0){ key = 0; }
+      else{
+        var r=(d[i]&0xFC)|2, g=(d[i+1]&0xFC)|2, b=(d[i+2]&0xFC)|2;
+        var a=d[i+3]>=250 ? 255 : ((d[i+3]&0xF8)|4);
+        key = (((r<<24)|(g<<16)|(b<<8)|a)>>>0);
+      }
+      hist.set(key, (hist.get(key)||0)+1);
+    }
+  }
+  return hist;
+}
+function medianCut(colors, want){
+  /* colors: [{r,g,b,a,n}] 完全な透明はここには入れない */
+  if(!colors.length) return [];
+  var boxes = [colors];
+  function rangeOf(box){
+    var lo=[255,255,255,255], hi=[0,0,0,0], i, c;
+    for(i=0;i<box.length;i++){
+      c=box[i];
+      if(c.r<lo[0])lo[0]=c.r; if(c.r>hi[0])hi[0]=c.r;
+      if(c.g<lo[1])lo[1]=c.g; if(c.g>hi[1])hi[1]=c.g;
+      if(c.b<lo[2])lo[2]=c.b; if(c.b>hi[2])hi[2]=c.b;
+      if(c.a<lo[3])lo[3]=c.a; if(c.a>hi[3])hi[3]=c.a;
+    }
+    /* 目の感じ方に合わせて緑を重く、透明度はさらに重く見る */
+    var w=[0.9, 1.2, 0.7, 2.0], best=0, bestV=-1, k;
+    for(k=0;k<4;k++){ var v=(hi[k]-lo[k])*w[k]; if(v>bestV){ bestV=v; best=k; } }
+    return { axis:best, span:bestV };
+  }
+  while(boxes.length < want){
+    var pick=-1, pickSpan=-1, i;
+    for(i=0;i<boxes.length;i++){
+      if(boxes[i].length<2) continue;
+      var r=rangeOf(boxes[i]);
+      var span = r.span * Math.log(1+boxes[i].length);
+      if(span>pickSpan){ pickSpan=span; pick=i; boxes[i]._axis=r.axis; }
+    }
+    if(pick<0 || pickSpan<=0) break;
+    var box = boxes[pick], ax = box._axis;
+    var key = ax===0?"r":ax===1?"g":ax===2?"b":"a";
+    box.sort(function(p,q){ return p[key]-q[key]; });
+    var total=0;
+    for(i=0;i<box.length;i++) total+=box[i].n;
+    var half=total/2, acc=0, cut=0;
+    for(i=0;i<box.length-1;i++){ acc+=box[i].n; if(acc>=half){ cut=i+1; break; } }
+    if(cut<=0) cut = box.length>>1;
+    if(cut<=0 || cut>=box.length) break;
+    boxes.splice(pick, 1, box.slice(0,cut), box.slice(cut));
+  }
+  return boxes.map(function(box){
+    var r=0,g=0,b=0,a=0,n=0,i,c;
+    for(i=0;i<box.length;i++){ c=box[i]; r+=c.r*c.n; g+=c.g*c.n; b+=c.b*c.n; a+=c.a*c.n; n+=c.n; }
+    return { r:Math.round(r/n), g:Math.round(g/n), b:Math.round(b/n), a:Math.round(a/n) };
+  });
+}
+/* 減色は、透明・半透明・不透明の三つを混ぜないように分けて行う。
+   混ぜると、絵の内側の不透明な画素が「透明度254の色」に化けることがあり、
+   目には見えないのに審査では「内部が透過されています」として弾かれる。 */
+function quantize(frames, want){
+  var hist = buildHistogram(frames);
+  var clear = false, part = [], solid = [];
+  hist.forEach(function(n, key){
+    if(key===0){ clear = true; return; }
+    var c = { r:(key>>>24)&255, g:(key>>>16)&255, b:(key>>>8)&255, a:key&255, n:n };
+    if(c.a >= 250){ c.a = 255; solid.push(c); } else part.push(c);
+  });
+  var room = Math.max(1, want - (clear?1:0));
+  var pn = 0, sn = room;
+  if(part.length && solid.length){
+    pn = Math.max(1, Math.min(part.length, Math.round(room*0.34)));
+    sn = room - pn;
+    if(solid.length < sn){ sn = solid.length; pn = Math.min(part.length, room - sn); }
+    if(part.length < pn){ pn = part.length; sn = room - pn; }
+  }else if(part.length){ pn = room; sn = 0; }
+
+  function shrinkTo(list, n){
+    if(!n || !list.length) return [];
+    return list.length <= n
+      ? list.map(function(c){ return { r:c.r, g:c.g, b:c.b, a:c.a }; })
+      : medianCut(list, n);
+  }
+  var palPart  = shrinkTo(part, pn);
+  var palSolid = shrinkTo(solid, sn);
+  palPart.forEach(function(c){ if(c.a > 248) c.a = 248; if(c.a < 1) c.a = 1; });
+  palSolid.forEach(function(c){ c.a = 255; });
+  palPart.sort(function(p,q){ return p.a - q.a; });
+
+  /* 並びは 透明 → 半透明 → 不透明。こうすると tRNS を途中で打ち切れる */
+  var pal = (clear ? [{ r:0, g:0, b:0, a:0 }] : []).concat(palPart, palSolid);
+  if(!pal.length) pal.push({ r:0, g:0, b:0, a:0 });
+  var clearIx = clear ? 0 : -1;
+  var partFrom = clear ? 1 : 0, partTo = partFrom + palPart.length;   /* [from, to) */
+  var solidFrom = partTo, solidTo = pal.length;
+
+  function nearest(r, g, b, from, to){
+    var best = from, bestD = Infinity, k;
+    for(k=from;k<to;k++){
+      var c = pal[k], dr=c.r-r, dg=c.g-g, db=c.b-b;
+      var dist = dr*dr*3 + dg*dg*6 + db*db;
+      if(dist < bestD){ bestD = dist; best = k; if(!dist) break; }
+    }
+    return best;
+  }
+  function nearestPart(r, g, b, a){
+    var best = partFrom, bestD = Infinity, k;
+    for(k=partFrom;k<partTo;k++){
+      var c = pal[k], dr=c.r-r, dg=c.g-g, db=c.b-b, da=c.a-a;
+      var dist = da*da*9 + (dr*dr*3 + dg*dg*6 + db*db)*0.5;
+      if(dist < bestD){ bestD = dist; best = k; if(!dist) break; }
+    }
+    return best;
+  }
+
+  var cache = new Map();
+  var out = frames.map(function(fr){
+    var d = fr.data, idx = new Uint8Array(fr.w*fr.h), i, p=0;
+    for(i=0;i<d.length;i+=4){
+      var a = d[i+3];
+      var key = a===0 ? 0 : (((d[i]<<24)|(d[i+1]<<16)|(d[i+2]<<8)|a)>>>0);
+      var hit = cache.get(key);
+      if(hit===undefined){
+        if(a === 0 && clearIx >= 0) hit = clearIx;
+        else if(a >= 250) hit = solidTo > solidFrom ? nearest(d[i], d[i+1], d[i+2], solidFrom, solidTo)
+                                                    : nearestPart(d[i], d[i+1], d[i+2], a);
+        else if(partTo > partFrom) hit = nearestPart(d[i], d[i+1], d[i+2], a);
+        else if(a >= 128 && solidTo > solidFrom) hit = nearest(d[i], d[i+1], d[i+2], solidFrom, solidTo);
+        else hit = clearIx >= 0 ? clearIx : 0;
+        cache.set(key, hit);
+      }
+      idx[p++] = hit;
+    }
+    return idx;
+  });
+  return { pal:pal, idx:out };
+}
+
+/* ---------- コマの差分矩形(前のコマと変わったところだけ書く) ---------- */
+function diffRect(prev, cur, w, h, bpp){
+  if(!prev) return { x:0, y:0, w:w, h:h };
+  var x0=w, y0=h, x1=-1, y1=-1, x, y, i, c, same;
+  for(y=0;y<h;y++){
+    for(x=0;x<w;x++){
+      i=(y*w+x)*bpp; same=true;
+      for(c=0;c<bpp;c++) if(prev[i+c]!==cur[i+c]){ same=false; break; }
+      if(!same){
+        if(x<x0)x0=x; if(x>x1)x1=x;
+        if(y<y0)y0=y; if(y>y1)y1=y;
+      }
+    }
+  }
+  if(x1<0) return { x:0, y:0, w:1, h:1 };
+  return { x:x0, y:y0, w:x1-x0+1, h:y1-y0+1 };
+}
+function cropArr(src, w, bpp, rect){
+  var out = new Uint8Array(rect.w*rect.h*bpp), y, p=0;
+  for(y=0;y<rect.h;y++){
+    var s = ((rect.y+y)*w + rect.x)*bpp;
+    out.set(src.subarray(s, s+rect.w*bpp), p);
+    p += rect.w*bpp;
+  }
+  return out;
+}
+
+/* ---------- コマの表示時間(合計をぴったり合わせる) ---------- */
+function splitDelays(n, totalMs){
+  var base=Math.floor(totalMs/n), rem=totalMs-base*n, out=[], i;
+  for(i=0;i<n;i++) out.push(base + (i<rem ? 1 : 0));
+  return out;
+}
+function delayPair(ms, den){ return { num:Math.round(ms*den/1000), den:den }; }
+
+/* ================================================================
+   PNG(1枚) と APNG(動く)の書き出し
+   frames: [{ w, h, data:Uint8ClampedArray(RGBA) }]
+   opt: { indexed:true/false, colors:256, totalMs:2000, plays:0 }
+   ================================================================ */
+async function encodePNG(frame, opt){
+  return encodeAPNG([frame], Object.assign({ still:true }, opt||{}));
+}
+async function encodeAPNG(frames, opt){
+  opt = opt || {};
+  var w = frames[0].w, h = frames[0].h, n = frames.length;
+  var still = !!opt.still || n===1 && opt.still !== false;
+  var indexed = opt.indexed !== false;
+  var parts = [], seq = 0;
+
+  var pal=null, planes, bpp;
+  if(indexed){
+    var q = quantize(frames, Math.max(2, Math.min(256, opt.colors || 256)));
+    pal = q.pal; planes = q.idx; bpp = 1;
+  }else{
+    planes = frames.map(function(f){ return new Uint8Array(f.data.buffer ? f.data.buffer.slice(f.data.byteOffset, f.data.byteOffset+f.data.length) : f.data); });
+    bpp = 4;
+  }
+
+  /* 署名と IHDR */
+  parts.push(new Uint8Array([137,80,78,71,13,10,26,10]));
+  parts.push(chunk("IHDR", cat([u32(w), u32(h), new Uint8Array([8, indexed?3:6, 0, 0, 0])])));
+
+  if(indexed){
+    var plte = new Uint8Array(pal.length*3), trns = [], i;
+    for(i=0;i<pal.length;i++){
+      plte[i*3]=pal[i].r; plte[i*3+1]=pal[i].g; plte[i*3+2]=pal[i].b;
+    }
+    parts.push(chunk("PLTE", plte));
+    var last=-1;
+    for(i=0;i<pal.length;i++) if(pal[i].a<255) last=i;
+    if(last>=0){
+      var tr=new Uint8Array(last+1);
+      for(i=0;i<=last;i++) tr[i]=pal[i].a;
+      parts.push(chunk("tRNS", tr));
+    }
+  }
+
+  /* 動くときは acTL → fcTL → IDAT → (fcTL + fdAT)×n */
+  var ms = splitDelays(n, opt.totalMs || 2000);
+  var den = ms.every(function(v){ return v%10===0; }) ? 100 : 1000;
+
+  if(!still){
+    parts.push(chunk("acTL", cat([u32(n), u32(opt.plays===undefined ? 0 : opt.plays)])));
+  }
+
+  var prev = null;
+  for(var f=0; f<n; f++){
+    var rect = f===0 ? { x:0, y:0, w:w, h:h } : diffRect(prev, planes[f], w, h, bpp);
+    var sub = f===0 ? planes[f] : cropArr(planes[f], w, bpp, rect);
+    var idat = await zlibDeflate(filterRows(sub, rect.w, rect.h, bpp));
+    if(!still){
+      var d = delayPair(ms[f], den);
+      parts.push(chunk("fcTL", cat([
+        u32(seq++), u32(rect.w), u32(rect.h), u32(rect.x), u32(rect.y),
+        u16(d.num), u16(d.den),
+        new Uint8Array([0, 0])          /* 捨てない(NONE) / 上書き(SOURCE) */
+      ])));
+    }
+    if(f===0) parts.push(chunk("IDAT", idat));
+    else       parts.push(chunk("fdAT", cat([u32(seq++), idat])));
+    prev = planes[f];
+  }
+  parts.push(chunk("IEND", new Uint8Array(0)));
+  return cat(parts);
+}
+
+/* ================================================================
+   ZIP(申請用のひとまとめ。中身はPNGなので無圧縮で格納する)
+   files: [{ name, data:Uint8Array }]
+   ================================================================ */
+function dosTime(dt){
+  return ((dt.getHours()<<11) | (dt.getMinutes()<<5) | (dt.getSeconds()>>1)) & 0xFFFF;
+}
+function dosDate(dt){
+  return (((dt.getFullYear()-1980)<<9) | ((dt.getMonth()+1)<<5) | dt.getDate()) & 0xFFFF;
+}
+function le16(v){ return new Uint8Array([v&255,(v>>>8)&255]); }
+function le32(v){ return new Uint8Array([v&255,(v>>>8)&255,(v>>>16)&255,(v>>>24)&255]); }
+function zipStore(files, when){
+  var dt = when || new Date();
+  var t = le16(dosTime(dt)), d = le16(dosDate(dt));
+  var local = [], central = [], offset = 0, i;
+  for(i=0;i<files.length;i++){
+    var name = ascii(files[i].name), data = files[i].data, crc = le32(crc32(data));
+    var head = cat([ le32(0x04034b50), le16(20), le16(0), le16(0), t, d,
+                     crc, le32(data.length), le32(data.length), le16(name.length), le16(0),
+                     name ]);
+    local.push(head, data);
+    central.push(cat([ le32(0x02014b50), le16(20), le16(20), le16(0), le16(0), t, d,
+                       crc, le32(data.length), le32(data.length),
+                       le16(name.length), le16(0), le16(0), le16(0), le16(0),
+                       le32(0), le32(offset), name ]));
+    offset += head.length + data.length;
+  }
+  var dir = cat(central);
+  var end = cat([ le32(0x06054b50), le16(0), le16(0), le16(files.length), le16(files.length),
+                  le32(dir.length), le32(offset), le16(0) ]);
+  return cat([ cat(local), dir, end ]);
+}
+/* ================================================================
+   2. 下ごしらえ — グリーンバック抜き・穴つぶし・余白刈り・寸法合わせ
+   透明度を含む拡大縮小は、いったん色に透明度を掛けてから(乗算済み)
+   行わないと、抜いたはずの緑が輪郭ににじみ出る。
+   ================================================================ */
+
+function newImg(w, h){ return { w:w, h:h, data:new Uint8ClampedArray(w*h*4) }; }
+function cloneImg(im){ return { w:im.w, h:im.h, data:new Uint8ClampedArray(im.data) }; }
+
+/* ---------- 拡大縮小(三角フィルタ・乗算済み) ---------- */
+function resample1D(src, sw, sh, dw, vertical){
+  /* vertical=false: 横方向に sw→dw。vertical=true: 縦方向に sh→dw(=dh)。 */
+  var srcLen = vertical ? sh : sw;
+  var scale = dw / srcLen;
+  var support = scale < 1 ? 1/scale : 1;
+  var dst = vertical ? new Float32Array(sw*dw*4) : new Float32Array(dw*sh*4);
+  var outW = vertical ? sw : dw;
+  var outH = vertical ? dw : sh;
+  var i, j, k, c;
+  for(i=0;i<dw;i++){
+    var center = (i+0.5)/scale;
+    var lo = Math.max(0, Math.floor(center - support));
+    var hi = Math.min(srcLen-1, Math.ceil(center + support));
+    var wsum = 0, ws = [];
+    for(j=lo;j<=hi;j++){
+      var t = Math.abs((j+0.5) - center) / support;
+      var wgt = t < 1 ? (1 - t) : 0;
+      ws.push(wgt); wsum += wgt;
+    }
+    if(wsum <= 0){ ws = [1]; wsum = 1; lo = hi = Math.min(srcLen-1, Math.max(0, Math.round(center-0.5))); }
+    var lines = vertical ? sw : sh;
+    for(k=0;k<lines;k++){
+      var r=0,g=0,b=0,a=0;
+      for(j=lo;j<=hi;j++){
+        var wgt = ws[j-lo]/wsum;
+        if(!wgt) continue;
+        var si = vertical ? ((j*sw + k)*4) : ((k*sw + j)*4);
+        r += src[si]*wgt; g += src[si+1]*wgt; b += src[si+2]*wgt; a += src[si+3]*wgt;
+      }
+      var di = vertical ? ((i*sw + k)*4) : ((k*dw + i)*4);
+      dst[di]=r; dst[di+1]=g; dst[di+2]=b; dst[di+3]=a;
+    }
+  }
+  return { data:dst, w:outW, h:outH };
+}
+function resizeRGBA(im, dw, dh){
+  if(im.w === dw && im.h === dh) return cloneImg(im);
+  var sw=im.w, sh=im.h, s=im.data, i;
+  var pre = new Float32Array(sw*sh*4);
+  for(i=0;i<pre.length;i+=4){
+    var a = s[i+3]/255;
+    pre[i]=s[i]*a; pre[i+1]=s[i+1]*a; pre[i+2]=s[i+2]*a; pre[i+3]=s[i+3];
+  }
+  var h1 = resample1D(pre, sw, sh, dw, false);
+  var v1 = resample1D(h1.data, dw, sh, dh, true);
+  var out = newImg(dw, dh), d = out.data, f = v1.data;
+  for(i=0;i<d.length;i+=4){
+    var al = f[i+3];
+    if(al <= 0.5){ d[i]=d[i+1]=d[i+2]=d[i+3]=0; continue; }
+    var inv = 255/al;
+    d[i]   = Math.round(f[i]*inv);
+    d[i+1] = Math.round(f[i+1]*inv);
+    d[i+2] = Math.round(f[i+2]*inv);
+    d[i+3] = Math.round(al);
+  }
+  return out;
+}
+function fitInside(w, h, maxW, maxH, allowUp){
+  var s = Math.min(maxW/w, maxH/h);
+  if(!allowUp) s = Math.min(1, s);
+  var dw = Math.max(2, Math.floor(w*s/2)*2);
+  var dh = Math.max(2, Math.floor(h*s/2)*2);
+  return { w:dw, h:dh };
+}
+
+/* ---------- 背景の色を、四辺から推し量る ---------- */
+function guessKey(im){
+  var d=im.data, w=im.w, h=im.h, rs=[], gs=[], bs=[], x, y, i;
+  function take(x,y){ i=(y*w+x)*4; rs.push(d[i]); gs.push(d[i+1]); bs.push(d[i+2]); }
+  for(x=0;x<w;x+=Math.max(1,(w/60)|0)){ take(x,0); take(x,h-1); }
+  for(y=0;y<h;y+=Math.max(1,(h/60)|0)){ take(0,y); take(w-1,y); }
+  function med(a){ a.sort(function(p,q){return p-q;}); return a[a.length>>1]|0; }
+  return { r:med(rs), g:med(gs), b:med(bs) };
+}
+function chroma(r,g,b){
+  return { cb:-0.169*r - 0.331*g + 0.500*b, cr:0.500*r - 0.419*g - 0.081*b };
+}
+
+/* ---------- グリーンバック抜き ----------
+   opt: { key, near, far, spill, choke }
+   near より近い色は完全に透明、far より遠ければ不透明、あいだはなだらかに。 */
+function keyOut(im, opt){
+  opt = opt || {};
+  var key = opt.key || guessKey(im);
+  var near = opt.near===undefined ? 34 : opt.near;
+  var far  = opt.far===undefined  ? 78 : opt.far;
+  var spill= opt.spill===undefined? 0.9: opt.spill;
+  if(far <= near) far = near + 1;
+  var kc = chroma(key.r, key.g, key.b);
+  var keyIsGreen = key.g >= key.r && key.g >= key.b;
+  var out = newImg(im.w, im.h), s = im.data, d = out.data, i;
+  for(i=0;i<s.length;i+=4){
+    var r=s[i], g=s[i+1], b=s[i+2];
+    var c = chroma(r,g,b);
+    var dist = Math.sqrt((c.cb-kc.cb)*(c.cb-kc.cb) + (c.cr-kc.cr)*(c.cr-kc.cr));
+    var a = (dist - near) / (far - near);
+    a = a<0 ? 0 : a>1 ? 1 : a;
+    if(a > 0 && spill > 0){
+      /* 背景の色かぶりを抑える(緑幕なら、緑が浮いたぶんだけ引き戻す)。
+         赤と青の平均より緑が高いところまで見る。ここを見ないと、
+         絵の中に「緑の混じった不透明な画素」が輪のように残る。 */
+      if(keyIsGreen){
+        var lim = Math.max(r, b);
+        if(g > lim) g = lim + (g - lim)*(1 - spill);
+        var avg = (r + b)/2;
+        if(g > avg) g = avg + (g - avg)*(1 - spill*0.55);
+      }else{
+        var mix = (r+g+b)/3;
+        r = r + (mix-r)*spill*0.25; g = g + (mix-g)*spill*0.25; b = b + (mix-b)*spill*0.25;
+      }
+    }
+    var al = Math.round(a*255);
+    if(al < 10) al = 0; else if(al > 245) al = 255;
+    d[i]=r; d[i+1]=g; d[i+2]=b; d[i+3]=al;
+  }
+  if(opt.choke) chokeAlpha(out, opt.choke);
+  return out;
+}
+/* 輪郭を少しだけ内側に削り、抜き残しの縁を落とす */
+function chokeAlpha(im, px){
+  var w=im.w, h=im.h, d=im.data, n=w*h, i, k;
+  for(k=0;k<px;k++){
+    var a = new Uint8ClampedArray(n);
+    for(i=0;i<n;i++) a[i] = d[i*4+3];
+    for(var y=0;y<h;y++) for(var x=0;x<w;x++){
+      i = y*w+x;
+      if(!a[i]) continue;
+      var m = a[i];
+      if(x>0)   m = Math.min(m, a[i-1]);
+      if(x<w-1) m = Math.min(m, a[i+1]);
+      if(y>0)   m = Math.min(m, a[i-w]);
+      if(y<h-1) m = Math.min(m, a[i+w]);
+      d[i*4+3] = m;
+    }
+  }
+}
+
+/* ---------- 内側に残った透過穴をふさぐ ----------
+   審査で弾かれる「イラストの内部が透過されています」を防ぐ。
+   外周からたどり着ける透明だけを背景とみなし、たどり着けない透明は絵の内側なので埋める。 */
+function fillInnerHoles(im){
+  var w=im.w, h=im.h, d=im.data, n=w*h;
+  var outside = new Uint8Array(n);
+  var stack = new Int32Array(n), sp = 0, i, x, y;
+  function push(i){ if(!outside[i] && d[i*4+3] < 255){ outside[i]=1; stack[sp++]=i; } }
+  for(x=0;x<w;x++){ push(x); push((h-1)*w + x); }
+  for(y=0;y<h;y++){ push(y*w); push(y*w + w-1); }
+  while(sp>0){
+    i = stack[--sp];
+    x = i % w; y = (i - x)/w;
+    if(x>0)   push(i-1);
+    if(x<w-1) push(i+1);
+    if(y>0)   push(i-w);
+    if(y<h-1) push(i+w);
+  }
+  /* 色を借りてよいのは、もともと完全に不透明だった画素だけ。
+     さらに、穴のふちの2画素ぶんは不透明でも背景の色が混じっているので種にしない。
+     ここを省くと、埋めた跡が緑ずんだ痣のように残る。 */
+  var known = new Uint8Array(n);
+  for(i=0;i<n;i++) known[i] = (!outside[i] && d[i*4+3] === 255) ? 1 : 0;
+
+  var repaint = new Uint8Array(n), holes = 0;
+  for(i=0;i<n;i++){
+    if(outside[i] || d[i*4+3] === 255) continue;
+    holes++; repaint[i] = 1; d[i*4+3] = 255;
+  }
+  if(holes){
+    var edge = [], g2, t2, q2;
+    for(g2=0; g2<2; g2++){
+      edge.length = 0;
+      for(i=0;i<n;i++){
+        if(!repaint[i]) continue;
+        x = i % w; y = (i - x)/w;
+        if(x>0   && !outside[i-1] && !repaint[i-1]) edge.push(i-1);
+        if(x<w-1 && !outside[i+1] && !repaint[i+1]) edge.push(i+1);
+        if(y>0   && !outside[i-w] && !repaint[i-w]) edge.push(i-w);
+        if(y<h-1 && !outside[i+w] && !repaint[i+w]) edge.push(i+w);
+      }
+      for(t2=0;t2<edge.length;t2++){ q2 = edge[t2]; repaint[q2] = 1; known[q2] = 0; }
+    }
+  }
+  var needColor = [];
+  for(i=0;i<n;i++){ if(repaint[i]){ known[i] = 0; needColor.push(i); } }
+
+  /* 抜けていた画素は色も当てにならないので、まわりの色をにじませて埋める */
+  if(needColor.length){
+    var todo = needColor, pass = 0;
+    while(todo.length && pass < 64){
+      var next = [], nb = [0,0,0,0];
+      for(var t=0;t<todo.length;t++){
+        var p = todo[t]; x = p % w; y = (p - x)/w;
+        var cnt = 0;
+        nb[0] = x>0   ? p-1 : -1;
+        nb[1] = x<w-1 ? p+1 : -1;
+        nb[2] = y>0   ? p-w : -1;
+        nb[3] = y<h-1 ? p+w : -1;
+        var r=0, g=0, b=0;
+        for(var k=0;k<4;k++){
+          var q = nb[k];
+          if(q < 0 || !known[q]) continue;
+          r += d[q*4]; g += d[q*4+1]; b += d[q*4+2]; cnt++;
+        }
+        if(cnt){ d[p*4]=r/cnt; d[p*4+1]=g/cnt; d[p*4+2]=b/cnt; known[p]=1; }
+        else next.push(p);
+      }
+      if(next.length === todo.length) break;
+      todo = next; pass++;
+    }
+  }
+  return holes;
+}
+/* 目に見えない半端な透明度を、はっきり 0 か 255 に寄せる。
+   「見えないほど薄い穴」が残るのを防ぐための、いちばん効く一手。 */
+function snapAlpha(im){
+  var d = im.data, i;
+  for(i=3;i<d.length;i+=4){
+    if(d[i] >= 250) d[i] = 255;
+    else if(d[i] <= 6) d[i] = 0;
+  }
+}
+/* 仕上がりの自己点検(申請前にもう一度これで確かめる) */
+function countInnerHoles(im){
+  var w=im.w, h=im.h, d=im.data, n=w*h;
+  var outside = new Uint8Array(n), stack = new Int32Array(n), sp=0, i, x, y;
+  function push(i){ if(!outside[i] && d[i*4+3] < 255){ outside[i]=1; stack[sp++]=i; } }
+  for(x=0;x<w;x++){ push(x); push((h-1)*w+x); }
+  for(y=0;y<h;y++){ push(y*w); push(y*w+w-1); }
+  while(sp>0){
+    i = stack[--sp]; x = i%w; y = (i-x)/w;
+    if(x>0) push(i-1); if(x<w-1) push(i+1);
+    if(y>0) push(i-w); if(y<h-1) push(i+w);
+  }
+  var holes=0;
+  for(i=0;i<n;i++) if(!outside[i] && d[i*4+3] < 255) holes++;
+  return holes;
+}
+
+/* ---------- 余白刈り ---------- */
+function unionBox(frames, thr){
+  thr = thr===undefined ? 8 : thr;
+  var w=frames[0].w, h=frames[0].h;
+  var x0=w, y0=h, x1=-1, y1=-1, f, x, y;
+  for(f=0;f<frames.length;f++){
+    var d=frames[f].data;
+    for(y=0;y<h;y++) for(x=0;x<w;x++){
+      if(d[(y*w+x)*4+3] > thr){
+        if(x<x0)x0=x; if(x>x1)x1=x;
+        if(y<y0)y0=y; if(y>y1)y1=y;
+      }
+    }
+  }
+  if(x1<0) return { x:0, y:0, w:w, h:h, empty:true };
+  return { x:x0, y:y0, w:x1-x0+1, h:y1-y0+1 };
+}
+function cropImg(im, rect){
+  var out = newImg(rect.w, rect.h), y;
+  for(y=0;y<rect.h;y++){
+    var s = ((rect.y+y)*im.w + rect.x)*4;
+    out.data.set(im.data.subarray(s, s + rect.w*4), y*rect.w*4);
+  }
+  return out;
+}
+function padTo(im, w, h){
+  var out = newImg(w, h);
+  var ox = Math.floor((w-im.w)/2), oy = Math.floor((h-im.h)/2), y;
+  for(y=0;y<im.h;y++){
+    var t = ((oy+y)*w + ox)*4;
+    if(oy+y < 0 || oy+y >= h) continue;
+    out.data.set(im.data.subarray(y*im.w*4, (y+1)*im.w*4), t);
+  }
+  return out;
+}
+
+/* ---------- コマ数をそろえる ---------- */
+function pickFrames(frames, n){
+  if(frames.length <= n) return frames.slice();
+  var out = [], i;
+  for(i=0;i<n;i++) out.push(frames[Math.min(frames.length-1, Math.round(i*(frames.length-1)/(n-1)))]);
+  return out;
+}
+
+/* ================================================================
+   1カットぶんの生フレーム → LINEスタンプ1個ぶんのAPNG
+   opt: { maxW,maxH, frames, totalMs, maxBytes, key, near, far, spill, choke,
+          uniform, allowUp, onStep }
+   ================================================================ */
+var LADDER = [
+  { colors:256, scale:1    }, { colors:192, scale:1    }, { colors:128, scale:1    },
+  { colors:96,  scale:1    }, { colors:64,  scale:1    }, { colors:64,  scale:0.92 },
+  { colors:48,  scale:0.92 }, { colors:48,  scale:0.84 }, { colors:32,  scale:0.84 },
+  { colors:32,  scale:0.76 }, { colors:24,  scale:0.68 }, { colors:16,  scale:0.6  }
+];
+async function makeSticker(raw, opt){
+  opt = opt || {};
+  var maxW = opt.maxW || 320, maxH = opt.maxH || 270;
+  var maxBytes = opt.maxBytes || 300000;
+  var totalMs = opt.totalMs || 2000;
+  var want = Math.max(5, Math.min(20, opt.frames || 12));
+
+  /* 抜く → 穴をふさぐ */
+  var key = opt.key || guessKey(raw[0]);
+  var holes = 0;
+  var keyed = raw.map(function(im){
+    var k = keyOut(im, { key:key, near:opt.near, far:opt.far, spill:opt.spill, choke:opt.choke });
+    holes += fillInnerHoles(k);
+    return k;
+  });
+
+  /* 全コマ共通の余白刈り(コマごとに切ると絵が跳ねる) */
+  var box = unionBox(keyed, 8);
+  if(box.empty) throw new Error("中身が空でした。背景の色や許容量を見直してください。");
+  var pad = 2;
+  box = {
+    x: Math.max(0, box.x-pad), y: Math.max(0, box.y-pad),
+    w: Math.min(keyed[0].w, box.x+box.w+pad) - Math.max(0, box.x-pad),
+    h: Math.min(keyed[0].h, box.y+box.h+pad) - Math.max(0, box.y-pad)
+  };
+  var cropped = keyed.map(function(im){ return cropImg(im, box); });
+
+  var frames = pickFrames(cropped, want);
+  var n = frames.length;
+  var base = fitInside(box.w, box.h, maxW, maxH, opt.allowUp !== false);
+
+  for(var round=0; round<4; round++){
+    for(var s=0; s<LADDER.length; s++){
+      var step = LADDER[s];
+      var dw = Math.max(2, Math.floor(base.w*step.scale/2)*2);
+      var dh = Math.max(2, Math.floor(base.h*step.scale/2)*2);
+      var sized = frames.map(function(im){ return resizeRGBA(im, dw, dh); });
+      if(opt.uniform) sized = sized.map(function(im){ return padTo(im, maxW, maxH); });
+      /* 縮めた拍子に、内側の不透明が 255 からわずかに落ちることがある。
+         ここで丸め直してから、もう一度だけ穴をふさぐ。 */
+      sized.forEach(function(im){ snapAlpha(im); fillInnerHoles(im); });
+      var bytes = await encodeAPNG(sized, { indexed:true, colors:step.colors, totalMs:totalMs, plays:0 });
+      if(opt.onStep) opt.onStep({ colors:step.colors, w:sized[0].w, h:sized[0].h, frames:n, bytes:bytes.length });
+      if(bytes.length <= maxBytes){
+        /* 自己申告ではなく、書き出したファイルのほうから数え直す */
+        var inner = 0;
+        try{
+          var back = await decodeAPNG(bytes);
+          for(var q=0; q<back.frames.length; q++) inner += countInnerHoles(back.frames[q]);
+        }catch(e){ inner = -1; }
+        return {
+          bytes: bytes, w: sized[0].w, h: sized[0].h, frames: n,
+          totalMs: totalMs, colors: step.colors, holes: holes,
+          innerHoles: inner, preview: sized
+        };
+      }
+    }
+    /* それでも収まらなければコマを間引く */
+    if(n <= 5) break;
+    n = Math.max(5, n-3);
+    frames = pickFrames(cropped, n);
+  }
+  throw new Error("300KBに収まりませんでした。コマ数か大きさを下げてください。");
+}
+/* ================================================================
+   3. 読み込み — 書き出したAPNGを、またコマに戻す
+   申請用の main.png(240×240)や tab.png(96×74)は、選び終わってから
+   作りたい。素のコマを抱えたままだと重いので、必要になった時点で
+   スタンプ本体をほどいて作り直す。透過の自己点検にも使う。
+   ================================================================ */
+async function zlibInflate(b){
+  if(typeof DecompressionStream === "function"){
+    var ds = new DecompressionStream("deflate");
+    var w = ds.writable.getWriter();
+    w.write(b); w.close();
+    var buf = await new Response(ds.readable).arrayBuffer();
+    return new Uint8Array(buf);
+  }
+  throw new Error("この環境では画像を読み直せません。");
+}
+function readChunks(b){
+  if(!(b[0]===137 && b[1]===80 && b[2]===78 && b[3]===71)) throw new Error("PNGではありません。");
+  var p=8, out=[], dv=new DataView(b.buffer, b.byteOffset, b.byteLength);
+  while(p+8 <= b.length){
+    var len = dv.getUint32(p);
+    var type = String.fromCharCode(b[p+4],b[p+5],b[p+6],b[p+7]);
+    out.push({ type:type, data:b.subarray(p+8, p+8+len) });
+    p += 12 + len;
+    if(type === "IEND") break;
+  }
+  return out;
+}
+function unfilter(raw, w, h, bpp){
+  var stride = w*bpp, out = new Uint8Array(stride*h), y, x, i, o, f;
+  for(y=0;y<h;y++){
+    f = raw[y*(stride+1)];
+    i = y*(stride+1)+1; o = y*stride;
+    for(x=0;x<stride;x++){
+      var a = x>=bpp ? out[o+x-bpp] : 0;
+      var b = y>0 ? out[o-stride+x] : 0;
+      var c = (x>=bpp && y>0) ? out[o-stride+x-bpp] : 0;
+      var v = raw[i+x];
+      out[o+x] = (f===0 ? v :
+                  f===1 ? v+a :
+                  f===2 ? v+b :
+                  f===3 ? v+((a+b)>>1) :
+                          v+paeth(a,b,c)) & 255;
+    }
+  }
+  return out;
+}
+/* 返り値: { w, h, frames:[{w,h,data}], delays:[ms], totalMs } */
+async function decodeAPNG(bytes){
+  var ck = readChunks(bytes), i, c;
+  var ihdr = null, plte = null, trns = null, actl = null;
+  for(i=0;i<ck.length;i++){
+    c = ck[i];
+    if(c.type==="IHDR") ihdr = c.data;
+    else if(c.type==="PLTE") plte = c.data;
+    else if(c.type==="tRNS") trns = c.data;
+    else if(c.type==="acTL") actl = c.data;
+  }
+  if(!ihdr) throw new Error("画像の見出しがありません。");
+  var dv = new DataView(ihdr.buffer, ihdr.byteOffset, ihdr.byteLength);
+  var W = dv.getUint32(0), H = dv.getUint32(4);
+  var depth = ihdr[8], ctype = ihdr[9], interlace = ihdr[12];
+  if(depth !== 8 || interlace !== 0 || (ctype !== 3 && ctype !== 6))
+    throw new Error("この形式のPNGには対応していません。");
+  var bpp = ctype===3 ? 1 : 4;
+
+  /* fcTL と 中身(IDAT / fdAT)を組にする */
+  var list = [], cur = null, idat = [];
+  for(i=0;i<ck.length;i++){
+    c = ck[i];
+    if(c.type === "fcTL"){
+      if(cur) list.push(cur);
+      var d2 = new DataView(c.data.buffer, c.data.byteOffset, c.data.byteLength);
+      cur = { w:d2.getUint32(4), h:d2.getUint32(8), x:d2.getUint32(12), y:d2.getUint32(16),
+              num:d2.getUint16(20), den:d2.getUint16(22) || 100,
+              dispose:c.data[24], blend:c.data[25], parts:[] };
+    }else if(c.type === "IDAT"){
+      if(cur) cur.parts.push(c.data);
+      else idat.push(c.data);
+    }else if(c.type === "fdAT"){
+      if(cur) cur.parts.push(c.data.subarray(4));
+    }
+  }
+  if(cur) list.push(cur);
+  if(!list.length) list = [{ w:W, h:H, x:0, y:0, num:0, den:100, dispose:0, blend:0, parts:idat }];
+
+  var canvas = new Uint8ClampedArray(W*H*4);
+  var frames = [], delays = [];
+  for(i=0;i<list.length;i++){
+    var fr = list[i];
+    var raw = await zlibInflate(cat(fr.parts));
+    var px = unfilter(raw, fr.w, fr.h, bpp);
+    var prev = fr.dispose === 2 ? new Uint8ClampedArray(canvas) : null;
+    var yy, xx;
+    for(yy=0; yy<fr.h; yy++){
+      for(xx=0; xx<fr.w; xx++){
+        var tx = fr.x+xx, ty = fr.y+yy;
+        if(tx>=W || ty>=H) continue;
+        var t = (ty*W+tx)*4, r, g, b, a;
+        if(ctype === 3){
+          var idx = px[yy*fr.w+xx];
+          r = plte[idx*3]; g = plte[idx*3+1]; b = plte[idx*3+2];
+          a = (trns && idx < trns.length) ? trns[idx] : 255;
+        }else{
+          var s = (yy*fr.w+xx)*4;
+          r = px[s]; g = px[s+1]; b = px[s+2]; a = px[s+3];
+        }
+        if(fr.blend === 1 && a < 255){           /* OVER */
+          var ba = canvas[t+3]/255, sa = a/255, oa = sa + ba*(1-sa);
+          if(oa <= 0){ canvas[t]=canvas[t+1]=canvas[t+2]=canvas[t+3]=0; continue; }
+          canvas[t]   = (r*sa + canvas[t]  *ba*(1-sa))/oa;
+          canvas[t+1] = (g*sa + canvas[t+1]*ba*(1-sa))/oa;
+          canvas[t+2] = (b*sa + canvas[t+2]*ba*(1-sa))/oa;
+          canvas[t+3] = Math.round(oa*255);
+        }else{
+          canvas[t]=r; canvas[t+1]=g; canvas[t+2]=b; canvas[t+3]=a;
+        }
+      }
+    }
+    frames.push({ w:W, h:H, data:new Uint8ClampedArray(canvas) });
+    delays.push(Math.round(fr.num*1000/fr.den));
+    if(fr.dispose === 1){                        /* BACKGROUND */
+      for(yy=0; yy<fr.h; yy++) for(xx=0; xx<fr.w; xx++){
+        var t2 = ((fr.y+yy)*W + (fr.x+xx))*4;
+        if(fr.x+xx<W && fr.y+yy<H){ canvas[t2]=canvas[t2+1]=canvas[t2+2]=canvas[t2+3]=0; }
+      }
+    }else if(fr.dispose === 2 && prev){ canvas.set(prev); }
+  }
+  var total = 0;
+  for(i=0;i<delays.length;i++) total += delays[i];
+  return { w:W, h:H, frames:frames, delays:delays, totalMs:total };
+}
+/* ================================================================
+   4. 覚えておくもの と、道具立て
+   工房の設定と下書きは localStorage、スタンプの実体は IndexedDB。
+   ================================================================ */
+function $(id){ return document.getElementById(id); }
+function esc(s){ return String(s==null?"":s).replace(/[&<>"]/g, function(c){
+  return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c]; }); }
+var toastT = null;
+function toast(msg){
+  var t = $("toast"); t.textContent = msg; t.classList.add("on");
+  clearTimeout(toastT); toastT = setTimeout(function(){ t.classList.remove("on"); }, 2600);
+}
+function busy(msg, pct){
+  var b = $("busy");
+  if(msg === false){ b.classList.remove("on"); return; }
+  b.classList.add("on"); $("busyMsg").textContent = msg;
+  $("busyBarWrap").style.display = pct===undefined ? "none" : "block";
+  if(pct!==undefined) $("busyBar").style.width = Math.round(pct*100) + "%";
+}
+function kb(n){ return (n/1024).toFixed(1) + "KB"; }
+function hex2rgb(h){
+  var m = /^#?([0-9a-f]{6})$/i.exec(h||"");
+  if(!m) return { r:0, g:177, b:64 };
+  var v = parseInt(m[1],16);
+  return { r:(v>>16)&255, g:(v>>8)&255, b:v&255 };
+}
+function rgb2hex(c){
+  return "#" + [c.r,c.g,c.b].map(function(v){ return ("0"+Math.round(v).toString(16)).slice(-2); }).join("");
+}
+
+var LS = { key:"hn.key", model:"hn.model", chara:"hn.chara", moves:"hn.moves",
+           reels:"hn.reels", pick:"hn.pick", cfg:"hn.cfg", usage:"hn.usage" };
+function lsGet(k, def){ try{ var v = localStorage.getItem(k); return v==null ? def : JSON.parse(v); }catch(e){ return def; } }
+function lsSet(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){ toast("この端末に保存できませんでした"); } }
+
+var S = {
+  key:   lsGet(LS.key, "") || "",
+  model: lsGet(LS.model, "claude-opus-5"),
+  chara: lsGet(LS.chara, null),
+  moves: lsGet(LS.moves, []),
+  reels: lsGet(LS.reels, []),
+  pick:  lsGet(LS.pick, []),
+  cfg:   lsGet(LS.cfg, { key:"#00b140", near:34, far:78, spill:90, choke:0,
+                         dur:2000, frames:12, uniform:0, cuts:10, len:1.5, trim:0.08 }),
+  usage: lsGet(LS.usage, { in:0, out:0 })
+};
+var CANDS = [];              /* スタンプ候補(新しい順) */
+
+var DB = null;
+function idb(){
+  return new Promise(function(res, rej){
+    if(DB) return res(DB);
+    var rq = indexedDB.open("ugoku-hanko", 1);
+    rq.onupgradeneeded = function(){
+      var db = rq.result;
+      if(!db.objectStoreNames.contains("cands")) db.createObjectStore("cands", { keyPath:"id" });
+    };
+    rq.onsuccess = function(){ DB = rq.result; res(DB); };
+    rq.onerror = function(){ rej(rq.error); };
+  });
+}
+function idbAll(){
+  return idb().then(function(db){
+    return new Promise(function(res, rej){
+      var rq = db.transaction("cands","readonly").objectStore("cands").getAll();
+      rq.onsuccess = function(){ res(rq.result || []); };
+      rq.onerror = function(){ rej(rq.error); };
+    });
+  });
+}
+function idbPut(rec){
+  return idb().then(function(db){
+    return new Promise(function(res, rej){
+      var tx = db.transaction("cands","readwrite");
+      tx.objectStore("cands").put(rec);
+      tx.oncomplete = res; tx.onerror = function(){ rej(tx.error); };
+    });
+  });
+}
+function idbDel(id){
+  return idb().then(function(db){
+    return new Promise(function(res, rej){
+      var tx = db.transaction("cands","readwrite");
+      tx.objectStore("cands").delete(id);
+      tx.oncomplete = res; tx.onerror = function(){ rej(tx.error); };
+    });
+  });
+}
+
+/* ================================================================
+   5. Claude API(この端末 → Anthropic に直接)
+   工程一〜三の下書きだけに使う。工程四〜六は端末の中で完結する。
+   ================================================================ */
+var MODELS = {
+  "claude-opus-5":    { label:"Claude Opus 5 — 案の切れを最優先", in:5, out:25 },
+  "claude-sonnet-5":  { label:"Claude Sonnet 5 — 品質と費用の均衡", in:3, out:15 },
+  "claude-haiku-4-5": { label:"Claude Haiku 4.5 — 速さと安さ", in:1, out:5 }
+};
+var USDJPY = 155;
+function costYen(model, i, o){
+  var m = MODELS[model] || MODELS["claude-opus-5"];
+  return (i/1e6*m.in + o/1e6*m.out) * USDJPY;
+}
+function addUsage(i, o){ S.usage.in += i||0; S.usage.out += o||0; lsSet(LS.usage, S.usage); }
+function usageYen(){ return costYen(S.model, S.usage.in, S.usage.out); }
+
+function apiErr(status, body){
+  try{ var j = JSON.parse(body); if(j.error && j.error.message) return j.error.message; }catch(e){}
+  return "HTTP " + status;
+}
+async function send(body){
+  var res;
+  try{
+    res = await fetch("https://api.anthropic.com/v1/messages", {
+      method:"POST",
+      headers:{
+        "content-type":"application/json",
+        "x-api-key": S.key,
+        "anthropic-version":"2023-06-01",
+        "anthropic-dangerous-direct-browser-access":"true"
+      },
+      body: JSON.stringify(body)
+    });
+  }catch(e){ throw new Error("通信できませんでした。電波の良いところで、もう一度お試しください。"); }
+  if(!res.ok){
+    var txt = await res.text(), msg = apiErr(res.status, txt);
+    if(res.status === 401) throw new Error("APIキーが違うようです。設定を確かめてください。");
+    if(res.status === 429) throw new Error("短時間に送りすぎです。少し待ってから続けてください。");
+    if(res.status === 529) throw new Error("APIが混み合っています。少し待ってからお試しください。");
+    if(/credit balance|billing/i.test(msg)) throw new Error("Anthropic の残高が足りないようです。");
+    var e2 = new Error(msg); e2.status = res.status; throw e2;
+  }
+  return res.json();
+}
+function pickJson(j){
+  var text = "";
+  (j.content||[]).forEach(function(b){ if(b.type === "text") text += b.text; });
+  try{ return JSON.parse(text); }
+  catch(e){
+    var a = text.indexOf("{"), b2 = text.lastIndexOf("}");
+    if(a >= 0 && b2 > a){ try{ return JSON.parse(text.slice(a, b2+1)); }catch(e2){} }
+    throw new Error("AIの返事を読み取れませんでした。もう一度お試しください。");
+  }
+}
+async function ask(opts){
+  var body = {
+    model: S.model,
+    max_tokens: opts.max || 8000,
+    system: opts.system,
+    messages: [{ role:"user", content: opts.content }],
+    output_config: { format: { type:"json_schema", schema: opts.schema } }
+  };
+  if(S.model.indexOf("haiku") === -1){
+    body.thinking = { type:"adaptive" };
+    body.output_config.effort = opts.effort || "medium";
+  }
+  var j;
+  try{
+    j = await send(body);
+  }catch(e){
+    if(e.status !== 400) throw e;
+    j = await send({
+      model: S.model, max_tokens: opts.max || 8000,
+      system: opts.system + "\n\n返事は JSON オブジェクトひとつだけにしてください。前置きも説明も付けないこと。",
+      messages: [{ role:"user", content: opts.content }]
+    });
+  }
+  if(j.usage) addUsage((j.usage.input_tokens||0) + (j.usage.cache_read_input_tokens||0), j.usage.output_tokens||0);
+  if(j.stop_reason === "refusal") throw new Error("この内容はAIの方針で扱えませんでした。");
+  return pickJson(j);
+}
+
+/* ================================================================
+   6. 備え付けの動き60個
+   どれも「文字を入れずに意味が通ること」と「手足が大きく動くこと」で選んである。
+   分類は、工程五で似たものを隣り合わせないために使う。
+   ================================================================ */
+var CATS = ["あいさつ","返事","気もち","やりとり","暮らし","おどけ"];
+var STOCK = [
+  ["おはよう","伸びをしながら起き上がり、大きく手を振る","あいさつ",5],
+  ["こんにちは","軽く会釈してから、顔の横で手を振る","あいさつ",4],
+  ["おやすみ","目をこすって横になり、寝息の泡がふくらむ","あいさつ",5],
+  ["バイバイ","体ごと左右に揺れながら、両手を大きく振る","あいさつ",5],
+  ["いってきます","手を振りながら画面の外へ駆け出す","あいさつ",3],
+  ["おかえり","画面の外から駆け込んできて飛びつく","あいさつ",3],
+  ["ただいま","扉を開ける仕草で入ってきて、ぐったり座り込む","あいさつ",3],
+  ["はじめまして","深くお辞儀して、ぱっと顔を上げる","あいさつ",3],
+  ["OK","両手で頭より大きな丸を作り、跳ねる","返事",5],
+  ["だめ","両腕で大きなバツを作り、首を横に振る","返事",5],
+  ["うなずく","体ごと大きく縦に三度うなずく","返事",5],
+  ["ちがう","体ごと大きく横に三度振る","返事",5],
+  ["了解","勢いよく敬礼して、びしっと止まる","返事",4],
+  ["いいね","腕を突き出して親指を立て、きらりと光る","返事",5],
+  ["まかせて","胸をどんと叩いて反り返る","返事",4],
+  ["わからない","肩をすくめて両手を広げ、頭に?が浮かぶ","返事",4],
+  ["ちょっと待って","手のひらを前に突き出し、もう片方で汗をぬぐう","返事",4],
+  ["こっちだよ","大きく二度、手招きする","返事",3],
+  ["大笑い","のけぞって腹を抱え、足をばたつかせる","気もち",5],
+  ["泣く","顔を覆い、涙が噴水のように飛び散る","気もち",5],
+  ["怒る","地団駄を踏み、頭から湯気が噴き上がる","気もち",4],
+  ["照れる","両手で頬をはさみ、体をくねらせる","気もち",4],
+  ["驚く","飛び上がって、着地でよろける","気もち",5],
+  ["落ち込む","うなだれた頭の上に、小さな雨雲が降りてくる","気もち",4],
+  ["よろこぶ","その場で三度、高く跳ねる","気もち",5],
+  ["しあわせ","目を閉じてくるりと回り、まわりに花が咲く","気もち",3],
+  ["ときめく","胸に手を当て、ハートが次々に飛び出す","気もち",4],
+  ["ふてくされる","腕を組んでそっぽを向き、頬をふくらませる","気もち",4],
+  ["こわい","縮こまって、がたがた震える","気もち",3],
+  ["やる気","腕まくりして拳を握り、全身が燃え上がる","気もち",4],
+  ["さむい","身を縮めて足踏みし、体が青く凍りつく","気もち",3],
+  ["あつい","ぐったり扇いで、汗が飛び散る","気もち",3],
+  ["ありがとう","両手を合わせて深くお辞儀し、きらきらが舞う","やりとり",5],
+  ["ごめんなさい","頭を下げたまま手を合わせ、小刻みに震える","やりとり",5],
+  ["おねがい","拝むように手を合わせ、上目づかいで揺れる","やりとり",5],
+  ["土下座","勢いよく地に伏せ、砂ぼこりが上がる","やりとり",3],
+  ["おめでとう","クラッカーを鳴らし、紙吹雪が降りそそぐ","やりとり",4],
+  ["拍手","大きく手を叩き続け、目を輝かせる","やりとり",5],
+  ["ハートを飛ばす","投げキッスから、ハートが次々に飛んでいく","やりとり",4],
+  ["がんばれ","小さな旗を振りまわして飛び跳ねる","やりとり",4],
+  ["ハイタッチ","手を高く振り上げ、勢いよく打ち下ろす","やりとり",3],
+  ["指をさす","こちらを勢いよく指さして、一歩踏み込む","やりとり",4],
+  ["のぞき込む","画面の下からそっと顔を出して、こちらを覗く","やりとり",4],
+  ["手を差し出す","しゃがんで、こちらへ手を差し伸べる","やりとり",3],
+  ["ツッコミ","大きく手を振り上げて、勢いよく振り下ろす","やりとり",4],
+  ["呼んだ?","振り向きざまに目を丸くする","やりとり",3],
+  ["よしよし","腕を伸ばして、見えない誰かの頭をなでる","やりとり",3],
+  ["おなかすいた","腹をさすってよろけ、腹の音で体が震える","暮らし",4],
+  ["食べる","大口で頬張り、頬をふくらませて満足する","暮らし",4],
+  ["飲む","器を高く傾けて飲み干し、ほっと息をつく","暮らし",3],
+  ["眠い","大あくびをして、こっくり船をこぐ","暮らし",4],
+  ["寝落ち","座ったまま前のめりに倒れ、そのまま眠る","暮らし",3],
+  ["走る","その場で全力疾走し、後ろに砂ぼこりが散る","暮らし",4],
+  ["考える","腕を組んで首をかしげ、頭上に電球がともる","暮らし",4],
+  ["探す","額に手をかざして、きょろきょろ見回す","暮らし",3],
+  ["ずっこける","後ろ向きに勢いよく転び、足が高く跳ね上がる","おどけ",4],
+  ["踊る","全身を大きく揺らして、その場でステップを踏む","おどけ",4],
+  ["どや顔","腰に手を当てて胸を張り、背後に光が差す","おどけ",3],
+  ["目が回る","その場でぐるぐる回り、頭のまわりを星が巡る","おどけ",3],
+  ["溶ける","力尽きて、ゆっくり平たく溶け落ちる","おどけ",4]
+];
+
+function stockMoves(){
+  return STOCK.map(function(m, i){
+    return { id:"m"+(i+1), name:m[0], motion:m[1], cat:m[2], freq:m[3], on:true };
+  });
+}
+
+/* ================================================================
+   7. 工程一 — キャラクターシートの注文書
+   ================================================================ */
+function charaPrompts(c){
+  var ja =
+"【依頼】下のキャラクターを、LINEスタンプ制作用の「キャラクターシート」1枚にまとめてください。\n" +
+"すでに絵がある場合は、その絵を基準にして描き起こしてください。\n\n" +
+"■ キャラクター\n" +
+"名前:" + c.name + "\n" +
+"特徴:" + c.desc + "\n" +
+"絵の調子:" + c.style + "\n" +
+"頭身:" + c.head + "\n\n" +
+"■ 1枚の中に入れるもの(格子状に並べる)\n" +
+"1. 全身を四方向 — 正面・斜め四十五度・真横・後ろ姿。四つとも同じ背丈でそろえる\n" +
+"2. 表情を八つ — 笑顔・大笑い・泣き・怒り・驚き・照れ・眠い・すまし顔。顔だけ大きく\n" +
+"3. 手のかたちを四つ — 開いた手・握った手・指さし・親指立て\n" +
+"4. 配色見本 — 体・輪郭線・頬・差し色を四角で並べ、それぞれの色番号を書き添える\n" +
+"5. 背丈の目安 — 正面の全身に、頭いくつぶんかが分かる目盛りを添える\n\n" +
+"■ 必ず守ること\n" +
+"・背景は白一色。影を落とさない\n" +
+"・輪郭線の太さは、どこも同じにする\n" +
+"・絵の中に文字を入れない(配色見本の色番号だけは可)\n" +
+"・1枚の中で、顔の作り・耳や角の形・体の丸みを変えない\n" +
+"・上下左右にゆとりを持たせ、絵を切らない\n\n" +
+"■ このシートの使い道\n" +
+"このあと動画生成AIに渡し、緑一色の背景で全身を動かします。\n" +
+"どの角度からでも同じキャラだと分かることが、いちばん大事です。";
+
+  var en =
+"Create a single CHARACTER SHEET image for making LINE animated stickers.\n" +
+"If a reference drawing is attached, follow it faithfully.\n\n" +
+"CHARACTER\n" +
+"Name: " + c.name + "\n" +
+"Description: " + c.desc + "\n" +
+"Art style: " + c.styleEn + "\n" +
+"Proportions: " + c.headEn + "\n\n" +
+"INCLUDE IN ONE SHEET (grid layout)\n" +
+"1. Full body turnaround: front, 3/4, side, back - all at identical height\n" +
+"2. Eight facial expressions (large heads): smile, big laugh, crying, angry, surprised,\n" +
+"   shy, sleepy, deadpan\n" +
+"3. Four hand shapes: open palm, fist, pointing, thumbs up\n" +
+"4. Colour swatches for body, outline, cheeks and accent, each labelled with its hex code\n" +
+"5. A height scale showing how many head-heights tall the character is\n\n" +
+"HARD RULES\n" +
+"- Plain white background, no cast shadows\n" +
+"- Outline weight identical everywhere\n" +
+"- No text anywhere except the hex codes on the swatches\n" +
+"- Keep face construction, ear/horn shape and body roundness identical across the sheet\n" +
+"- Generous margins; do not crop any figure\n\n" +
+"PURPOSE\n" +
+"This sheet will be fed to a video model to animate the character full-body on a solid\n" +
+"green screen. Consistency from every angle matters more than detail.";
+  return { ja:ja, en:en };
+}
+var CHARA_CHECK = [
+  "四方向の全身が、同じ背丈でそろっているか",
+  "どの角度でも、顔の作りと耳(角)の形が同じか",
+  "輪郭線の太さが、細部で急に細くなっていないか",
+  "配色見本に色番号が入っているか(動画生成で色ブレを直す拠り所になります)",
+  "絵の中に、余計な文字や飾りが紛れ込んでいないか",
+  "背景が白一色で、影が落ちていないか"
+];
+
+/* ================================================================
+   8. 工程三 — 動画生成AIへの台本
+   ================================================================ */
+function reelPrompt(reel, moves, cfg, chara){
+  var key = (cfg.key || "#00b140").toUpperCase();
+  var len = cfg.len, n = reel.cuts.length, total = (len*n).toFixed(1);
+  var name = chara && chara.name ? chara.name : "キャラクター";
+  var lines = reel.cuts.map(function(id, i){
+    var m = moves.filter(function(x){ return x.id === id; })[0];
+    var t0 = (i*len).toFixed(1), t1 = ((i+1)*len).toFixed(1);
+    return "  " + (i+1) + ". " + t0 + "〜" + t1 + "秒 … 【" + (m?m.name:"?") + "】" + (m?m.motion:"");
+  }).join("\n");
+  var ja =
+"【動画生成AIへの指示】" + reel.no + "本目 / 全" + reel.total + "本\n\n" +
+"■ 画面\n" +
+"・被写体:" + name + "(添付のキャラクターシートのとおり)\n" +
+"・背景:" + key + " の単色。模様・影・光のむらを一切つくらない\n" +
+"・カメラ:完全固定。寄り引き・振り・手ぶれ なし\n" +
+"・構図:全身が画面の中央。頭の上と足元に、背丈の一割半ほどの余白\n" +
+"・光:正面からの平らな光。強い影も、ふちの光も作らない\n" +
+"・画風:最後のカットまで、シートと同じ線と彩色を保つ\n\n" +
+"■ 中身(" + n + "カット・1カット" + len + "秒・全" + total + "秒)\n" + lines + "\n\n" +
+"■ カットの作り\n" +
+"・カットは瞬間で切り替える。溶暗・すり替え・ぼかしの効果を入れない\n" +
+"・どのカットも、始まりと終わりは同じ立ち姿に戻す(繰り返し再生でつながるように)\n" +
+"・動きは大げさに。手足は画面を横切るくらい大きく振る\n" +
+"・絵の中に文字・台詞・吹き出しを一切入れない\n" +
+"・キャラクターを画面の外に出さない。影を床に落とさない\n" +
+"・キャラクターの色に、背景の緑を混ぜない";
+
+  var enLines = reel.cuts.map(function(id, i){
+    var m = moves.filter(function(x){ return x.id === id; })[0];
+    return "  " + (i+1) + ". " + (i*len).toFixed(1) + "-" + ((i+1)*len).toFixed(1) + "s : " +
+           (m ? (m.name + " - " + m.motion) : "?");
+  }).join("\n");
+  var en =
+"VIDEO PROMPT - reel " + reel.no + " of " + reel.total + "\n\n" +
+"FRAME\n" +
+"- Subject: " + name + ", exactly as in the attached character sheet\n" +
+"- Background: flat solid " + key + " green screen, no gradient, no pattern, no shadow\n" +
+"- Camera: locked off. No zoom, no pan, no handheld shake\n" +
+"- Composition: full body centred, ~15% headroom above and below\n" +
+"- Light: flat frontal light, no rim light, no cast shadow on the background\n" +
+"- Style: identical line weight and colours throughout every cut\n\n" +
+"SHOT LIST (" + n + " cuts, " + len + "s each, " + total + "s total)\n" + enLines + "\n\n" +
+"CUT RULES\n" +
+"- Hard cuts only; no dissolves, morphs or motion blur between cuts\n" +
+"- Every cut starts and ends on the same neutral standing pose so it loops cleanly\n" +
+"- Exaggerate the motion; limbs should sweep across a large part of the frame\n" +
+"- Absolutely no text, letters, speech bubbles or logos anywhere in the image\n" +
+"- The character never leaves the frame and never casts a shadow on the green\n" +
+"- Do not let the green tint bleed into the character's colours";
+  return { ja:ja, en:en };
+}
+function buildReels(){
+  var live = S.moves.filter(function(m){ return m.on !== false; });
+  var per = S.cfg.cuts, total = Math.ceil(live.length / per);
+  var reels = [], i;
+  for(i=0;i<total;i++){
+    reels.push({
+      no: i+1, total: total,
+      cuts: live.slice(i*per, (i+1)*per).map(function(m){ return m.id; })
+    });
+  }
+  return reels;
+}
+/* ================================================================
+   9. 画面の切り替え
+   ================================================================ */
+var VIEW = "home";
+function showView(v){
+  VIEW = v;
+  ["home","chara","moves","reels","conv","pick","ship","set"].forEach(function(k){
+    var el = $("v-"+k); if(el) el.classList.toggle("on", k===v);
+  });
+  Array.prototype.forEach.call($("nav").children, function(b){
+    b.classList.toggle("on", b.dataset.v === v);
+  });
+  document.querySelector("main").scrollTop = 0;
+  if(v==="home") drawHome();
+  if(v==="moves") drawMoves();
+  if(v==="reels") drawReels();
+  if(v==="conv") drawConv();
+  if(v==="pick") drawPick();
+  if(v==="ship") drawShip();
+  if(v==="set") drawSet();
+  markNav();
+}
+function markNav(){
+  var done = {
+    chara: !!S.chara,
+    moves: S.moves.length >= 8,
+    reels: S.reels.length > 0,
+    conv:  CANDS.length > 0,
+    pick:  S.pick.length === 24,
+    ship:  !!SHIP
+  };
+  Array.prototype.forEach.call($("nav").children, function(b){
+    b.classList.toggle("done", !!done[b.dataset.v]);
+  });
+}
+function checkRows(el, rows){
+  el.innerHTML = rows.map(function(r){
+    return '<div class="' + (r.ok ? "ok" : "ng") + '"><i>' + (r.ok ? "✓" : "×") + "</i><span>" +
+           esc(r.text) + "</span></div>";
+  }).join("");
+}
+
+/* ================================================================
+   10. 支度
+   ================================================================ */
+var ROAD = [
+  { v:"chara", t:"一 キャラクターシート", d:"見た目の基準を1枚に固める" },
+  { v:"moves", t:"二 動きを60個",        d:"文字なしで伝わる動きを並べる" },
+  { v:"reels", t:"三 動画の台本",        d:"10カット×6本ぶんの指示を作る" },
+  { v:"conv",  t:"四 緑を抜いて変換",    d:"動画をLINEの規格のAPNGにする" },
+  { v:"pick",  t:"五 24個を選ぶ",        d:"動くところを見て選び、並べる" },
+  { v:"ship",  t:"六 申請の一式",        d:"main・tab・01〜24を zip にまとめる" }
+];
+function drawHome(){
+  $("hMoves").textContent = S.moves.filter(function(m){ return m.on!==false; }).length;
+  $("hCands").textContent = CANDS.length;
+  $("hPick").textContent  = S.pick.length;
+  $("hShip").textContent  = S.pick.length === 24 ? "支度よし" : "—";
+
+  var state = {
+    chara: !!S.chara, moves: S.moves.length>=8, reels: S.reels.length>0,
+    conv: CANDS.length>0, pick: S.pick.length===24, ship:false
+  };
+  var now = ROAD.filter(function(r){ return !state[r.v]; })[0];
+  $("road").innerHTML = ROAD.map(function(r){
+    var cls = state[r.v] ? "done" : (now && now.v===r.v ? "now" : "");
+    return '<div class="' + cls + '"><div style="flex:1"><b>' + esc(r.t) + "</b><p>" + esc(r.d) +
+           '</p></div><button class="btn sm go" data-go="' + r.v + '">' +
+           (state[r.v] ? "見直す" : "進む") + "</button></div>";
+  }).join("");
+  Array.prototype.forEach.call($("road").querySelectorAll("[data-go]"), function(b){
+    b.onclick = function(){ showView(b.dataset.go); };
+  });
+}
+
+/* ================================================================
+   11. 工程一 — キャラクターシート
+   ================================================================ */
+var STYLE_EN = {
+  "ゆるい手描き風・太い輪郭線":"loose hand-drawn look, thick even outlines, flat fills",
+  "アニメ調・くっきりした彩色":"clean anime style, crisp cel shading, bold outlines",
+  "ドット絵風":"chunky pixel art, limited palette, hard edges",
+  "水彩・にじみのある線":"soft watercolour wash with a slightly bleeding ink line",
+  "3Dっぽい ぷにぷに":"soft rounded 3D-ish render, glossy highlights, simple forms"
+};
+var HEAD_EN = { "2頭身(顔が大きい)":"2 heads tall (very large head)", "2.5頭身":"2.5 heads tall",
+                "3頭身":"3 heads tall", "4頭身":"4 heads tall" };
+function charaGo(){
+  var name = $("chName").value.trim(), desc = $("chDesc").value.trim();
+  if(!name || !desc) return toast("名前と見た目を書いてください");
+  var style = $("chStyle").value, head = $("chHead").value;
+  var c = { name:name, desc:desc, style:style, head:head,
+            styleEn:STYLE_EN[style]||style, headEn:HEAD_EN[head]||head };
+  var p = charaPrompts(c);
+  c.ja = p.ja; c.en = p.en; c.at = Date.now();
+  S.chara = c; lsSet(LS.chara, c);
+  $("chJa").textContent = p.ja;
+  $("chEn").textContent = p.en;
+  checkRows($("chCheck"), CHARA_CHECK.map(function(t){ return { ok:true, text:t }; }));
+  $("chOut").style.display = "block";
+  markNav();
+  toast("注文書ができました");
+}
+function drawChara(){
+  if(!S.chara) return;
+  $("chName").value = S.chara.name || "";
+  $("chDesc").value = S.chara.desc || "";
+  if(S.chara.style) $("chStyle").value = S.chara.style;
+  if(S.chara.head)  $("chHead").value = S.chara.head;
+  if(S.chara.ja){
+    $("chJa").textContent = S.chara.ja;
+    $("chEn").textContent = S.chara.en;
+    checkRows($("chCheck"), CHARA_CHECK.map(function(t){ return { ok:true, text:t }; }));
+    $("chOut").style.display = "block";
+  }
+}
+
+/* ================================================================
+   12. 工程二 — 動き60個
+   ================================================================ */
+var MV_FILTER = "";
+function saveMoves(){ lsSet(LS.moves, S.moves); markNav(); }
+function drawMoves(){
+  var live = S.moves.filter(function(m){ return m.on!==false; });
+  $("mvCats").innerHTML = [""].concat(CATS).map(function(c){
+    var n = c ? S.moves.filter(function(m){ return m.cat===c; }).length : S.moves.length;
+    return '<button class="chip' + (MV_FILTER===c?" on":"") + '" data-cat="' + esc(c) + '">' +
+           (c || "すべて") + " " + n + "</button>";
+  }).join("");
+  Array.prototype.forEach.call($("mvCats").children, function(b){
+    b.onclick = function(){ MV_FILTER = b.dataset.cat; drawMoves(); };
+  });
+
+  var shown = S.moves.filter(function(m){ return !MV_FILTER || m.cat===MV_FILTER; });
+  $("mvList").innerHTML = shown.map(function(m, i){
+    return '<div class="move' + (m.on===false?" off":"") + '" data-id="' + m.id + '">' +
+      '<span class="no">' + (S.moves.indexOf(m)+1) + "</span>" +
+      '<span class="cat">' + esc(m.cat) + "</span>" +
+      '<span class="body"><b>' + esc(m.name) + "</b><span>" + esc(m.motion) + "</span></span>" +
+      '<button class="x" data-x="' + m.id + '">' + (m.on===false ? "＋" : "−") + "</button></div>";
+  }).join("");
+  Array.prototype.forEach.call($("mvList").querySelectorAll("[data-x]"), function(b){
+    b.onclick = function(){
+      var m = S.moves.filter(function(x){ return x.id===b.dataset.x; })[0];
+      if(m){ m.on = m.on===false; saveMoves(); drawMoves(); }
+    };
+  });
+  var n = live.length;
+  $("mvNote").innerHTML = n
+    ? "使う動き <b class='num'>" + n + "</b> 個 → 動画 <b class='num'>" +
+      Math.ceil(n/S.cfg.cuts) + "</b> 本ぶん(1本 " + S.cfg.cuts + " カット)。" +
+      (n < 24 ? " 24個には足りません。もう少し足してください。" : "")
+    : "まだ動きがありません。上の2つのどちらかから始めてください。";
+}
+var MOVE_SCHEMA = {
+  type:"object",
+  properties:{
+    moves:{ type:"array", items:{
+      type:"object",
+      properties:{
+        name:  { type:"string" },
+        motion:{ type:"string" },
+        cat:   { type:"string", enum:CATS },
+        freq:  { type:"integer" }
+      },
+      required:["name","motion","cat","freq"], additionalProperties:false
+    }}
+  },
+  required:["moves"], additionalProperties:false
+};
+async function movesGen(){
+  if(!S.key) return toast("設定でAPIキーを登録するか、備え付けの60個をお使いください");
+  var c = S.chara;
+  busy("動きを60個ならべています");
+  try{
+    var r = await ask({
+      max: 12000, effort:"high",
+      system:
+"あなたは、動くLINEスタンプの企画者です。1セット24個に絞り込む前の候補として、動きの案を60個ならべます。\n" +
+"守ること:\n" +
+"・絵の中に文字を入れない前提で考える。文字がなくても意味が通る動きだけを挙げる\n" +
+"・そのぶん動きを大きくする。手足が画面を横切るくらいの、遠目にも分かる動作にする\n" +
+"・日本語圏だけでなく、タイ・台湾・インドネシアなど海外の会話でも通じる仕草を選ぶ\n" +
+"  (国や宗教で意味が変わる手ぶり、特定の文化に閉じた所作は避ける)\n" +
+"・1つの動きは1.5秒で演じきれる長さにする\n" +
+"・motion は、動画生成AIにそのまま渡せる具体的な指示文(20〜40字)で書く\n" +
+"・freq は日常の会話でどれだけ使われそうか(1〜5、5がいちばん多い)\n" +
+"・同じ意味の重複を作らない。あいさつ・返事・気もち・やりとり・暮らし・おどけに散らす\n" +
+"・生成が難しそうでも省かない。崩れた案はあとで人が落とす",
+      content: "次のキャラクターで、動くLINEスタンプの動きを ちょうど60個 出してください。\n\n" +
+        (c ? ("名前:" + c.name + "\n特徴:" + c.desc + "\n絵の調子:" + c.style + "\n頭身:" + c.head)
+           : "キャラクターは未定です。どんなキャラでも成立する、汎用の動きにしてください。"),
+      schema: MOVE_SCHEMA
+    });
+    var list = (r.moves||[]).slice(0,60).map(function(m, i){
+      return { id:"a"+Date.now().toString(36)+i, name:String(m.name).slice(0,20),
+               motion:String(m.motion).slice(0,80),
+               cat: CATS.indexOf(m.cat)>=0 ? m.cat : "気もち",
+               freq: Math.max(1, Math.min(5, m.freq|0)), on:true };
+    });
+    if(list.length < 24) throw new Error("案が足りませんでした。もう一度お試しください。");
+    S.moves = list; saveMoves(); drawMoves();
+    toast(list.length + "個ならべました");
+  }catch(e){ toast(e.message); }
+  busy(false);
+}
+
+/* ================================================================
+   13. 工程三 — 台本
+   ================================================================ */
+function drawReels(){
+  $("rlCuts").value = String(S.cfg.cuts);
+  $("rlLen").value  = String(S.cfg.len);
+  $("rlKey").value  = S.cfg.key;
+  var live = S.moves.filter(function(m){ return m.on!==false; });
+  if(!live.length){
+    $("rlList").innerHTML = '<p class="muted">先に工程二で動きをならべてください。</p>';
+    return;
+  }
+  if(!S.reels.length){
+    $("rlList").innerHTML = '<p class="muted">「台本を組み立てる」を押すと、' +
+      Math.ceil(live.length/S.cfg.cuts) + "本ぶんの指示ができます。</p>";
+    return;
+  }
+  $("rlList").innerHTML = S.reels.map(function(r, i){
+    var names = r.cuts.map(function(id){
+      var m = S.moves.filter(function(x){ return x.id===id; })[0];
+      return "<li>" + esc(m ? m.name : "?") + "</li>";
+    }).join("");
+    return '<div class="reel" id="reel'+i+'">' +
+      "<h4>" + r.no + "本目 / 全" + r.total + "本 <em>" + r.cuts.length + "カット</em></h4>" +
+      '<ol>' + names + "</ol>" +
+      '<div class="btnrow" style="margin-top:10px">' +
+        '<button class="btn sm kin" data-p="' + i + '" data-l="ja">日本語の指示を写す</button>' +
+        '<button class="btn sm" data-p="' + i + '" data-l="en">English を写す</button>' +
+        '<button class="btn sm" data-show="' + i + '">中身を見る</button>' +
+      "</div><pre class='prompt' id='rlP" + i + "' style='display:none;margin-top:9px'></pre></div>";
+  }).join("");
+
+  Array.prototype.forEach.call($("rlList").querySelectorAll("[data-p]"), function(b){
+    b.onclick = function(){
+      var r = S.reels[b.dataset.p|0];
+      var p = reelPrompt(r, S.moves, S.cfg, S.chara);
+      copyText(b.dataset.l==="ja" ? p.ja : p.en);
+    };
+  });
+  Array.prototype.forEach.call($("rlList").querySelectorAll("[data-show]"), function(b){
+    b.onclick = function(){
+      var i = b.dataset.show|0, pre = $("rlP"+i);
+      if(pre.style.display === "none"){
+        pre.textContent = reelPrompt(S.reels[i], S.moves, S.cfg, S.chara).ja;
+        pre.style.display = "block"; b.textContent = "たたむ";
+      }else{ pre.style.display = "none"; b.textContent = "中身を見る"; }
+    };
+  });
+}
+function reelsGo(){
+  S.cfg.cuts = parseInt($("rlCuts").value,10) || 10;
+  S.cfg.len  = parseFloat($("rlLen").value) || 1.5;
+  S.cfg.key  = $("rlKey").value;
+  lsSet(LS.cfg, S.cfg);
+  var live = S.moves.filter(function(m){ return m.on!==false; });
+  if(!live.length) return toast("先に工程二で動きをならべてください");
+  S.reels = buildReels(); lsSet(LS.reels, S.reels);
+  drawReels(); markNav();
+  toast(S.reels.length + "本ぶんの台本ができました");
+}
+function copyText(t){
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(t).then(function(){ toast("写しました"); },
+      function(){ fallbackCopy(t); });
+  }else fallbackCopy(t);
+}
+function fallbackCopy(t){
+  var ta = document.createElement("textarea");
+  ta.value = t; ta.style.position="fixed"; ta.style.opacity="0";
+  document.body.appendChild(ta); ta.select();
+  try{ document.execCommand("copy"); toast("写しました"); }
+  catch(e){ toast("写せませんでした。長押しで選んでください"); }
+  document.body.removeChild(ta);
+}
+
+/* ================================================================
+   14. 工程四 — 動画をスタンプに変える
+   ================================================================ */
+var VID = { file:null, url:null, el:null, dur:0, w:0, h:0, cutN:10, cut:0, src:null, made:{} };
+var MAXSIDE = 720;
+
+function drawConv(){
+  var opts = S.reels.length
+    ? S.reels.map(function(r){ return '<option value="'+(r.no-1)+'">'+r.no+"本目(" + r.cuts.length + "カット)</option>"; }).join("")
+    : '<option value="0">台本なし</option>';
+  var cur = $("cvReel").value;
+  $("cvReel").innerHTML = opts;
+  if(cur) $("cvReel").value = cur;
+  $("cvKey").value   = S.cfg.key;
+  $("cvNear").value  = S.cfg.near;  $("cvNearV").textContent = S.cfg.near;
+  $("cvFar").value   = S.cfg.far;   $("cvFarV").textContent  = S.cfg.far;
+  $("cvSpill").value = S.cfg.spill; $("cvSpillV").textContent= S.cfg.spill;
+  $("cvChoke").value = S.cfg.choke; $("cvChokeV").textContent= S.cfg.choke;
+  $("cvDur").value   = String(S.cfg.dur);
+  $("cvFrames").value= String(S.cfg.frames);
+  $("cvUniform").value = String(S.cfg.uniform);
+  $("cvTrim").value  = String(S.cfg.trim);
+}
+function cvCfg(){
+  S.cfg.key   = $("cvKey").value;
+  S.cfg.near  = parseInt($("cvNear").value,10);
+  S.cfg.far   = parseInt($("cvFar").value,10);
+  S.cfg.spill = parseInt($("cvSpill").value,10);
+  S.cfg.choke = parseInt($("cvChoke").value,10);
+  S.cfg.dur   = parseInt($("cvDur").value,10);
+  S.cfg.frames= parseInt($("cvFrames").value,10);
+  S.cfg.uniform = parseInt($("cvUniform").value,10);
+  S.cfg.trim  = parseFloat($("cvTrim").value);
+  lsSet(LS.cfg, S.cfg);
+  return {
+    key: hex2rgb(S.cfg.key), near:S.cfg.near, far:S.cfg.far,
+    spill:S.cfg.spill/100, choke:S.cfg.choke,
+    totalMs:S.cfg.dur, frames:S.cfg.frames, uniform:!!S.cfg.uniform
+  };
+}
+async function loadVideo(f){
+  if(VID.url) URL.revokeObjectURL(VID.url);
+  VID.file = f; VID.url = URL.createObjectURL(f);
+  var v = document.createElement("video");
+  v.src = VID.url; v.muted = true; v.playsInline = true; v.preload = "auto";
+  await new Promise(function(res, rej){
+    v.onloadeddata = res;
+    v.onerror = function(){ rej(new Error("この動画は、このブラウザでは開けませんでした。mp4(H.264)でお試しください。")); };
+    setTimeout(function(){ rej(new Error("動画の読み込みに時間がかかりすぎました。")); }, 30000);
+  });
+  VID.el = v; VID.dur = v.duration || 0; VID.w = v.videoWidth; VID.h = v.videoHeight;
+  if(!VID.dur || !isFinite(VID.dur)) throw new Error("動画の長さが分かりませんでした。");
+  VID.made = {};
+  var reel = S.reels[$("cvReel").value|0];
+  VID.cutN = reel ? reel.cuts.length : S.cfg.cuts;
+  VID.cut = 0;
+  $("cvCuts").value = VID.cutN;
+  $("cvInfo").innerHTML = esc(f.name) + " — " + VID.w + "×" + VID.h + " / " +
+    VID.dur.toFixed(1) + "秒 / 1カットおよそ " + (VID.dur/VID.cutN).toFixed(2) + "秒";
+  $("cvBody").style.display = "block";
+  drawCutBar();
+  await cvShow();
+}
+function drawCutBar(){
+  var reel = S.reels[$("cvReel").value|0];
+  var h = "";
+  for(var i=0;i<VID.cutN;i++){
+    var m = reel ? S.moves.filter(function(x){ return x.id===reel.cuts[i]; })[0] : null;
+    h += '<button data-cut="'+i+'" class="' + (i===VID.cut?"on":"") + (VID.made[i]?" made":"") + '" title="' +
+         esc(m?m.name:"") + '">' + (i+1) + "</button>";
+  }
+  $("cvBar").innerHTML = h;
+  Array.prototype.forEach.call($("cvBar").children, function(b){
+    b.onclick = function(){ VID.cut = b.dataset.cut|0; $("cvCut").value = VID.cut+1; drawCutBar(); cvShow(); };
+  });
+}
+function grabAt(t, cv, ctx){
+  return new Promise(function(res){
+    var v = VID.el, done = false;
+    var fin = function(){
+      if(done) return; done = true;
+      v.removeEventListener("seeked", fin);
+      try{ ctx.drawImage(v, 0, 0, cv.width, cv.height); }catch(e){}
+      res();
+    };
+    v.addEventListener("seeked", fin);
+    var target = Math.min(Math.max(0, t), Math.max(0, VID.dur - 0.05));
+    if(Math.abs(v.currentTime - target) < 0.001){ setTimeout(fin, 30); return; }
+    v.currentTime = target;
+    setTimeout(fin, 4000);
+  });
+}
+function cutSpan(i){
+  var span = VID.dur / VID.cutN, trim = span * S.cfg.trim;
+  return { a: i*span + trim, b: (i+1)*span - trim };
+}
+function scratchCanvas(maxSide){
+  var s = Math.min(1, maxSide / Math.max(VID.w, VID.h));
+  var cv = document.createElement("canvas");
+  cv.width = Math.max(2, Math.round(VID.w*s));
+  cv.height = Math.max(2, Math.round(VID.h*s));
+  return cv;
+}
+async function cutFrames(i, n){
+  var cv = scratchCanvas(MAXSIDE), ctx = cv.getContext("2d", { willReadFrequently:true });
+  var sp = cutSpan(i), out = [], k;
+  for(k=0;k<n;k++){
+    var t = n===1 ? (sp.a+sp.b)/2 : sp.a + (sp.b-sp.a)*k/(n-1);
+    await grabAt(t, cv, ctx);
+    var im = ctx.getImageData(0, 0, cv.width, cv.height);
+    out.push({ w:cv.width, h:cv.height, data:im.data });
+  }
+  return out;
+}
+/* いま見ているカットの真ん中の一枚を、抜いた状態で映す */
+async function cvShow(){
+  busy("カットを見ています");
+  try{
+    var sp = cutSpan(VID.cut);
+    var cv = scratchCanvas(420), ctx = cv.getContext("2d", { willReadFrequently:true });
+    await grabAt((sp.a+sp.b)/2, cv, ctx);
+    var im = ctx.getImageData(0,0,cv.width,cv.height);
+    VID.src = { w:cv.width, h:cv.height, data:im.data };
+    cvPaint();
+  }catch(e){ toast(e.message); }
+  busy(false);
+}
+function cvPaint(){
+  if(!VID.src) return;
+  var o = cvCfg();
+  var keyed = keyOut(VID.src, { key:o.key, near:o.near, far:o.far, spill:o.spill, choke:o.choke });
+  var holes = fillInnerHoles(keyed);
+  var cv = $("cvCanvas");
+  cv.width = keyed.w; cv.height = keyed.h;
+  cv.style.maxHeight = "300px"; cv.style.width = "auto"; cv.style.height = "auto";
+  var ctx = cv.getContext("2d");
+  var im = ctx.createImageData(keyed.w, keyed.h);
+  im.data.set(keyed.data);
+  ctx.putImageData(im, 0, 0);
+  var box = unionBox([keyed], 8);
+  var reel = S.reels[$("cvReel").value|0];
+  var m = reel ? S.moves.filter(function(x){ return x.id===reel.cuts[VID.cut]; })[0] : null;
+  $("cvInfo").innerHTML = (VID.file ? esc(VID.file.name) + " — " : "") +
+    VID.w + "×" + VID.h + " / " + VID.dur.toFixed(1) + "秒 ・ " +
+    (VID.cut+1) + "カット目" + (m ? "【" + esc(m.name) + "】" : "") +
+    (box.empty ? " — <b style='color:var(--keikoku)'>中身が見つかりません。抜きすぎです</b>"
+               : " — 絵の大きさ " + box.w + "×" + box.h + "、ふさいだ内部の透過 " + holes + "px");
+}
+function cvPickColor(ev){
+  if(!VID.src) return;
+  var cv = $("cvCanvas"), r = cv.getBoundingClientRect();
+  var p = ev.touches ? ev.touches[0] : ev;
+  var x = Math.floor((p.clientX - r.left) / r.width * VID.src.w);
+  var y = Math.floor((p.clientY - r.top) / r.height * VID.src.h);
+  if(x<0||y<0||x>=VID.src.w||y>=VID.src.h) return;
+  var i = (y*VID.src.w + x)*4, d = VID.src.data;
+  $("cvKey").value = rgb2hex({ r:d[i], g:d[i+1], b:d[i+2] });
+  cvPaint();
+  toast("抜く色を " + $("cvKey").value + " にしました");
+}
+async function convOne(i, quiet){
+  var o = cvCfg();
+  var raw = await cutFrames(i, Math.min(20, Math.max(o.frames, 8)));
+  var st = await makeSticker(raw, {
+    key:o.key, near:o.near, far:o.far, spill:o.spill, choke:o.choke,
+    frames:o.frames, totalMs:o.totalMs, uniform:o.uniform, maxBytes:300000
+  });
+  var reel = S.reels[$("cvReel").value|0];
+  var mv = reel ? S.moves.filter(function(x){ return x.id===reel.cuts[i]; })[0] : null;
+  var rec = {
+    id: "c" + Date.now().toString(36) + "-" + i,
+    reel: reel ? reel.no : 1, cut: i+1,
+    name: mv ? mv.name : ((reel?reel.no:1) + "-" + (i+1)),
+    cat: mv ? mv.cat : "気もち", freq: mv ? mv.freq : 3,
+    w: st.w, h: st.h, frames: st.frames, ms: st.totalMs, colors: st.colors,
+    holes: st.holes, innerHoles: st.innerHoles, size: st.bytes.length,
+    bytes: st.bytes, at: Date.now()
+  };
+  await idbPut(rec);
+  CANDS.unshift(rec);
+  VID.made[i] = true;
+  if(!quiet){
+    var url = URL.createObjectURL(new Blob([rec.bytes], { type:"image/png" }));
+    $("cvOutStage").innerHTML = '<img src="' + url + '" alt="">';
+    $("cvOutInfo").innerHTML = "【" + esc(rec.name) + "】" + rec.w + "×" + rec.h + " / " +
+      rec.frames + "コマ / " + (rec.ms/1000) + "秒 / " + rec.colors + "色 / " + kb(rec.size) +
+      " / ふさいだ内部の透過 " + rec.holes + "px";
+    $("cvResult").style.display = "block";
+  }
+  return rec;
+}
+async function convAll(){
+  if(!VID.el) return toast("先に動画を選んでください");
+  var n = VID.cutN, i, made = 0, failed = [];
+  for(i=0;i<n;i++){
+    busy((i+1) + " / " + n + " カット目を変換しています", i/n);
+    await new Promise(function(r){ setTimeout(r, 0); });
+    try{ await convOne(i, true); made++; }
+    catch(e){ failed.push((i+1) + "…" + e.message); }
+  }
+  busy(false);
+  drawCutBar(); markNav();
+  toast(made + "個できました" + (failed.length ? " / " + failed.length + "個は失敗" : ""));
+  if(failed.length) console.warn(failed.join("\n"));
+}
+
+/* ================================================================
+   15. 工程五 — 24個を選ぶ
+   ================================================================ */
+var URLS = {}, PK_FILTER = "", PK_STILL = false;
+function candUrl(c){
+  if(!URLS[c.id]) URLS[c.id] = URL.createObjectURL(new Blob([c.bytes], { type:"image/png" }));
+  return URLS[c.id];
+}
+function dropUrls(){
+  Object.keys(URLS).forEach(function(k){ URL.revokeObjectURL(URLS[k]); });
+  URLS = {};
+}
+function stillUrl(c, cb){
+  /* 動きを止めたいときは、先頭のコマだけを描き出す */
+  decodeAPNG(c.bytes).then(function(d){
+    var cv = document.createElement("canvas");
+    cv.width = d.w; cv.height = d.h;
+    var im = cv.getContext("2d").createImageData(d.w, d.h);
+    im.data.set(d.frames[0].data);
+    cv.getContext("2d").putImageData(im, 0, 0);
+    cb(cv.toDataURL("image/png"));
+  }).catch(function(){});
+}
+function drawPick(){
+  var reels = {};
+  CANDS.forEach(function(c){ reels[c.reel] = (reels[c.reel]||0)+1; });
+  $("pkFilter").innerHTML = ['<button class="chip' + (PK_FILTER===""?" on":"") + '" data-r="">すべて ' + CANDS.length + "</button>"]
+    .concat(Object.keys(reels).sort(function(a,b){return a-b;}).map(function(r){
+      return '<button class="chip' + (PK_FILTER===r?" on":"") + '" data-r="' + r + '">' + r + "本目 " + reels[r] + "</button>";
+    })).join("");
+  Array.prototype.forEach.call($("pkFilter").children, function(b){
+    b.onclick = function(){ PK_FILTER = b.dataset.r; drawPick(); };
+  });
+
+  var list = CANDS.filter(function(c){ return !PK_FILTER || String(c.reel)===PK_FILTER; });
+  $("pkGrid").innerHTML = list.map(function(c){
+    var ord = S.pick.indexOf(c.id);
+    var warn = c.innerHoles > 0 || c.size > 300000 || c.w > 320 || c.h > 270;
+    return '<div class="cand' + (ord>=0?" on":"") + (warn?" warn":"") + '" data-id="' + c.id + '">' +
+      '<img src="' + candUrl(c) + '" alt="">' +
+      '<span class="name">' + esc(c.name) + "</span>" +
+      (ord>=0 ? '<span class="ord">' + (ord+1) + "</span>" : "") +
+      '<button class="del" data-del="' + c.id + '">×</button>' +
+      '<span class="meta">' + c.w + "×" + c.h + " " + kb(c.size) + "</span></div>";
+  }).join("");
+
+  Array.prototype.forEach.call($("pkGrid").children, function(el){
+    el.onclick = function(ev){
+      if(ev.target.dataset.del) return;
+      var id = el.dataset.id, i = S.pick.indexOf(id);
+      if(i >= 0) S.pick.splice(i, 1);
+      else if(S.pick.length >= 24) return toast("24個そろっています。入れ替えるなら、どれかを外してください");
+      else S.pick.push(id);
+      lsSet(LS.pick, S.pick); drawPick(); markNav();
+    };
+  });
+  Array.prototype.forEach.call($("pkGrid").querySelectorAll("[data-del]"), function(b){
+    b.onclick = async function(ev){
+      ev.stopPropagation();
+      var id = b.dataset.del;
+      await idbDel(id);
+      CANDS = CANDS.filter(function(c){ return c.id !== id; });
+      var i = S.pick.indexOf(id); if(i>=0) S.pick.splice(i,1);
+      lsSet(LS.pick, S.pick);
+      if(URLS[id]){ URL.revokeObjectURL(URLS[id]); delete URLS[id]; }
+      drawPick(); markNav();
+    };
+  });
+  if(PK_STILL){
+    Array.prototype.forEach.call($("pkGrid").querySelectorAll("img"), function(img){
+      var id = img.parentNode.dataset.id;
+      var c = CANDS.filter(function(x){ return x.id===id; })[0];
+      if(c) stillUrl(c, function(u){ img.src = u; });
+    });
+  }
+
+  $("pkBar").style.width = Math.min(100, S.pick.length/24*100) + "%";
+  $("pkCount").innerHTML = S.pick.length
+    ? "<b class='num'>" + S.pick.length + "</b> / 24 個" +
+      (S.pick.length===24 ? " — そろいました。工程六へ進めます。" : "")
+    : "まだ1つも選んでいません。";
+  $("pkEmpty").textContent = CANDS.length ? "" : "スタンプ候補がありません。工程四で動画を変換してください。";
+  $("pkStill").textContent = PK_STILL ? "動かして見る" : "動きを止める";
+}
+function pickAuto(){
+  if(!S.pick.length) return toast("先にいくつか選んでください");
+  var list = S.pick.map(function(id){
+    return CANDS.filter(function(c){ return c.id===id; })[0];
+  }).filter(Boolean);
+  list.sort(function(a,b){ return (b.freq||3) - (a.freq||3); });
+  var out = [], prev = null;
+  while(list.length){
+    var i = 0;
+    for(var k=0;k<list.length;k++){ if(list[k].cat !== prev){ i = k; break; } }
+    out.push(list[i]); prev = list[i].cat; list.splice(i, 1);
+  }
+  S.pick = out.map(function(c){ return c.id; });
+  lsSet(LS.pick, S.pick); drawPick();
+  toast("よく使う順に、似たものが隣り合わないよう並べました");
+}
+
+/* ================================================================
+   16. 工程六 — 申請の一式
+   ================================================================ */
+var SHIP = null;
+function drawShip(){
+  var ok24 = S.pick.length === 24;
+  var picks = S.pick.map(function(id){ return CANDS.filter(function(c){ return c.id===id; })[0]; }).filter(Boolean);
+  var over  = picks.filter(function(c){ return c.size > 300000; }).length;
+  var big   = picks.filter(function(c){ return c.w > 320 || c.h > 270; }).length;
+  var fr    = picks.filter(function(c){ return c.frames < 5 || c.frames > 20; }).length;
+  var ms    = picks.filter(function(c){ return [1000,2000,3000,4000].indexOf(c.ms) < 0; }).length;
+  var hole  = picks.filter(function(c){ return c.innerHoles > 0; }).length;
+  checkRows($("shCheck"), [
+    { ok: ok24, text: ok24 ? "24個そろっています" : "選んだのは " + S.pick.length + "個。24個ちょうど必要です" },
+    { ok: !over, text: over ? over + "個が300KBを超えています" : "どれも300KB以下です" },
+    { ok: !big,  text: big  ? big + "個が320×270をはみ出しています" : "どれも320×270に収まっています" },
+    { ok: !fr,   text: fr   ? fr + "個のコマ数が5〜20から外れています" : "コマ数はどれも5〜20です" },
+    { ok: !ms,   text: ms   ? ms + "個の再生時間が1・2・3・4秒ちょうどではありません" : "再生時間はどれも1・2・3・4秒ちょうどです" },
+    { ok: !hole, text: hole ? hole + "個に内側の透過が残っています" : "内側の透過はありません" }
+  ]);
+  var opts = picks.map(function(c, i){ return '<option value="' + c.id + '">' + (i+1) + ". " + esc(c.name) + "</option>"; }).join("");
+  var m = $("shMain").value, t = $("shTab").value;
+  $("shMain").innerHTML = opts; $("shTab").innerHTML = opts;
+  if(m) $("shMain").value = m;
+  if(t) $("shTab").value = t;
+}
+async function shipGo(){
+  if(S.pick.length !== 24) return toast("24個ちょうど選んでください");
+  var picks = S.pick.map(function(id){ return CANDS.filter(function(c){ return c.id===id; })[0]; }).filter(Boolean);
+  if(picks.length !== 24) return toast("選んだスタンプの一部が見つかりません");
+  var rows = [], files = [], i;
+  try{
+    /* 24個ぶんを、書き出したファイルのほうから数え直す */
+    var holes = 0, over = 0, badMs = 0, badFr = 0, badSize = 0;
+    for(i=0;i<24;i++){
+      busy("01〜24 を点検しています(" + (i+1) + "/24)", i/26);
+      await new Promise(function(r){ setTimeout(r, 0); });
+      var c = picks[i], d = await decodeAPNG(c.bytes);
+      var h = 0;
+      for(var f=0; f<d.frames.length; f++) h += countInnerHoles(d.frames[f]);
+      if(h) holes++;
+      if(c.size > 300000) over++;
+      if(d.totalMs !== c.ms || [1000,2000,3000,4000].indexOf(d.totalMs) < 0) badMs++;
+      if(d.frames.length < 5 || d.frames.length > 20) badFr++;
+      if(d.w > 320 || d.h > 270) badSize++;
+      files.push({ name: ("0"+(i+1)).slice(-2) + ".png", data: c.bytes });
+    }
+
+    /* main.png(240×240)と tab.png(96×74)を、選んだスタンプから作り直す */
+    busy("main.png を作っています", 24/26);
+    var mainC = picks.filter(function(c){ return c.id === $("shMain").value; })[0] || picks[0];
+    var md = await decodeAPNG(mainC.bytes);
+    var mbox = unionBox(md.frames, 8);
+    var mfit = fitInside(mbox.w, mbox.h, 232, 232, true);
+    var mframes = md.frames.map(function(f){
+      var im = padTo(resizeRGBA(cropImg(f, mbox), mfit.w, mfit.h), 240, 240);
+      snapAlpha(im); fillInnerHoles(im); return im;
+    });
+    var mainPng = await encodeAPNG(mframes, { indexed:true, colors:256, totalMs:md.totalMs, plays:0 });
+    if(mainPng.length > 300000){
+      mainPng = await encodeAPNG(mframes, { indexed:true, colors:64, totalMs:md.totalMs, plays:0 });
+    }
+
+    busy("tab.png を作っています", 25/26);
+    var tabC = picks.filter(function(c){ return c.id === $("shTab").value; })[0] || picks[0];
+    var td = await decodeAPNG(tabC.bytes);
+    var tbox = unionBox([td.frames[0]], 8);
+    var tfit = fitInside(tbox.w, tbox.h, 92, 70, true);
+    var tabIm = padTo(resizeRGBA(cropImg(td.frames[0], tbox), tfit.w, tfit.h), 96, 74);
+    snapAlpha(tabIm); fillInnerHoles(tabIm);
+    var tabPng = await encodePNG(tabIm, { indexed:true, colors:256 });
+
+    files.unshift({ name:"tab.png",  data:tabPng });
+    files.unshift({ name:"main.png", data:mainPng });
+    var zip = zipStore(files);
+    busy(false);
+
+    /* main と tab も、書き出したファイルのほうから数え直す */
+    var mainHoles = 0, tabHoles = 0;
+    var mback = await decodeAPNG(mainPng);
+    for(i=0;i<mback.frames.length;i++) mainHoles += countInnerHoles(mback.frames[i]);
+    var tback = await decodeAPNG(tabPng);
+    for(i=0;i<tback.frames.length;i++) tabHoles += countInnerHoles(tback.frames[i]);
+    rows = [
+      { ok:!holes,   text: holes ? holes + "個に内側の透過が残っています(そのままでは弾かれます)" : "01〜24 に内側の透過はありません" },
+      { ok:!over,    text: over ? over + "個が300KBを超えています" : "01〜24 はどれも300KB以下(いちばん重いもの " +
+          kb(Math.max.apply(null, picks.map(function(c){ return c.size; }))) + ")" },
+      { ok:!badMs,   text: badMs ? badMs + "個の再生時間が規格から外れています" : "再生時間はどれもぴったりです" },
+      { ok:!badFr,   text: badFr ? badFr + "個のコマ数が5〜20から外れています" : "コマ数はどれも5〜20です" },
+      { ok:!badSize, text: badSize ? badSize + "個が320×270をはみ出しています" : "大きさはどれも320×270以内です" },
+      { ok: mainPng.length<=300000 && !mainHoles, text: "main.png 240×240 " + kb(mainPng.length) +
+          (mainHoles ? " — 内側の透過あり" : "") },
+      { ok: tabPng.length<=1000000 && !tabHoles, text: "tab.png 96×74 " + kb(tabPng.length) +
+          (tabHoles ? " — 内側の透過あり" : "") },
+      { ok:true,     text: "zip 全" + files.length + "ファイル " + kb(zip.length) }
+    ];
+    checkRows($("shFinal"), rows);
+    $("shMainOut").innerHTML = '<img src="' + URL.createObjectURL(new Blob([mainPng], {type:"image/png"})) + '">';
+    $("shTabOut").innerHTML  = '<img src="' + URL.createObjectURL(new Blob([tabPng],  {type:"image/png"})) + '">';
+    SHIP = { zip:zip, name:(S.chara && S.chara.name ? S.chara.name : "sticker") + "_" + ymd() + ".zip" };
+    $("shOut").style.display = "block";
+    toast(rows.every(function(r){ return r.ok; }) ? "点検を通りました" : "直すところがあります");
+  }catch(e){ busy(false); toast(e.message); }
+}
+function ymd(){
+  var d = new Date();
+  return "" + d.getFullYear() + ("0"+(d.getMonth()+1)).slice(-2) + ("0"+d.getDate()).slice(-2);
+}
+function shipDownload(){
+  if(!SHIP) return;
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([SHIP.zip], { type:"application/zip" }));
+  a.download = SHIP.name;
+  document.body.appendChild(a); a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); document.body.removeChild(a); }, 4000);
+  toast("保存しました。LINE Creators Market に、この zip を出してください");
+}
+
+/* ================================================================
+   17. 設定
+   ================================================================ */
+function drawSet(){
+  $("setKey").value = "";
+  $("setKey").placeholder = S.key ? "登録済み(入れ直すと差し替わります)" : "sk-ant-...";
+  $("setModel").innerHTML = Object.keys(MODELS).map(function(k){
+    return '<option value="' + k + '"' + (S.model===k?" selected":"") + ">" + MODELS[k].label + "</option>";
+  }).join("");
+  $("setState").textContent = S.key ? "キーは登録されています。" : "キーは未登録です(工程四〜六はキーなしで動きます)。";
+  var bytes = CANDS.reduce(function(a,c){ return a + c.size; }, 0);
+  $("setUse").innerHTML =
+    "スタンプ候補 <b class='num'>" + CANDS.length + "</b> 個(およそ " + kb(bytes) + ")、" +
+    "動きの案 <b class='num'>" + S.moves.length + "</b> 個。<br>" +
+    "AIの利用は これまでに およそ <b class='num'>" + Math.round(usageYen()) + "</b> 円ぶん。";
+}
+async function setSave(){
+  var k = $("setKey").value.trim();
+  S.model = $("setModel").value; lsSet(LS.model, S.model);
+  if(k){ S.key = k; lsSet(LS.key, k); }
+  if(!S.key) return toast("キーを入れてください");
+  busy("つながるか確かめています");
+  try{
+    var r = await fetch("https://api.anthropic.com/v1/messages", {
+      method:"POST",
+      headers:{ "content-type":"application/json", "x-api-key":S.key,
+                "anthropic-version":"2023-06-01", "anthropic-dangerous-direct-browser-access":"true" },
+      body: JSON.stringify({ model:S.model, max_tokens:16, messages:[{ role:"user", content:"ok" }] })
+    });
+    busy(false);
+    if(r.ok){ $("setKey").value=""; drawSet(); toast("つながりました"); }
+    else toast(apiErr(r.status, await r.text()));
+  }catch(e){ busy(false); toast("通信できませんでした"); }
+}
+
+/* ================================================================
+   18. 起動
+   ================================================================ */
+async function boot(){
+  try{ CANDS = (await idbAll()).sort(function(a,b){ return b.at - a.at; }); }catch(e){ CANDS = []; }
+  S.pick = S.pick.filter(function(id){ return CANDS.some(function(c){ return c.id===id; }); });
+  lsSet(LS.pick, S.pick);
+
+  Array.prototype.forEach.call($("nav").children, function(b){
+    b.onclick = function(){ showView(b.dataset.v); };
+  });
+  $("btnSet").onclick = function(){ showView("set"); };
+
+  $("chGo").onclick = charaGo;
+  document.addEventListener("click", function(e){
+    var t = e.target.closest ? e.target.closest("[data-copy]") : null;
+    if(t) copyText($(t.dataset.copy).textContent);
+  });
+
+  $("mvGen").onclick = movesGen;
+  $("mvDefault").onclick = function(){
+    S.moves = stockMoves(); saveMoves(); drawMoves(); toast("備え付けの60個を入れました");
+  };
+  $("mvAdd").onclick = function(){
+    var name = prompt("動きの名前(例:くしゃみ)"); if(!name) return;
+    var motion = prompt("どう動くか(例:大きくのけぞってから、勢いよく前に倒れる)") || "";
+    S.moves.push({ id:"u"+Date.now().toString(36), name:name.slice(0,20), motion:motion.slice(0,80),
+                   cat:"気もち", freq:3, on:true });
+    saveMoves(); drawMoves();
+  };
+  $("mvSort").onclick = function(){
+    S.moves.sort(function(a,b){ return (b.freq||3)-(a.freq||3); });
+    saveMoves(); drawMoves(); toast("よく使いそうな順にならべました");
+  };
+  $("mvClear").onclick = function(){
+    if(!confirm("動きの案を全部消します。よろしいですか?")) return;
+    S.moves = []; saveMoves(); drawMoves();
+  };
+
+  $("rlGo").onclick = reelsGo;
+  $("rlKey").oninput = function(){
+    S.cfg.key = this.value; lsSet(LS.cfg, S.cfg);
+    $("rlKeyNote").textContent = this.value.toUpperCase() +
+      " — この色をあとで抜きます。肌や髪に近い色は選ばないこと。";
+  };
+
+  $("cvFile").onchange = async function(){
+    var f = this.files && this.files[0]; if(!f) return;
+    busy("動画を読み込んでいます");
+    try{ await loadVideo(f); }catch(e){ toast(e.message); $("cvBody").style.display="none"; }
+    busy(false);
+  };
+  $("cvReel").onchange = function(){
+    var reel = S.reels[this.value|0];
+    if(reel && VID.el){ VID.cutN = reel.cuts.length; $("cvCuts").value = VID.cutN; VID.cut = 0; drawCutBar(); cvShow(); }
+  };
+  $("cvCuts").onchange = function(){
+    VID.cutN = Math.max(1, Math.min(20, parseInt(this.value,10)||10));
+    VID.cut = Math.min(VID.cut, VID.cutN-1); VID.made = {};
+    $("cvCut").value = VID.cut+1; drawCutBar(); cvShow();
+  };
+  $("cvCut").onchange = function(){
+    VID.cut = Math.max(0, Math.min(VID.cutN-1, (parseInt(this.value,10)||1)-1));
+    this.value = VID.cut+1; drawCutBar(); cvShow();
+  };
+  $("cvTrim").onchange = function(){ cvCfg(); cvShow(); };
+  ["cvNear","cvFar","cvSpill","cvChoke"].forEach(function(id){
+    $(id).oninput = function(){ $(id+"V").textContent = this.value; cvPaint(); };
+  });
+  $("cvKey").oninput = cvPaint;
+  $("cvAuto").onclick = function(){
+    if(!VID.src) return;
+    $("cvKey").value = rgb2hex(guessKey(VID.src));
+    cvPaint(); toast("四辺から " + $("cvKey").value + " と見ました");
+  };
+  $("cvCanvas").onclick = cvPickColor;
+  $("cvTest").onclick = async function(){
+    if(!VID.el) return toast("先に動画を選んでください");
+    busy("このカットを変換しています");
+    try{ await convOne(VID.cut, false); drawCutBar(); markNav(); }
+    catch(e){ toast(e.message); }
+    busy(false);
+  };
+  $("cvAll").onclick = convAll;
+
+  $("pkAuto").onclick = pickAuto;
+  $("pkClear").onclick = function(){ S.pick = []; lsSet(LS.pick, S.pick); drawPick(); markNav(); };
+  $("pkStill").onclick = function(){ PK_STILL = !PK_STILL; dropUrls(); drawPick(); };
+
+  $("shGo").onclick = shipGo;
+  $("shDl").onclick = shipDownload;
+
+  $("setSave").onclick = setSave;
+  $("setForget").onclick = function(){
+    S.key = ""; localStorage.removeItem(LS.key); drawSet(); toast("キーを消しました");
+  };
+  $("setWipeCand").onclick = async function(){
+    if(!confirm("スタンプ候補を全部消します。よろしいですか?")) return;
+    for(var i=0;i<CANDS.length;i++) await idbDel(CANDS[i].id);
+    CANDS = []; S.pick = []; lsSet(LS.pick, S.pick); dropUrls();
+    drawPick(); markNav(); toast("消しました");
+  };
+  $("setWipeAll").onclick = async function(){
+    if(!confirm("工房ごと まっさらにします(キーは残ります)。よろしいですか?")) return;
+    for(var i=0;i<CANDS.length;i++) await idbDel(CANDS[i].id);
+    CANDS = []; dropUrls();
+    [LS.chara, LS.moves, LS.reels, LS.pick, LS.cfg].forEach(function(k){ localStorage.removeItem(k); });
+    S.chara = null; S.moves = []; S.reels = []; S.pick = [];
+    S.cfg = { key:"#00b140", near:34, far:78, spill:90, choke:0, dur:2000, frames:12,
+              uniform:0, cuts:10, len:1.5, trim:0.08 };
+    drawSet(); showView("home"); toast("まっさらにしました");
+  };
+
+  drawChara();
+  showView("home");
+}
+boot();
+</script>
+</body>
+</html>
