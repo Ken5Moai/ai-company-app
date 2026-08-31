@@ -1,0 +1,1809 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#12100e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>まよい帳 — Amazonアフィリエイトの判断ページ台帳</title>
+<style>
+/* ================================================================
+   まよい帳 —「迷いを掘る・型を組む・初稿を出す・検品する・数える」
+   商品を量産して紹介するのではなく、買う直前の“迷い”を記事にして積む台帳。
+   墨 × 朱印 × 金(AIカンパニーと同じ世界観)。単一HTML・外部依存なし。
+   ================================================================ */
+:root{
+  --sumi:#12100e;
+  --sumi-2:#1b1815;
+  --sumi-3:#272220;
+  --sumi-4:#37302b;
+  --kinari:#f2e9dc;
+  --hai:#8d8377;
+  --hai-2:#645c53;
+  --shu:#d8432f;
+  --shu-fukai:#a52a1c;
+  --kin:#c9a24b;
+  --kin-awai:rgba(201,162,75,.3);
+  --ao:#6f93a8;
+  --ok:#7fae7a;
+  --keikoku:#e0a13a;
+  --mincho:"Hiragino Mincho ProN","Hiragino Mincho Pro","Yu Mincho",YuMincho,"Noto Serif JP","Noto Serif CJK JP",serif;
+  --gothic:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP","Yu Gothic",sans-serif;
+  --ease:cubic-bezier(.19,1,.22,1);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{
+  background:var(--sumi);color:var(--kinari);
+  font-family:var(--gothic);font-size:15px;line-height:1.7;
+  -webkit-tap-highlight-color:transparent;
+  overscroll-behavior-y:none;
+  font-feature-settings:"palt";
+}
+button,input,textarea,select{font-family:inherit;font-size:inherit;color:inherit}
+button{cursor:pointer;background:none;border:none}
+input,textarea,select{background:var(--sumi);border:1px solid var(--sumi-4);border-radius:6px;color:var(--kinari);padding:9px 11px;width:100%;font-size:16px}
+input:focus,textarea:focus,select:focus{outline:none;border-color:var(--kin)}
+textarea{resize:vertical;line-height:1.6}
+select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--hai) 50%),linear-gradient(135deg,var(--hai) 50%,transparent 50%);background-position:calc(100% - 16px) 18px,calc(100% - 11px) 18px;background-size:5px 5px;background-repeat:no-repeat}
+a{color:var(--kin)}
+
+#app{display:flex;flex-direction:column;height:100dvh;padding-top:env(safe-area-inset-top)}
+#app::after{
+  content:"";position:fixed;inset:0;z-index:90;pointer-events:none;
+  opacity:.045;mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ---------- 頭書き ---------- */
+header{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  padding:12px 16px 10px;border-bottom:1px solid var(--sumi-3);flex:none;
+}
+.brand{font-family:var(--mincho);letter-spacing:.14em;font-size:17px;display:flex;align-items:baseline;gap:10px}
+.brand small{font-size:11px;letter-spacing:.1em;color:var(--hai);font-family:var(--gothic)}
+.hbtn{
+  border:1px solid var(--sumi-4);border-radius:999px;padding:5px 13px;
+  font-size:12px;color:var(--hai);letter-spacing:.08em;white-space:nowrap;
+}
+.hbtn.on{border-color:var(--kin);color:var(--kin)}
+
+main{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px 14px 30px}
+.view{display:none;max-width:720px;margin:0 auto}
+.view.on{display:block;animation:fade .3s var(--ease)}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* ---------- 部品 ---------- */
+h2.sec{
+  font-family:var(--mincho);font-size:13px;letter-spacing:.2em;color:var(--kin);
+  margin:22px 0 10px;display:flex;align-items:center;gap:9px;
+}
+h2.sec::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--kin-awai),transparent)}
+h2.sec:first-child{margin-top:4px}
+.card{background:var(--sumi-2);border:1px solid var(--sumi-3);border-radius:10px;padding:14px;margin-bottom:12px}
+.card.kin{border-color:rgba(201,162,75,.36)}
+.card.shu{border-color:rgba(216,67,47,.4)}
+.card h3{font-family:var(--mincho);font-size:15px;letter-spacing:.08em;margin-bottom:8px;font-weight:400}
+.muted{color:var(--hai);font-size:12.5px;line-height:1.65}
+.mini{color:var(--hai-2);font-size:11.5px;line-height:1.6}
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  border:1px solid var(--sumi-4);border-radius:8px;padding:11px 16px;
+  font-size:14px;letter-spacing:.06em;color:var(--kinari);transition:.16s var(--ease);
+}
+.btn:active{transform:scale(.985)}
+.btn.pri{background:var(--shu-fukai);border-color:var(--shu);color:#fff}
+.btn.kin{border-color:var(--kin);color:var(--kin)}
+.btn.wide{width:100%}
+.btn.sm{padding:7px 11px;font-size:12.5px;border-radius:6px}
+.btn[disabled]{opacity:.4;pointer-events:none}
+.btnrow{display:flex;gap:8px;flex-wrap:wrap}
+.btnrow>.btn{flex:1;min-width:120px}
+.field{margin-bottom:11px}
+.field label{display:block;font-size:12px;letter-spacing:.1em;color:var(--hai);margin-bottom:5px}
+.chip{
+  display:inline-block;border:1px solid var(--sumi-4);border-radius:999px;
+  padding:3px 10px;font-size:11.5px;color:var(--hai);margin:0 5px 5px 0;
+}
+.chip.on{border-color:var(--kin);color:var(--kin)}
+.chips{display:flex;flex-wrap:wrap;margin-top:6px}
+.num{font-family:var(--mincho);color:var(--kin);letter-spacing:.04em}
+
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+@media (max-width:359px){.stats{grid-template-columns:repeat(2,1fr)}}
+.stat{background:var(--sumi-2);border:1px solid var(--sumi-3);border-radius:9px;padding:10px 6px;text-align:center}
+.stat b{display:block;font-family:var(--mincho);font-size:21px;font-weight:400;letter-spacing:.02em}
+.stat span{font-size:10.5px;color:var(--hai);letter-spacing:.06em}
+
+.bar{height:6px;background:var(--sumi-3);border-radius:99px;overflow:hidden;margin:8px 0 6px}
+.bar>i{display:block;height:100%;background:linear-gradient(90deg,var(--shu-fukai),var(--kin));border-radius:99px;transition:width .5s var(--ease)}
+
+/* 一覧 */
+.plist{display:flex;flex-direction:column;gap:9px}
+.prow{background:var(--sumi-2);border:1px solid var(--sumi-3);border-radius:10px;padding:11px 12px}
+.prow.sel{border-color:var(--kin)}
+.ptitle{font-size:14px;line-height:1.5;margin-bottom:4px;word-break:break-word}
+.pmeta{font-size:11px;color:var(--hai-2);display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.badge{display:inline-block;font-size:10px;letter-spacing:.06em;border-radius:4px;padding:1px 6px;border:1px solid var(--sumi-4);color:var(--hai)}
+.badge.ok{border-color:rgba(127,174,122,.5);color:var(--ok)}
+.badge.warn{border-color:rgba(224,161,58,.5);color:var(--keikoku)}
+.badge.ng{border-color:rgba(216,67,47,.6);color:var(--shu)}
+.badge.kin{border-color:rgba(201,162,75,.5);color:var(--kin)}
+.badge.ao{border-color:rgba(111,147,168,.5);color:var(--ao)}
+
+/* 迷い候補 */
+.cand{border-left:2px solid var(--kin-awai);padding-left:11px;margin:12px 0}
+.cand h4{font-family:var(--mincho);font-size:14.5px;font-weight:400;letter-spacing:.06em;margin-bottom:5px}
+.cand dl{font-size:12.5px;line-height:1.65;color:var(--hai)}
+.cand dt{color:var(--kin);font-size:11px;letter-spacing:.1em;margin-top:7px}
+.cand dd{color:var(--kinari);font-size:12.5px}
+
+/* 商品カード */
+.pcard{border:1px solid var(--sumi-3);border-radius:9px;padding:11px;margin-bottom:9px;background:var(--sumi)}
+.pcard .ph{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:6px}
+.pcard .ph b{font-weight:400;font-size:14px}
+.pcard .x{color:var(--hai-2);font-size:16px;padding:0 5px}
+
+/* 比較表 */
+.axtable{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:4px}
+.axtable th,.axtable td{padding:7px 7px;border-bottom:1px solid var(--sumi-3);vertical-align:top;text-align:left}
+.axtable th{font-size:11px;color:var(--kin);letter-spacing:.06em;font-weight:400;white-space:nowrap}
+.axtable td.ax{color:var(--kin);white-space:nowrap;font-family:var(--mincho)}
+.axtable tr:last-child td{border-bottom:none}
+.tscroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+
+/* 記事の下書き */
+.draft{
+  background:var(--sumi);border:1px solid var(--sumi-3);border-radius:9px;
+  padding:14px 13px;max-height:60dvh;overflow-y:auto;font-size:13.5px;line-height:1.85;
+}
+.draft h1,.draft h2,.draft h3{font-family:var(--mincho);font-weight:400;letter-spacing:.06em;line-height:1.5}
+.draft h1{font-size:17px;margin:2px 0 12px;color:var(--kin)}
+.draft h2{font-size:15px;margin:20px 0 8px;padding-left:9px;border-left:2px solid var(--shu)}
+.draft h3{font-size:14px;margin:14px 0 6px;color:var(--kin)}
+.draft p{margin:0 0 11px}
+.draft ul,.draft ol{margin:0 0 11px 18px}
+.draft li{margin-bottom:4px}
+.draft table{width:100%;border-collapse:collapse;font-size:12px;margin:0 0 12px}
+.draft th,.draft td{border:1px solid var(--sumi-3);padding:5px 6px;text-align:left}
+.draft th{color:var(--kin);font-weight:400}
+.draft hr{border:none;height:1px;background:var(--sumi-3);margin:16px 0}
+.draft .lk{
+  display:block;border:1px dashed rgba(201,162,75,.45);border-radius:7px;
+  padding:8px 10px;margin:0 0 12px;font-size:11.5px;color:var(--kin);line-height:1.6;
+}
+.draft .lk b{font-weight:400;color:var(--kinari);display:block;font-size:12px;margin-bottom:2px}
+.draft strong{color:var(--kin);font-weight:400}
+
+/* 検品 */
+.chk{border-left:2px solid var(--sumi-4);padding:6px 0 6px 10px;margin-top:8px;font-size:12.5px;line-height:1.6}
+.chk.hi{border-color:var(--shu)}
+.chk.mid{border-color:var(--keikoku)}
+.chk.lo{border-color:var(--hai-2)}
+.chk.pass{border-color:var(--ok)}
+.chk b{font-weight:400;color:var(--kinari)}
+.chk span{color:var(--hai);display:block;font-size:11.5px}
+
+/* 帳簿の棒グラフ */
+.graph{display:flex;align-items:flex-end;gap:6px;height:132px;padding:8px 2px 0;overflow-x:auto}
+.gcol{flex:1;min-width:32px;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:4px;height:100%}
+.gcol i{display:block;width:100%;background:linear-gradient(180deg,var(--kin),var(--shu-fukai));border-radius:3px 3px 0 0;min-height:2px;transition:height .5s var(--ease)}
+.gcol u{font-size:9.5px;color:var(--hai-2);text-decoration:none;white-space:nowrap}
+.gcol b{font-size:9.5px;color:var(--kin);font-weight:400;white-space:nowrap}
+
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:7px 6px;border-bottom:1px solid var(--sumi-3);text-align:left}
+th{font-size:11px;color:var(--hai);letter-spacing:.08em;font-weight:400}
+td.r,th.r{text-align:right;font-variant-numeric:tabular-nums}
+
+nav#tabs{
+  flex:none;display:flex;border-top:1px solid var(--sumi-3);background:var(--sumi-2);
+  padding-bottom:env(safe-area-inset-bottom);
+}
+nav#tabs button{
+  flex:1;padding:9px 2px 8px;font-size:10.5px;letter-spacing:.06em;color:var(--hai-2);
+  display:flex;flex-direction:column;align-items:center;gap:3px;border-top:2px solid transparent;margin-top:-1px;
+}
+nav#tabs button b{font-family:var(--mincho);font-size:15px;font-weight:400;letter-spacing:.06em}
+nav#tabs button.on{color:var(--kin);border-top-color:var(--shu)}
+
+.veil{
+  position:fixed;inset:0;z-index:100;background:rgba(8,7,6,.82);backdrop-filter:blur(3px);
+  display:none;align-items:flex-end;justify-content:center;
+}
+.veil.on{display:flex}
+.sheet{
+  background:var(--sumi-2);border:1px solid var(--sumi-3);border-radius:14px 14px 0 0;
+  width:100%;max-width:720px;max-height:92dvh;overflow-y:auto;
+  padding:16px 15px calc(24px + env(safe-area-inset-bottom));
+  animation:up .28s var(--ease);
+}
+@keyframes up{from{transform:translateY(24px);opacity:.4}to{transform:none;opacity:1}}
+.sheet h3{font-family:var(--mincho);font-size:16px;font-weight:400;letter-spacing:.1em;margin-bottom:4px}
+.shead{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;gap:10px}
+.shead .x{font-size:20px;color:var(--hai);line-height:1;padding:2px 6px}
+
+.note{
+  border:1px dashed var(--sumi-4);border-radius:9px;padding:10px 12px;
+  font-size:11.5px;color:var(--hai);line-height:1.7;
+}
+.note b{color:var(--keikoku);font-weight:400}
+.note.kin{border-color:rgba(201,162,75,.4)}
+.note.kin b{color:var(--kin)}
+
+#toast{
+  position:fixed;left:50%;bottom:calc(76px + env(safe-area-inset-bottom));transform:translate(-50%,14px);
+  background:var(--sumi-3);border:1px solid var(--sumi-4);border-radius:8px;
+  padding:9px 16px;font-size:12.5px;z-index:200;opacity:0;pointer-events:none;transition:.24s var(--ease);
+  max-width:88vw;text-align:center;
+}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+
+.spin{
+  display:inline-block;width:13px;height:13px;border:2px solid var(--sumi-4);
+  border-top-color:var(--kin);border-radius:50%;animation:sp .8s linear infinite;vertical-align:-2px;
+}
+@keyframes sp{to{transform:rotate(360deg)}}
+.empty{text-align:center;color:var(--hai-2);font-size:12.5px;padding:26px 10px;line-height:1.9}
+.hr{height:1px;background:var(--sumi-3);margin:14px 0}
+.kv{display:flex;justify-content:space-between;gap:10px;font-size:13px;padding:5px 0}
+.kv span{color:var(--hai)}
+.kv b{font-weight:400;font-variant-numeric:tabular-nums}
+.seg{display:flex;gap:0;border:1px solid var(--sumi-4);border-radius:7px;overflow:hidden}
+.seg button{flex:1;padding:8px 4px;font-size:12.5px;color:var(--hai);border-right:1px solid var(--sumi-4)}
+.seg button:last-child{border-right:none}
+.seg button.on{background:var(--sumi-3);color:var(--kin)}
+</style>
+</head>
+<body>
+<div id="app">
+
+<header>
+  <div class="brand">まよい帳<small>Amazonの判断ページ台帳</small></div>
+  <button class="hbtn" id="gearBtn">設定</button>
+</header>
+
+<main>
+
+  <!-- ============ ① 帳場(ホーム) ============ -->
+  <section class="view on" id="v-home">
+    <div class="card kin">
+      <h3>つぎの一手</h3>
+      <div id="nextAct" class="muted">まず「棚」で、あなたが買う前に迷ったものを書き出してください。</div>
+      <div class="btnrow" style="margin-top:11px">
+        <button class="btn sm pri" id="nextGo">はじめる</button>
+      </div>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><b id="stCand">0</b><span>迷いの種</span></div>
+      <div class="stat"><b id="stPrep">0</b><span>仕込み中</span></div>
+      <div class="stat"><b id="stPub">0</b><span>公開中</span></div>
+      <div class="stat"><b id="stSale">0</b><span>適格販売</span></div>
+    </div>
+
+    <h2 class="sec">審査までの積み上げ</h2>
+    <div class="card">
+      <div class="kv"><span>公開した記事</span><b><span id="pubNow" class="num">0</span> / 10 件</b></div>
+      <div class="bar"><i id="pubBar" style="width:0%"></i></div>
+      <div class="mini">公式ヘルプでは、審査対象サイトに<b>少なくとも10件の公開されたオリジナル投稿</b>が必要と案内されています。</div>
+      <div class="hr"></div>
+      <div class="kv"><span>適格販売</span><b><span id="saleNow" class="num">0</span> / 3 件</b></div>
+      <div class="bar"><i id="saleBar" style="width:0%"></i></div>
+      <div class="mini" id="saleNote">申請日を設定に入れると、180日の残りを数えます。</div>
+    </div>
+
+    <div class="card">
+      <div class="kv"><span>今月の紹介料</span><b><span id="mFee" class="num">0</span> 円</b></div>
+      <div class="kv"><span>累計の紹介料</span><b><span id="tFee" class="num">0</span> 円</b></div>
+      <div class="hr"></div>
+      <div class="kv"><span>比較軸の在庫</span><b><span id="axStock" class="num">0</span> 本</b></div>
+      <div class="mini" style="margin-top:6px">先に増やすのは記事数ではなく、比較できる<b>迷いの数</b>です。</div>
+    </div>
+
+    <h2 class="sec">この帳面のやり方</h2>
+    <div class="card">
+      <div class="muted">
+        商品から考えず、<b>自分が止まった場所</b>から逆算します。<br>
+        購入履歴 → 買う前に迷ったこと → 比較する基準 → 記事テーマ。<br><br>
+        AIに渡すのは「整理」だけ。<b>事実</b>(公式仕様・使った感想)と<b>判断</b>(誰に勧めるか・出してよいか)は、
+        あなたの手元に残します。
+      </div>
+      <div class="btnrow" style="margin-top:11px">
+        <button class="btn pri" data-go="dig">迷いを掘る</button>
+        <button class="btn" data-go="prep">仕込みの続き</button>
+      </div>
+    </div>
+
+    <div class="note" style="margin-top:14px">
+      <b>おことわり</b> — この帳面はアソシエイトの規約そのものではありません。
+      参加要件・表示義務・レビューの扱いは改定されます。公開前に必ず
+      <b>Amazonアソシエイト・プログラム運営規約とヘルプの原文</b>を確認してください。
+      収益を保証するものでもありません。
+    </div>
+  </section>
+
+  <!-- ============ ② 棚おろし ============ -->
+  <section class="view" id="v-dig">
+    <h2 class="sec">迷いを掘る</h2>
+    <div class="card">
+      <div class="muted" style="margin-bottom:10px">
+        売れ筋ランキングではなく、<b>自分の購入履歴</b>から始めます。
+        買ったカテゴリを10〜20ほど並べてください。思い出せる範囲で、迷った点も一緒に。
+      </div>
+      <div class="field">
+        <label>買ったことがある商品カテゴリ(1行に1つ)</label>
+        <textarea id="digIn" rows="7" placeholder="例)&#10;電気ケトル(0.8Lと1.2Lで迷った)&#10;コードレス掃除機&#10;食洗機用洗剤(粉末かタブレットか)&#10;電動歯ブラシの替えブラシ&#10;猫砂&#10;モバイルバッテリー&#10;ドリップコーヒーの豆"></textarea>
+      </div>
+      <div class="field">
+        <label>最近、買う直前で手が止まった買い物(任意)</label>
+        <textarea id="digIn2" rows="3" placeholder="例)一人暮らしの冷蔵庫。容量で決められず、そのまま閉じた。"></textarea>
+      </div>
+      <button class="btn pri wide" id="digBtn">迷いを洗い出す</button>
+      <div class="mini" id="digCost" style="margin-top:8px"></div>
+    </div>
+    <div id="digOut"></div>
+
+    <h2 class="sec">迷いの種(未着手)</h2>
+    <div id="candList" class="plist"></div>
+    <button class="btn wide sm" id="addThemeBtn" style="margin-top:10px">自分でテーマを足す</button>
+  </section>
+
+  <!-- ============ ③ 仕込み ============ -->
+  <section class="view" id="v-prep">
+    <h2 class="sec">いま仕込むテーマ</h2>
+    <div class="card">
+      <div class="field">
+        <label>テーマ</label>
+        <select id="prepSel"></select>
+      </div>
+      <div id="prepHead" class="muted"></div>
+    </div>
+
+    <div id="prepBody" style="display:none">
+      <h2 class="sec">比べる商品(公式情報と、自分で確かめたことだけ)</h2>
+      <div id="prodList"></div>
+      <button class="btn wide sm" id="addProdBtn">商品を足す</button>
+      <div class="note" style="margin-top:10px">
+        <b>カスタマーレビューの本文・星評価は書き写さないでください。</b>
+        Amazonの参加要件では、所定のAPI経由などの例外を除き、レビューや星評価を自分のサイトへ
+        表示・使用することは認められていません。ここに入れるのは
+        <b>公式の商品情報 / 自分で確かめた仕様 / 自分の使用経験</b>だけです。
+      </div>
+
+      <h2 class="sec">比較の型を組む</h2>
+      <div class="card">
+        <div class="muted" style="margin-bottom:10px">
+          先に「何を基準に選ぶか」を決めます。ここが決まれば、記事の勝負はほとんど付いています。
+        </div>
+        <button class="btn kin wide" id="axBtn">比較軸と構成を組む</button>
+        <div id="axOut" style="margin-top:12px"></div>
+      </div>
+
+      <h2 class="sec">初稿</h2>
+      <div class="card">
+        <div class="muted" style="margin-bottom:10px">
+          与えた情報だけで書かせます。使っていない商品の使用感は出しません。
+        </div>
+        <button class="btn pri wide" id="draftBtn">初稿をつくる</button>
+        <div class="mini" id="draftCost" style="margin-top:8px"></div>
+        <div id="draftOut" style="margin-top:12px"></div>
+      </div>
+
+      <h2 class="sec">検品</h2>
+      <div class="card">
+        <div class="muted" style="margin-bottom:10px">
+          公開前に、体験の作り話・価格の断定・レビューの引き写し・表示義務を点検します。
+        </div>
+        <button class="btn kin wide" id="auditBtn">検品する</button>
+        <div id="auditOut" style="margin-top:12px"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ ④ 台帳 ============ -->
+  <section class="view" id="v-book">
+    <h2 class="sec">判断ページ台帳</h2>
+    <div class="card">
+      <div class="chips" id="filterChips"></div>
+      <div class="mini" id="bookCount"></div>
+    </div>
+    <div id="bookList" class="plist"></div>
+  </section>
+
+  <!-- ============ ⑤ 帳簿 ============ -->
+  <section class="view" id="v-money">
+    <h2 class="sec">記帳</h2>
+    <div class="card">
+      <div class="field">
+        <label>月</label>
+        <select id="ledMonth"></select>
+      </div>
+      <div class="field">
+        <label>適格販売の件数</label>
+        <input type="number" id="ledCount" inputmode="numeric" min="0" placeholder="0">
+      </div>
+      <div class="field">
+        <label>紹介料(円)</label>
+        <input type="number" id="ledFee" inputmode="numeric" min="0" placeholder="0">
+      </div>
+      <button class="btn pri wide" id="ledSave">この月を記帳する</button>
+    </div>
+
+    <h2 class="sec">推移</h2>
+    <div class="card">
+      <div class="graph" id="graph"></div>
+      <div class="mini" style="margin-top:6px">金の棒=紹介料(円)、下の数字=その月に公開した記事数。</div>
+    </div>
+
+    <h2 class="sec">まとめ</h2>
+    <div class="card">
+      <div class="kv"><span>累計 紹介料</span><b><span id="sumFee" class="num">0</span> 円</b></div>
+      <div class="kv"><span>累計 AI利用料(概算)</span><b><span id="sumCost" class="num">0</span> 円</b></div>
+      <div class="hr"></div>
+      <div class="kv"><span>差引</span><b><span id="sumNet" class="num">0</span> 円</b></div>
+      <div class="mini" style="margin-top:8px">
+        AI利用料は送受信したトークンからの概算です(1ドル=<span id="rateShow">155</span>円で換算)。
+        実際の請求額は Anthropic の明細をご確認ください。
+      </div>
+    </div>
+
+    <h2 class="sec">表示と、リンクの作り方</h2>
+    <div class="card">
+      <div class="field">
+        <label>サイトに必ず載せる一文</label>
+        <textarea id="discloseBox" rows="2" readonly></textarea>
+      </div>
+      <button class="btn sm" id="copyDisclose">この一文をコピー</button>
+      <div class="mini" style="margin-top:8px">
+        Amazonは、参加者であることをサイト上へ明示するよう求めています。
+        文言と掲載位置の要件は改定されるため、原文もあわせて確認してください。
+      </div>
+      <div class="hr"></div>
+      <div class="field">
+        <label>ASIN(商品ページのURLに出る10桁)からリンクを作る</label>
+        <input type="text" id="asinIn" placeholder="B0XXXXXXXX">
+      </div>
+      <div class="btnrow">
+        <button class="btn sm" id="mkLink">リンクを作る</button>
+        <button class="btn sm" id="copyLink">コピー</button>
+      </div>
+      <div class="field" style="margin-top:9px">
+        <textarea id="linkOut" rows="2" readonly placeholder="設定でアソシエイトタグを入れてください"></textarea>
+      </div>
+      <div class="mini">
+        タグを付けただけの簡易リンクです。正式なリンクは Amazon の SiteStripe など公式の方法で取得し、
+        リンクの体裁が規約に沿うか確認してください。
+      </div>
+    </div>
+  </section>
+
+</main>
+
+<nav id="tabs">
+  <button data-v="home" class="on"><b>帳</b>帳場</button>
+  <button data-v="dig"><b>棚</b>棚おろし</button>
+  <button data-v="prep"><b>仕</b>仕込み</button>
+  <button data-v="book"><b>台</b>台帳</button>
+  <button data-v="money"><b>簿</b>帳簿</button>
+</nav>
+</div>
+
+<div class="veil" id="veil"><div class="sheet" id="sheet"></div></div>
+<div id="toast"></div>
+
+<script>
+/* ================================================================
+   1. 下ごしらえ(道具・保存)
+   ================================================================ */
+var $ = function(id){ return document.getElementById(id); };
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, function(c){
+  return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
+function num(n){ return (Math.round(n)||0).toLocaleString("ja-JP"); }
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+function ymd(d){ d = d ? new Date(d) : new Date();
+  return d.getFullYear() + "-" + ("0"+(d.getMonth()+1)).slice(-2) + "-" + ("0"+d.getDate()).slice(-2); }
+function ym(d){ return ymd(d).slice(0,7); }
+function lines(s){ return String(s||"").split("\n").map(function(x){ return x.trim(); }).filter(Boolean); }
+
+var toastT = null;
+function toast(msg){
+  var t = $("toast"); t.textContent = msg; t.classList.add("on");
+  clearTimeout(toastT); toastT = setTimeout(function(){ t.classList.remove("on"); }, 2800);
+}
+function copy(text, what){
+  var done = function(){ toast((what||"") + "をコピーしました"); };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(done, function(){ fallbackCopy(text, done); });
+  } else fallbackCopy(text, done);
+}
+function fallbackCopy(text, done){
+  var ta = document.createElement("textarea");
+  ta.value = text; ta.style.position="fixed"; ta.style.opacity="0";
+  document.body.appendChild(ta); ta.select();
+  try{ document.execCommand("copy"); done(); }catch(e){ toast("コピーできませんでした"); }
+  document.body.removeChild(ta);
+}
+function dl(name, text, mime){
+  var blob = new Blob([text], { type: (mime||"text/plain") + ";charset=utf-8" });
+  var a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 800);
+}
+
+var LS = { key:"my.key", model:"my.model", themes:"my.themes", active:"my.active",
+           ledger:"my.ledger", usage:"my.usage", seen:"my.seen", biz:"my.biz" };
+function lsGet(k, def){ try{ var v = localStorage.getItem(k); return v==null ? def : JSON.parse(v); }catch(e){ return def; } }
+function lsSet(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){ toast("この端末に保存できませんでした"); } }
+
+var S = {
+  key:    lsGet(LS.key, "") || "",
+  model:  lsGet(LS.model, "claude-opus-5"),
+  themes: lsGet(LS.themes, []),
+  active: lsGet(LS.active, ""),
+  ledger: lsGet(LS.ledger, {}),          /* "2026-08": { count, fee } */
+  usage:  lsGet(LS.usage, { in:0, out:0 }),
+  biz:    lsGet(LS.biz, { site:"", tag:"", applied:"" })
+};
+function saveThemes(){ lsSet(LS.themes, S.themes); }
+function saveBiz(){ lsSet(LS.biz, S.biz); }
+
+var ST = ["迷いの種","仕込み中","初稿あり","公開中","要更新"];   /* status 0..4 */
+var ST_CLS = ["", "ao", "kin", "ok", "warn"];
+
+function theme(id){ for(var i=0;i<S.themes.length;i++) if(S.themes[i].id === (id||S.active)) return S.themes[i]; return null; }
+function cur(){ return theme(S.active); }
+function touch(t){ t.updatedAt = Date.now(); saveThemes(); }
+
+/* ================================================================
+   2. Claude API(この端末 → Anthropic に直接)
+   ================================================================ */
+var MODELS = {
+  "claude-opus-5":    { label:"Claude Opus 5 — 判断の質を最優先", in:5,  out:25 },
+  "claude-sonnet-5":  { label:"Claude Sonnet 5 — 品質と費用の均衡", in:3, out:15 },
+  "claude-haiku-4-5": { label:"Claude Haiku 4.5 — 速さと安さ", in:1, out:5 }
+};
+var USDJPY = 155;
+function costYen(model, i, o){
+  var m = MODELS[model] || MODELS["claude-opus-5"];
+  return (i/1e6*m.in + o/1e6*m.out) * USDJPY;
+}
+function addUsage(i, o){ S.usage.in += i||0; S.usage.out += o||0; lsSet(LS.usage, S.usage); }
+function usageYen(){ return costYen(S.model, S.usage.in, S.usage.out); }
+function costHint(el, i, o){
+  var yen = costYen(S.model, i, o);
+  $(el).textContent = S.key
+    ? "1回あたりの利用料の目安 " + (yen < 1 ? "1円未満" : "約" + yen.toFixed(0) + "円") + "(" + (MODELS[S.model]||{}).label.split(" —")[0] + ")"
+    : "いまは見本モードです。設定でAPIキーを入れると、あなたの入力で動きます。";
+}
+
+function apiErr(status, body){
+  try{ var j = JSON.parse(body); if(j.error && j.error.message) return j.error.message; }catch(e){}
+  return "HTTP " + status;
+}
+async function send(body){
+  var res;
+  try{
+    res = await fetch("https://api.anthropic.com/v1/messages", {
+      method:"POST",
+      headers:{
+        "content-type":"application/json",
+        "x-api-key": S.key,
+        "anthropic-version":"2023-06-01",
+        "anthropic-dangerous-direct-browser-access":"true"
+      },
+      body: JSON.stringify(body)
+    });
+  }catch(e){ throw new Error("通信できませんでした。電波の良いところで、もう一度お試しください。"); }
+
+  if(!res.ok){
+    var txt = await res.text(), msg = apiErr(res.status, txt);
+    if(res.status === 401) throw new Error("APIキーが違うようです。設定を確かめてください。");
+    if(res.status === 429) throw new Error("短時間に送りすぎです。少し待ってから続けてください。");
+    if(res.status === 529) throw new Error("APIが混み合っています。少し待ってからお試しください。");
+    if(/credit balance|billing/i.test(msg)) throw new Error("Anthropic の残高が足りないようです。");
+    var e2 = new Error(msg); e2.status = res.status; throw e2;
+  }
+  return res.json();
+}
+function pickJson(j){
+  var text = "";
+  (j.content||[]).forEach(function(b){ if(b.type === "text") text += b.text; });
+  try{ return JSON.parse(text); }
+  catch(e){
+    var a = text.indexOf("{"), b2 = text.lastIndexOf("}");
+    if(a >= 0 && b2 > a){ try{ return JSON.parse(text.slice(a, b2+1)); }catch(e2){} }
+    throw new Error("AIの返事を読み取れませんでした。もう一度お試しください。");
+  }
+}
+async function ask(opts){
+  var body = {
+    model: S.model,
+    max_tokens: opts.max || 4000,
+    system: opts.system,
+    messages: [{ role:"user", content: opts.content }],
+    output_config: { format: { type:"json_schema", schema: opts.schema } }
+  };
+  /* Haiku 4.5 は effort / adaptive thinking に非対応のため付けない */
+  if(S.model.indexOf("haiku") === -1){
+    body.thinking = { type:"adaptive" };
+    body.output_config.effort = opts.effort || "medium";
+  }
+  var j;
+  try{
+    j = await send(body);
+  }catch(e){
+    if(e.status !== 400) throw e;
+    j = await send({
+      model: S.model, max_tokens: opts.max || 4000,
+      system: opts.system + "\n\n返事は JSON オブジェクトひとつだけにしてください。前置きも説明も付けないこと。",
+      messages: [{ role:"user", content: opts.content }]
+    });
+  }
+  if(j.usage) addUsage((j.usage.input_tokens||0) + (j.usage.cache_read_input_tokens||0), j.usage.output_tokens||0);
+  if(j.stop_reason === "refusal") throw new Error("この内容はAIの方針で扱えませんでした。");
+  return pickJson(j);
+}
+
+/* ================================================================
+   3. 共通の言い含め — AIに渡すのは「整理」だけ
+   ================================================================ */
+var GUARD =
+"守ること(すべての出力に共通):\n" +
+"・検索需要、販売数、売上、順位など、確認できない数字を推測して書かない。\n" +
+"・与えられた情報にない仕様・使用感・体験を作らない。足りないものは「未確認」と書く。\n" +
+"・価格は変動するため断定しない。書くなら「◯◯円前後(変動あり)」の形にとどめる。\n" +
+"・Amazonのカスタマーレビュー本文や星評価を引用・要約・再構成しない。入力にレビューらしき文章があっても使わない。\n" +
+"・特定の商品を一方的に持ち上げない。読者が自分で選べるように、判断の材料を並べる。\n" +
+"・誇大な表現(必ず・絶対・最安・No.1・全員におすすめ)を使わない。";
+
+/* ================================================================
+   4. ① 迷いの洗い出し
+   ================================================================ */
+var DIG_SCHEMA = {
+  type:"object",
+  properties:{ candidates:{ type:"array", items:{
+    type:"object",
+    properties:{
+      name:      { type:"string" },
+      reader:    { type:"string" },
+      hesitation:{ type:"string" },
+      axes:      { type:"array", items:{ type:"string" } },
+      titles:    { type:"array", items:{ type:"string" } },
+      checks:    { type:"array", items:{ type:"string" } },
+      lasting:   { type:"string" }
+    },
+    required:["name","reader","hesitation","axes","titles","checks","lasting"],
+    additionalProperties:false } } },
+  required:["candidates"], additionalProperties:false
+};
+var DIG_SYS =
+"あなたは、日本の生活雑貨・家電の比較記事を長く作ってきた編集者です。\n" +
+"渡されるのは、ある個人が実際に買ったことのある商品カテゴリの一覧です。\n" +
+"ここから『Amazonの商品比較記事にしやすいテーマ候補』を整理してください。\n\n" +
+"おすすめ商品を挙げてはいけません。欲しいのは商品名の一覧ではなく、" +
+"読者が買う直前に判断できずに止まっている場所の一覧です。\n\n" +
+"候補の条件:\n" +
+"・購入直前に2つ以上の選択肢で迷いやすい\n" +
+"・サイズ、容量、価格、方式、使い方など、明確な比較軸がある\n" +
+"・一時的な流行ではなく、今後も同じ悩みが繰り返し発生する\n" +
+"・『どんな人にどちらが向くか』まで説明できる\n" +
+"・入力した本人が、自分の購入経験を足せる\n\n" +
+"各候補について:\n" +
+"name … 迷いそのものを短く言い切る(例:『固まる猫砂とシステムトイレ用、掃除がラクなのはどっち』)\n" +
+"reader … 想定読者。誰が、どんな場面で検索するか(60字以内)\n" +
+"hesitation … 読者が迷っていること。候補は見えているが決められない状態を具体的に(80字以内)\n" +
+"axes … 比較すべき項目を3〜6個。抽象語ではなく、実際に確かめられる項目\n" +
+"titles … 記事タイトル案を2つ。煽らず、迷いがそのまま出ている形\n" +
+"checks … 書く前に自分の体験として確認すべきことを2〜4個(『何を思い出すか』の指示)\n" +
+"lasting … 商品が入れ替わっても、この迷いが残る理由(50字以内)\n\n" +
+"候補は5〜7個。似た迷いをまとめず、比較軸が違うものを選ぶ。\n\n" + GUARD;
+
+function demoDig(){
+  return { candidates:[
+    { name:"電気ケトルは0.8Lと1.2L、どちらが暮らしに合うか(見本)",
+      reader:"一人暮らしを始めたばかりで、はじめてケトルを買う人",
+      hesitation:"容量の違いが生活のどこに効くのか分からず、大は小を兼ねるのか判断できない",
+      axes:["満水にしたときの重さ","置き場所の設置面積","一度に沸かせる杯数","沸くまでの時間","保温の有無"],
+      titles:["電気ケトルは0.8Lと1.2L、どっちを選ぶ?","一人暮らしのケトル、容量で迷ったときの決め方"],
+      checks:["自分は一度に何杯ぶん沸かしていたか","満水で持ったとき重いと感じたか","置き場所の奥行きは足りたか"],
+      lasting:"容量の悩みは型番が変わっても毎回発生するため", demo:true },
+    { name:"食洗機用洗剤、粉末とタブレットで手間はどう変わるか(見本)",
+      reader:"食洗機を使い始めて、詰め替えの手間が気になってきた人",
+      hesitation:"1回あたりの費用と、計量のラクさのどちらを取るか決められない",
+      axes:["1回あたりの目安費用","計量の手間","保管場所","入れ忘れ・入れすぎの起こりやすさ","汚れの落ち方の想定"],
+      titles:["食洗機用洗剤、粉末とタブレットはどう使い分ける?","詰め替えが面倒になったら見直す食洗機洗剤"],
+      checks:["自分がどちらで何ヶ月使ったか","計量をやめたい理由は何だったか"],
+      lasting:"洗剤は買い替えが続き、そのたび同じ比較になるため", demo:true },
+    { name:"電動歯ブラシの替えブラシ、純正と互換品の違いはどこに出るか(見本)",
+      reader:"本体は持っていて、替えブラシの値段に驚いた人",
+      hesitation:"互換品で問題ないのか、何を見て判断すればいいのか分からない",
+      axes:["1本あたりの費用","本体との適合表示","毛の硬さの表記","交換の目安期間","保証やサポートの扱い"],
+      titles:["電動歯ブラシの替えブラシ、純正と互換品の選び分け","替えブラシ代を下げるとき、何を確認すべきか"],
+      checks:["自分は何ヶ月で交換していたか","互換品を使って気になった点はあるか"],
+      lasting:"本体を持っている限り、交換のたびに同じ判断が必要になるため", demo:true }
+  ]};
+}
+
+async function runDig(){
+  var cats = lines($("digIn").value), extra = $("digIn2").value.trim();
+  if(cats.length < 3){ toast("カテゴリを3つ以上書いてください"); return; }
+  var b = $("digBtn"); b.disabled = true; b.innerHTML = '<span class="spin"></span> 迷いを探しています';
+  try{
+    var out;
+    if(S.key){
+      out = await ask({
+        system: DIG_SYS, effort:"medium", max:4000, schema: DIG_SCHEMA,
+        content:[{ type:"text", text:
+          "【購入した商品カテゴリ】\n" + cats.map(function(c){ return "・" + c; }).join("\n") +
+          (extra ? "\n\n【最近、買う直前で手が止まった買い物】\n" + extra : "") }]
+      });
+    } else {
+      await new Promise(function(r){ setTimeout(r, 600); });
+      out = demoDig();
+    }
+    var arr = (out.candidates||[]).map(function(c){
+      c.id = uid(); c.status = 0; c.products = []; c.createdAt = Date.now(); c.updatedAt = Date.now();
+      return c;
+    });
+    $("digOut").dataset.json = JSON.stringify(arr);
+    $("digOut").innerHTML =
+      '<h2 class="sec">洗い出した迷い</h2>' +
+      arr.map(function(c, i){
+        return '<div class="card">' + candHtml(c) +
+          '<button class="btn sm kin wide" data-adopt="' + i + '" style="margin-top:10px">この迷いを仕込む</button></div>';
+      }).join("");
+    if(!S.key) toast("見本です。設定でAPIキーを入れると、あなたの履歴から出ます");
+  }catch(e){ toast(e.message || "うまくいきませんでした"); }
+  b.disabled = false; b.textContent = "迷いを洗い出す";
+}
+function candHtml(c){
+  return '<div class="cand">' +
+    '<h4>' + esc(c.name) + '</h4><dl>' +
+    '<dt>想定読者</dt><dd>' + esc(c.reader) + '</dd>' +
+    '<dt>読者が迷っていること</dt><dd>' + esc(c.hesitation) + '</dd>' +
+    '<dt>比較する項目</dt><dd>' + (c.axes||[]).map(esc).join(" / ") + '</dd>' +
+    '<dt>タイトル案</dt><dd>' + (c.titles||[]).map(function(t){ return "・" + esc(t); }).join("<br>") + '</dd>' +
+    '<dt>自分の体験として確認すること</dt><dd>' + (c.checks||[]).map(function(t){ return "・" + esc(t); }).join("<br>") + '</dd>' +
+    (c.lasting ? '<dt>商品が変わっても残る理由</dt><dd>' + esc(c.lasting) + '</dd>' : '') +
+    '</dl></div>';
+}
+
+/* ================================================================
+   5. ② 比較の型(比較軸と構成)
+   ================================================================ */
+var CMP_SCHEMA = {
+  type:"object",
+  properties:{
+    axes:{ type:"array", items:{
+      type:"object",
+      properties:{
+        axis:{ type:"string" },
+        why: { type:"string" },
+        rows:{ type:"array", items:{ type:"object",
+          properties:{ product:{ type:"string" }, value:{ type:"string" } },
+          required:["product","value"], additionalProperties:false } },
+        decides:{ type:"string" }
+      },
+      required:["axis","why","rows","decides"], additionalProperties:false } },
+    outline:{ type:"array", items:{ type:"object",
+      properties:{ heading:{ type:"string" }, points:{ type:"array", items:{ type:"string" } } },
+      required:["heading","points"], additionalProperties:false } },
+    fits:{ type:"array", items:{ type:"object",
+      properties:{ who:{ type:"string" }, pick:{ type:"string" }, reason:{ type:"string" } },
+      required:["who","pick","reason"], additionalProperties:false } },
+    gaps:{ type:"array", items:{ type:"string" } }
+  },
+  required:["axes","outline","fits","gaps"], additionalProperties:false
+};
+var CMP_SYS =
+"あなたは比較記事の設計者です。渡された商品情報から、読者が自分で選べるようになる『比較の型』を組みます。\n\n" +
+"axes … 比較軸を4〜7本。ひとつずつに\n" +
+"  axis(軸の名前) / why(この軸が読者の判断を分ける理由) /\n" +
+"  rows(商品ごとの値。入力にない項目は必ず『未確認』と書く) /\n" +
+"  decides(この差によって、誰の選択が変わるのか。スペックを並べただけで終わらせない)\n" +
+"を書く。スペック表を作るだけでは価値になりません。差が誰に効くかまで必ず書いてください。\n\n" +
+"outline … 記事の構成案。見出しと、その節で答えることを箇条書きで。\n" +
+"  最初に結論を決めつけない順序にする。『向かないケース』を必ず1節入れる。\n\n" +
+"fits … 『Aが向く人』『Bが向く人』、そして必要なら『どちらも選ばなくていい人』。\n" +
+"  pick には商品名、または『どちらも選ばない』と書く。\n\n" +
+"gaps … 記事にする前に、書き手が自分で確認しておくべき不足情報。\n" +
+"  入力になかった仕様、体験がない商品、出所が不明な数値などを率直に挙げる。なければ空配列。\n\n" + GUARD;
+
+function prodText(t){
+  return (t.products||[]).map(function(p, i){
+    return "【商品" + String.fromCharCode(65+i) + ": " + (p.name||"名称未記入") + "】\n" +
+      (p.asin ? "・ASIN/型番: " + p.asin + "\n" : "") +
+      "・価格帯: " + (p.price || "未確認") + "\n" +
+      "・公式情報・確かめた仕様:\n" + (p.spec ? p.spec.split("\n").map(function(x){ return "  " + x; }).join("\n") : "  未確認") + "\n" +
+      "・情報の出所: " + (p.source || "未記入") + "\n" +
+      "・使用経験: " + (p.used ? ("あり\n" + (p.exp || "(記入なし)").split("\n").map(function(x){ return "  " + x; }).join("\n")) : "なし(この商品の使用感は書かないこと)");
+  }).join("\n\n");
+}
+function themeText(t){
+  return "【記事テーマ】\n" + (t.name||"") + "\n\n" +
+    "【想定読者】\n" + (t.reader||"未記入") + "\n\n" +
+    "【読者が迷っていること】\n" + (t.hesitation||"未記入") + "\n\n" +
+    (t.axes && t.axes.length ? "【比較したい項目(下書き)】\n" + t.axes.map(function(a){ return "・" + a; }).join("\n") + "\n\n" : "");
+}
+
+function demoCmp(t){
+  var ps = t.products.length ? t.products : [{name:"商品A"},{name:"商品B"}];
+  return {
+    axes:[
+      { axis:"満水にしたときの重さ", why:"毎日持ち上げる回数が多く、負担がそのまま使用頻度に出るため",
+        rows: ps.map(function(p){ return { product:p.name||"商品", value:"未確認(見本)" }; }),
+        decides:"片手で注ぐ人、力の弱い人ほど、この差で選択が変わる" },
+      { axis:"置き場所の設置面積", why:"キッチンの空きが限られる住まいでは、容量より先に決まる条件になるため",
+        rows: ps.map(function(p){ return { product:p.name||"商品", value:"未確認(見本)" }; }),
+        decides:"作業台が狭い人は、容量を諦めてでも小さい方を選ぶことになる" }
+    ],
+    outline:[
+      { heading:"どこで迷うのか", points:["候補は見えているのに決められない状態を言葉にする","この記事で答える範囲を先に示す"] },
+      { heading:"比較する前に決めること", points:["自分の使い方を数える(1回に何杯か)","置き場所の実寸を測る"] },
+      { heading:"軸ごとの違い", points:["軸を1つずつ、差と、その差が効く人を書く"] },
+      { heading:"向かないケース", points:["この用途なら、どちらも買わなくていい場合を書く"] },
+      { heading:"結局どちらか", points:["Aが向く人","Bが向く人"] }
+    ],
+    fits:[
+      { who:"1〜2杯を何度も沸かす人", pick: (ps[0]&&ps[0].name)||"商品A", reason:"1回あたりの待ち時間と重さが軽くなるため" },
+      { who:"来客が多く、まとめて沸かす人", pick: (ps[1]&&ps[1].name)||"商品B", reason:"沸かし直しの回数が減るため" }
+    ],
+    gaps:["見本のため、実際の仕様は入っていません","使用経験のない商品には使用感を書けません"],
+    demo:true
+  };
+}
+
+async function runCmp(){
+  var t = cur(); if(!t) return;
+  if((t.products||[]).length < 2){ toast("比べる商品を2つ以上入れてください"); return; }
+  var b = $("axBtn"); b.disabled = true; b.innerHTML = '<span class="spin"></span> 型を組んでいます';
+  try{
+    var out;
+    if(S.key){
+      out = await ask({ system: CMP_SYS, effort:"medium", max:5000, schema: CMP_SCHEMA,
+        content:[{ type:"text", text: themeText(t) + "【比較する商品情報】\n" + prodText(t) }] });
+    } else { await new Promise(function(r){ setTimeout(r, 600); }); out = demoCmp(t); }
+    t.compare = out; if(t.status < 1) t.status = 1; touch(t);
+    renderPrep(); renderAll();
+    toast("比較の型ができました");
+  }catch(e){ toast(e.message || "うまくいきませんでした"); }
+  b.disabled = false; b.textContent = "比較軸と構成を組む";
+}
+
+/* ================================================================
+   6. ③ 初稿
+   ================================================================ */
+var DRAFT_SCHEMA = {
+  type:"object",
+  properties:{
+    title:{ type:"string" },
+    body_md:{ type:"string" },
+    cautions:{ type:"array", items:{ type:"string" } },
+    missing:{ type:"array", items:{ type:"string" } }
+  },
+  required:["title","body_md","cautions","missing"], additionalProperties:false
+};
+var DRAFT_SYS =
+"以下の情報をもとに、Amazonの商品を比較する記事の初稿を書きます。\n" +
+"目的は商品を強くおすすめすることではありません。読者が『自分ならどちらを選べばいいか』を" +
+"自分で判断できる記事にしてください。\n\n" +
+"書き方:\n" +
+"・最初に結論を決めつけない。まず読者の迷いを言葉にし、判断の前提をそろえる\n" +
+"・比較軸ごとに違いを整理し、その差によって誰の選択が変わるかまで書く\n" +
+"・メリットだけでなく、向かないケースを必ず書く\n" +
+"・『人気だから』ではなく用途で判断する\n" +
+"・最後に『Aが向く人』『Bが向く人』、必要なら『どちらも選ばなくていい人』を明確にする\n" +
+"・使用経験『なし』の商品については、使用感・体験・期間を一切書かない。" +
+"公式仕様と、そこから言える条件(『この条件ならAが候補に入りやすい』)までにとどめる\n" +
+"・使用経験『あり』の商品だけ、渡された体験の範囲で具体的に書く。書かれていないことは足さない\n\n" +
+"body_md は Markdown で書いてください。使ってよいのは見出し(##, ###)、段落、箇条書き、" +
+"表(| で区切る)、水平線(---)、強調(**) だけです。h1 は書かない(title が見出しになります)。\n\n" +
+"アソシエイトリンクを置くべき場所には、その行に単独で\n" +
+"[[LINK:ここで読者が何を確認したくなるか]]\n" +
+"と書いてください。3〜5か所。読者がまだ判断材料を持っていない冒頭には置かない。" +
+"『比較軸を読んで条件が定まった直後』『向き不向きを読み終えた後』など、" +
+"読者が商品ページで最終確認したくなる場所に置く。リンクのURLやタグは書かないこと。\n\n" +
+"cautions … 公開前に人間が必ず確認すべき点(変動する価格、規約上の表示、確認していない仕様など)\n" +
+"missing … 情報が足りず書けなかったこと。ごまかさずに挙げる\n\n" +
+"文字数は2000〜3500字程度。見出しは読者の疑問の形にする。\n\n" + GUARD;
+
+function demoDraft(t){
+  var a = (t.products[0]||{}).name || "商品A", b = (t.products[1]||{}).name || "商品B";
+  return { title: t.name || "比較記事の見本",
+    body_md:
+"これは見本モードの初稿です。設定でAPIキーを入れると、入力した情報だけを使って本文が生成されます。\n\n" +
+"## どこで迷っているのか\n\n候補は見えているのに決められない、という状態を最初に言葉にします。" +
+"ここで読者が『そう、それが知りたかった』と思えるかどうかで、続きを読むかが決まります。\n\n" +
+"## 比べる前に、自分の使い方を数える\n\n" +
+"- 1回にどれくらい使うか\n- 置き場所の実寸\n- 手入れにかけられる時間\n\n" +
+"[[LINK:自分の条件が決まった直後。仕様を実物のページで確かめたくなる場所]]\n\n" +
+"## 軸ごとの違い\n\n| 比較軸 | " + a + " | " + b + " |\n|---|---|---|\n| 見本の軸1 | 未確認 | 未確認 |\n| 見本の軸2 | 未確認 | 未確認 |\n\n" +
+"表を出したら、その差で**誰の選択が変わるのか**まで書きます。\n\n" +
+"## どちらも選ばなくていい場合\n\n用途によっては、買わない判断が正解になります。ここを書くと記事の信用が変わります。\n\n" +
+"[[LINK:向き不向きを読み終えた後。最終確認のための場所]]\n\n" +
+"## 結局どちらか\n\n- **" + a + "が向く人** — (見本)\n- **" + b + "が向く人** — (見本)\n",
+    cautions:["価格は変動するため、記事では断定しないでください","アソシエイトの表示文をページに入れてください"],
+    missing:["見本のため、実際の仕様は反映されていません"], demo:true };
+}
+
+async function runDraft(){
+  var t = cur(); if(!t) return;
+  if(!t.compare){ toast("先に比較軸と構成を組んでください"); return; }
+  var b = $("draftBtn"); b.disabled = true; b.innerHTML = '<span class="spin"></span> 初稿を書いています';
+  try{
+    var out;
+    if(S.key){
+      var c = t.compare;
+      out = await ask({ system: DRAFT_SYS, effort:"high", max:8000, schema: DRAFT_SCHEMA,
+        content:[{ type:"text", text:
+          themeText(t) + "【比較する商品情報】\n" + prodText(t) + "\n\n" +
+          "【組み終えた比較軸】\n" + (c.axes||[]).map(function(a){
+            return "・" + a.axis + "(" + a.why + ")\n" +
+              (a.rows||[]).map(function(r){ return "   - " + r.product + ": " + r.value; }).join("\n") +
+              "\n   → " + a.decides; }).join("\n") + "\n\n" +
+          "【構成案】\n" + (c.outline||[]).map(function(o){
+            return "・" + o.heading + "\n" + (o.points||[]).map(function(p){ return "   - " + p; }).join("\n"); }).join("\n") + "\n\n" +
+          "【向き不向き】\n" + (c.fits||[]).map(function(f){ return "・" + f.who + " → " + f.pick + "(" + f.reason + ")"; }).join("\n") +
+          "\n\nネット上の情報を知っている前提で補完せず、与えた情報だけで初稿を作ってください。" }] });
+    } else { await new Promise(function(r){ setTimeout(r, 800); }); out = demoDraft(t); }
+    t.draft = out; t.audit = null;
+    if(t.status < 2) t.status = 2;
+    touch(t); renderPrep(); renderAll();
+    toast("初稿ができました");
+  }catch(e){ toast(e.message || "うまくいきませんでした"); }
+  b.disabled = false; b.textContent = "初稿をつくる";
+}
+
+/* ================================================================
+   7. Markdown を読める形に(見出し・表・箇条書き・リンクの置き場)
+   ================================================================ */
+function inline(s){
+  return esc(s).replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
+}
+function mdToHtml(md){
+  var src = String(md||"").replace(/\r/g,"").split("\n");
+  var out = [], buf = [], i;
+  function flush(){
+    if(!buf.length) return;
+    out.push("<p>" + buf.map(inline).join("<br>") + "</p>");
+    buf = [];
+  }
+  for(i=0;i<src.length;i++){
+    var L = src[i], m;
+    if(!L.trim()){ flush(); continue; }
+    if((m = L.match(/^\[\[LINK:\s*([\s\S]*?)\]\]\s*$/))){
+      flush();
+      out.push('<div class="lk"><b>&#9670; ここにアソシエイトリンク</b>' + esc(m[1]) + '</div>');
+      continue;
+    }
+    if(/^---+\s*$/.test(L)){ flush(); out.push("<hr>"); continue; }
+    if((m = L.match(/^(#{1,4})\s+(.*)$/))){
+      flush();
+      var lv = Math.min(3, Math.max(2, m[1].length));
+      out.push("<h" + lv + ">" + inline(m[2]) + "</h" + lv + ">");
+      continue;
+    }
+    if(/^\s*\|/.test(L)){
+      flush();
+      var rows = [];
+      while(i < src.length && /^\s*\|/.test(src[i])){ rows.push(src[i]); i++; }
+      i--;
+      var cells = rows.map(function(r){
+        return r.trim().replace(/^\||\|$/g,"").split("|").map(function(c){ return c.trim(); });
+      }).filter(function(r){ return !r.every(function(c){ return /^:?-{2,}:?$/.test(c) || c===""; }); });
+      if(cells.length){
+        out.push('<div class="tscroll"><table><tr>' + cells[0].map(function(c){ return "<th>" + inline(c) + "</th>"; }).join("") + "</tr>" +
+          cells.slice(1).map(function(r){ return "<tr>" + r.map(function(c){ return "<td>" + inline(c) + "</td>"; }).join("") + "</tr>"; }).join("") +
+          "</table></div>");
+      }
+      continue;
+    }
+    if(/^\s*[-*・]\s+/.test(L) || /^\s*\d+[.)]\s+/.test(L)){
+      flush();
+      var ol = /^\s*\d+[.)]\s+/.test(L), items = [];
+      while(i < src.length && (/^\s*[-*・]\s+/.test(src[i]) || /^\s*\d+[.)]\s+/.test(src[i]))){
+        items.push(src[i].replace(/^\s*(?:[-*・]|\d+[.)])\s+/, "")); i++;
+      }
+      i--;
+      out.push("<" + (ol?"ol":"ul") + ">" + items.map(function(x){ return "<li>" + inline(x) + "</li>"; }).join("") + "</" + (ol?"ol":"ul") + ">");
+      continue;
+    }
+    buf.push(L);
+  }
+  flush();
+  return out.join("");
+}
+
+/* ================================================================
+   8. ④ 検品 — まず機械が数え、そのあとAIが読む
+   ================================================================ */
+function discloseText(){
+  var site = (S.biz.site || "[サイト名]").trim();
+  return "Amazonのアソシエイトとして、" + site + "は適格販売により収入を得ています。";
+}
+
+/* 機械でできる点検。AIに聞かなくても分かることは、通信せずに数える。 */
+function localChecks(t){
+  var md = (t.draft && t.draft.body_md) || "";
+  var plain = md.replace(/\[\[LINK:[\s\S]*?\]\]/g, "");
+  var out = [];
+  var usedAny = (t.products||[]).some(function(p){ return p.used; });
+  var noUse = (t.products||[]).filter(function(p){ return !p.used && p.name; });
+
+  var expRe = /(使ってみ|使ってい|実際に使|数週間|数か月|数ヶ月|半年ほど|届いてから|触った感じ|持ってみ|試したところ|愛用)/;
+  if(expRe.test(plain) && !usedAny){
+    out.push({ level:"高", what:"使用経験がないのに、使った前提の書き方が入っています",
+      fix:"該当箇所を『公式仕様では〜』『この条件ならAが候補に入りやすい』に置き換えてください" });
+  } else if(expRe.test(plain) && noUse.length){
+    var hit = noUse.filter(function(p){
+      var idx = plain.indexOf(p.name);
+      return idx >= 0 && expRe.test(plain.slice(Math.max(0,idx-120), idx+160));
+    });
+    if(hit.length) out.push({ level:"高", what:"使っていない商品(" + hit.map(function(p){ return p.name; }).join("・") + ")の近くに、体験らしき記述があります",
+      fix:"その商品の使用感は削り、公式仕様と条件の話にとどめてください" });
+  }
+
+  if(/(★|☆|星[1-5一二三四五]|レビューで|口コミで|高評価|低評価|レビュー件数|評価は[0-9.]+)/.test(plain)){
+    out.push({ level:"高", what:"カスタマーレビュー・星評価を引いたような表現があります",
+      fix:"Amazonの参加要件では、所定のAPI経由などの例外を除きレビューや星評価の表示・使用は認められていません。自分で確かめた事実に置き換えてください" });
+  }
+
+  var priceHits = (plain.match(/[0-9０-９][0-9０-９,，]{2,}\s*円/g) || []).filter(function(s){
+    var idx = plain.indexOf(s);
+    return !/(前後|程度|ほど|くらい|変動|時点|目安)/.test(plain.slice(idx, idx + s.length + 12));
+  });
+  if(priceHits.length) out.push({ level:"中", what:"価格を断定している箇所があります(" + priceHits.slice(0,3).join("・") + ")",
+    fix:"『◯◯円前後(変動あり・記事執筆時点)』の形にするか、価格の記述自体を外してください" });
+
+  var big = (plain.match(/(必ず|絶対に|最安|No\.?1|日本一|間違いなく|誰にでもおすすめ|全員におすすめ)/g) || []);
+  if(big.length) out.push({ level:"中", what:"言い切りすぎの表現があります(" + big.slice(0,3).join("・") + ")",
+    fix:"条件付きの言い方に直してください" });
+
+  if(!/(向かない|選ばなくて|おすすめしません|避けた方|買わなくて|不向き)/.test(plain))
+    out.push({ level:"中", what:"『買わなくていい理由』が書かれていません",
+      fix:"どの用途なら選ばなくてよいかを1節足すと、比較記事として成立します" });
+
+  if(!/向く人/.test(plain))
+    out.push({ level:"中", what:"最後の『Aが向く人 / Bが向く人』がはっきりしません",
+      fix:"結びで、誰にどちらを勧めるかを言い切ってください" });
+
+  var links = (md.match(/\[\[LINK:/g) || []).length;
+  if(links === 0) out.push({ level:"中", what:"リンクの置き場が1つもありません",
+    fix:"読者が商品ページで最終確認したくなる場所に、2〜4か所ぶん置いてください" });
+  else if(links > 5) out.push({ level:"中", what:"リンクの置き場が" + links + "か所あります",
+    fix:"判断材料を読む前に購入ボタンが並ぶと、読者は決められません。3〜5か所に絞ってください" });
+
+  if(!S.biz.site) out.push({ level:"中", what:"アソシエイトの表示に入れるサイト名が未設定です",
+    fix:"設定でサイト名を入れると、掲載する一文を作れます" });
+
+  var len = plain.replace(/\s/g,"").length;
+  if(len && len < 1200) out.push({ level:"低", what:"本文が" + len + "字と短めです",
+    fix:"比較軸ごとの『誰の選択が変わるか』を厚くすると、判断ページとして持ちます" });
+
+  if(!out.length) out.push({ level:"合", what:"機械でできる点検では、引っかかりませんでした",
+    fix:"ここから先は、事実と体験が本当かどうかの確認です" });
+  return out;
+}
+
+var AUDIT_SCHEMA = {
+  type:"object",
+  properties:{
+    items:{ type:"array", items:{ type:"object",
+      properties:{ level:{ type:"string" }, what:{ type:"string" }, fix:{ type:"string" } },
+      required:["level","what","fix"], additionalProperties:false } },
+    verdict:{ type:"string" }
+  },
+  required:["items","verdict"], additionalProperties:false
+};
+var AUDIT_SYS =
+"あなたは、公開前の記事を読む校閲者です。褒めずに、公開したら困る箇所だけを挙げてください。\n\n" +
+"見るところ:\n" +
+"1. 与えられていない事実・使用感・体験が書かれていないか(最重要)。使用経験『なし』の商品について" +
+"使った前提の記述があれば必ず指摘する\n" +
+"2. Amazonのカスタマーレビューや星評価を引き写した、あるいは言い換えただけに見える記述がないか\n" +
+"3. 価格や在庫など、変動するものを断定していないか\n" +
+"4. 商品を褒めるだけになっていないか。向かないケース、買わなくていい場合が書かれているか\n" +
+"5. スペックを並べただけで『誰の選択が変わるか』が抜けている箇所\n" +
+"6. 読者が判断材料を得る前にリンクへ誘導していないか\n" +
+"7. 断定・誇大・根拠のない数字\n\n" +
+"level は 高 / 中 / 低。what は問題の所在を40字以内で、fix は書き換えの方向を具体的に。\n" +
+"問題がなければ items は空配列にし、水増しの指摘はしない。\n" +
+"verdict は『いま公開してよいか』を60字以内で率直に。";
+
+async function runAudit(){
+  var t = cur(); if(!t) return;
+  if(!t.draft){ toast("先に初稿をつくってください"); return; }
+  var b = $("auditBtn"); b.disabled = true; b.innerHTML = '<span class="spin"></span> 読んでいます';
+  var local = localChecks(t), ai = null;
+  try{
+    if(S.key){
+      ai = await ask({ system: AUDIT_SYS, effort:"medium", max:3000, schema: AUDIT_SCHEMA,
+        content:[{ type:"text", text:
+          themeText(t) + "【商品情報と使用経験の有無】\n" + prodText(t) +
+          "\n\n【点検する初稿】\n" + t.draft.title + "\n\n" + t.draft.body_md }] });
+    } else {
+      await new Promise(function(r){ setTimeout(r, 500); });
+      ai = { items:[{ level:"低", what:"見本モードのため、AIの読みは動いていません", fix:"設定でAPIキーを入れてください" }],
+             verdict:"見本モードです。上の機械点検だけ実際に動いています。", demo:true };
+    }
+  }catch(e){ toast(e.message || "AIの点検はできませんでした(機械点検だけ出します)"); }
+  t.audit = { local: local, ai: ai, at: Date.now() };
+  touch(t); renderPrep();
+  b.disabled = false; b.textContent = "検品する";
+}
+
+/* ================================================================
+   9. ⑤ 型の差し替え — 記事を書き直さず、新しい商品を入れ替える
+   ================================================================ */
+var REFRESH_SCHEMA = {
+  type:"object",
+  properties:{
+    changes:{ type:"array", items:{ type:"object",
+      properties:{ where:{ type:"string" }, before:{ type:"string" }, after:{ type:"string" }, why:{ type:"string" } },
+      required:["where","before","after","why"], additionalProperties:false } },
+    axes_note:{ type:"string" },
+    keep:{ type:"array", items:{ type:"string" } }
+  },
+  required:["changes","axes_note","keep"], additionalProperties:false
+};
+var REFRESH_SYS =
+"公開ずみの比較記事に、新しい商品情報が入りました。記事全体を書き直してはいけません。\n" +
+"すでにある『判断の型』(比較軸と、その差が誰に効くかという説明)は資産です。" +
+"商品が入れ替わっても、買う前の迷いは繰り返されます。\n\n" +
+"やること:\n" +
+"changes … 直すべき箇所だけを挙げる。where(どの見出し・どの部分か) / before(いまの記述の要約) /" +
+"after(差し替え後の文。そのまま貼れる形で) / why(直す理由)\n" +
+"axes_note … 比較軸そのものを見直す必要があるか。必要なら何をどう足すか(80字以内)。不要なら『軸の変更は不要』と書く\n" +
+"keep … 触らなくてよい部分。書き手が安心して残せるように具体的に挙げる\n\n" +
+"直す必要のない箇所を提案しないこと。5件以内に絞ってください。\n\n" + GUARD;
+
+async function runRefresh(id){
+  var t = theme(id); if(!t || !t.draft) return;
+  var b = $("refBtn"); if(b){ b.disabled = true; b.innerHTML = '<span class="spin"></span> 差分を見ています'; }
+  try{
+    var out;
+    if(S.key){
+      out = await ask({ system: REFRESH_SYS, effort:"medium", max:4000, schema: REFRESH_SCHEMA,
+        content:[{ type:"text", text:
+          themeText(t) + "【いまの商品情報(新しいものを含む)】\n" + prodText(t) +
+          "\n\n【公開ずみの本文】\n" + t.draft.title + "\n\n" + t.draft.body_md }] });
+    } else {
+      await new Promise(function(r){ setTimeout(r, 600); });
+      out = { changes:[{ where:"軸ごとの違い(見本)", before:"旧型番の仕様", after:"新しい商品の仕様に置き換えた文",
+        why:"見本モードのため固定の例です" }], axes_note:"軸の変更は不要(見本)",
+        keep:["読者の迷いを言葉にした冒頭","向かないケースの節"], demo:true };
+    }
+    t.refresh = out; t.status = 3; touch(t);
+    openTheme(t.id); renderAll();
+  }catch(e){ toast(e.message || "うまくいきませんでした"); if(b){ b.disabled = false; b.textContent = "差し替えの案を出す"; } }
+}
+
+/* ================================================================
+   10. 数え上げ
+   ================================================================ */
+function byStatus(s){ return S.themes.filter(function(t){ return t.status === s; }); }
+function pubCount(){ return S.themes.filter(function(t){ return t.status >= 3; }).length; }
+function saleCount(){ return Object.keys(S.ledger).reduce(function(a,m){ return a + (S.ledger[m].count||0); }, 0); }
+function feeTotal(){ return Object.keys(S.ledger).reduce(function(a,m){ return a + (S.ledger[m].fee||0); }, 0); }
+function axStock(){
+  return S.themes.reduce(function(a,t){
+    return a + ((t.compare && t.compare.axes) ? t.compare.axes.length : (t.axes||[]).length);
+  }, 0);
+}
+function daysLeft(){
+  if(!S.biz.applied) return null;
+  var d = new Date(S.biz.applied); if(isNaN(d)) return null;
+  return 180 - Math.floor((Date.now() - d.getTime()) / 86400000);
+}
+function monthsBack(n){
+  var a = [], d = new Date();
+  for(var i=0;i<n;i++){ a.unshift(ym(d)); d.setMonth(d.getMonth()-1); }
+  return a;
+}
+function pubInMonth(m){
+  return S.themes.filter(function(t){ return t.status >= 3 && t.publishedAt && ym(t.publishedAt) === m; }).length;
+}
+
+/* ================================================================
+   11. 画面
+   ================================================================ */
+function renderHome(){
+  $("stCand").textContent = byStatus(0).length;
+  $("stPrep").textContent = byStatus(1).length + byStatus(2).length;
+  $("stPub").textContent = pubCount();
+  $("stSale").textContent = saleCount();
+
+  var p = pubCount();
+  $("pubNow").textContent = p;
+  $("pubBar").style.width = Math.min(100, p/10*100) + "%";
+  var sc = saleCount();
+  $("saleNow").textContent = sc;
+  $("saleBar").style.width = Math.min(100, sc/3*100) + "%";
+  var dl2 = daysLeft();
+  $("saleNote").innerHTML = dl2 == null
+    ? "設定に申請日を入れると、180日の残りを数えます。申請後180日以内に3件の適格販売が発生すると、申請内容の審査が行われます。"
+    : (dl2 >= 0
+        ? "申請から180日まで、あと <b>" + dl2 + "日</b>。この間に3件の適格販売が必要です。"
+        : "申請から180日を過ぎています。要件は改定されることがあるので、アソシエイトの管理画面で状況を確認してください。");
+
+  $("mFee").textContent = num((S.ledger[ym()]||{}).fee || 0);
+  $("tFee").textContent = num(feeTotal());
+  $("axStock").textContent = axStock();
+
+  var n = nextAction();
+  $("nextAct").innerHTML = n.html;
+  $("nextGo").textContent = n.label;
+  $("nextGo").dataset.act = n.act;
+  $("nextGo").dataset.id = n.id || "";
+}
+function nextAction(){
+  if(!S.themes.length) return { act:"dig", label:"迷いを掘る",
+    html:"まだ何もありません。<b>棚おろし</b>で、あなたが買う前に迷ったものを書き出すところから。" };
+  var d = byStatus(1).concat(byStatus(2)).filter(function(t){ return !t.draft; })[0];
+  if(d) return { act:"prep", id:d.id, label:"初稿へ進む",
+    html:"「" + esc(d.name) + "」の比較軸まで出来ています。次は<b>初稿</b>です。" };
+  var a = S.themes.filter(function(t){ return t.draft && !t.audit; })[0];
+  if(a) return { act:"prep", id:a.id, label:"検品する",
+    html:"「" + esc(a.name) + "」の初稿があります。公開前に<b>検品</b>してください。" };
+  var u = S.themes.filter(function(t){ return t.draft && t.audit && t.status < 3; })[0];
+  if(u) return { act:"book", id:u.id, label:"公開にする",
+    html:"「" + esc(u.name) + "」は検品まで終わっています。手を入れ終えたら<b>公開</b>として記帳を。" };
+  var c = byStatus(0)[0];
+  if(c) return { act:"prep", id:c.id, label:"仕込みにかかる",
+    html:"迷いの種が" + byStatus(0).length + "件あります。「" + esc(c.name) + "」から仕込みましょう。" };
+  var need = byStatus(4)[0];
+  if(need) return { act:"book", id:need.id, label:"差し替える",
+    html:"「" + esc(need.name) + "」に<b>要更新</b>の印が付いています。商品情報だけ入れ替えましょう。" };
+  return { act:"dig", label:"迷いを掘る",
+    html:"手持ちはすべて公開ずみです。増やすのは記事数ではなく、比較できる<b>迷いの数</b>。" };
+}
+
+function themeRow(t){
+  var badge = '<span class="badge ' + (ST_CLS[t.status]||"") + '">' + ST[t.status] + '</span>';
+  var hi = t.audit ? (t.audit.local||[]).concat((t.audit.ai&&t.audit.ai.items)||[])
+    .filter(function(x){ return x.level === "高"; }).length : 0;
+  return '<div class="prow" data-id="' + t.id + '">' +
+    '<div class="ptitle">' + esc(t.name) + '</div>' +
+    '<div class="pmeta">' + badge +
+      '<span>商品 ' + (t.products||[]).length + '</span>' +
+      ((t.products||[]).some(function(p){ return p.used; }) ? '<span class="badge ok">体験あり</span>' : '<span class="badge">体験なし</span>') +
+      (t.compare ? '<span>軸 ' + (t.compare.axes||[]).length + '</span>' : '') +
+      (t.audit ? (hi ? '<span class="badge ng">要直し ' + hi + '</span>' : '<span class="badge ok">検品済</span>') : '') +
+      ((t.draft && t.draft.demo) || (t.compare && t.compare.demo) ? '<span class="badge">見本</span>' : '') +
+    '</div></div>';
+}
+
+function renderDig(){
+  var c = byStatus(0);
+  $("candList").innerHTML = c.length ? c.map(themeRow).join("")
+    : '<div class="empty">まだ迷いの種がありません。<br>上の欄に、買ったことがあるカテゴリを並べてください。</div>';
+  costHint("digCost", 900, 2200);
+}
+
+function prodCard(p, i){
+  return '<div class="pcard" data-pid="' + p.id + '">' +
+    '<div class="ph"><b>' + String.fromCharCode(65+i) + '. ' + esc(p.name || "名称未記入") + '</b>' +
+      '<button class="x" data-del="' + p.id + '">×</button></div>' +
+    '<div class="mini">' +
+      (p.price ? "価格帯 " + esc(p.price) + " / " : "") +
+      (p.used ? '<span style="color:var(--ok)">使用経験あり</span>' : '使用経験なし(使用感は書きません)') +
+      (p.asin ? " / " + esc(p.asin) : "") + '</div>' +
+    (p.spec ? '<div class="mini" style="margin-top:5px;color:var(--hai)">' + esc(p.spec).replace(/\n/g,"<br>") + '</div>' : '') +
+    '<button class="btn sm" data-edit="' + p.id + '" style="margin-top:8px">直す</button>' +
+    '</div>';
+}
+
+function renderPrep(){
+  var sel = $("prepSel");
+  var list = S.themes.slice().sort(function(a,b){ return a.status - b.status || b.updatedAt - a.updatedAt; });
+  sel.innerHTML = list.length
+    ? list.map(function(t){ return '<option value="' + t.id + '"' + (t.id === S.active ? " selected" : "") + '>【' + ST[t.status] + '】' + esc(t.name) + '</option>'; }).join("")
+    : '<option value="">— まだテーマがありません —</option>';
+  var t = cur();
+  if(!t){
+    $("prepBody").style.display = "none";
+    $("prepHead").innerHTML = '棚おろしで迷いを洗い出すか、「自分でテーマを足す」から始めてください。';
+    return;
+  }
+  $("prepBody").style.display = "";
+  $("prepHead").innerHTML =
+    '<div style="color:var(--kinari);margin-bottom:6px">' + esc(t.name) + '</div>' +
+    '<b style="color:var(--kin);font-weight:400;font-size:11px;letter-spacing:.1em">想定読者</b> ' + esc(t.reader || "未記入") + '<br>' +
+    '<b style="color:var(--kin);font-weight:400;font-size:11px;letter-spacing:.1em">迷っていること</b> ' + esc(t.hesitation || "未記入") +
+    '<div class="btnrow" style="margin-top:10px"><button class="btn sm" id="editThemeBtn">テーマを直す</button></div>';
+  $("editThemeBtn").addEventListener("click", function(){ openThemeEdit(t.id); });
+
+  $("prodList").innerHTML = (t.products||[]).length
+    ? t.products.map(prodCard).join("")
+    : '<div class="empty">比べる商品をまだ入れていません。<br>公式情報と、自分で確かめたことだけを入れてください。</div>';
+
+  /* 比較の型 */
+  var c = t.compare;
+  $("axOut").innerHTML = !c ? '' :
+    '<div class="tscroll"><table class="axtable"><tr><th>比較軸</th>' +
+      ((c.axes[0]&&c.axes[0].rows)||[]).map(function(r){ return "<th>" + esc(r.product) + "</th>"; }).join("") +
+    '</tr>' +
+    (c.axes||[]).map(function(a){
+      return "<tr><td class='ax'>" + esc(a.axis) + "</td>" +
+        (a.rows||[]).map(function(r){ return "<td>" + esc(r.value) + "</td>"; }).join("") + "</tr>" +
+        "<tr><td colspan='" + (1 + ((a.rows||[]).length)) + "' style='color:var(--hai);font-size:11.5px;padding-top:0'>→ " + esc(a.decides) + "</td></tr>";
+    }).join("") + '</table></div>' +
+    '<h3 style="font-family:var(--mincho);font-size:13px;letter-spacing:.14em;color:var(--kin);margin:16px 0 6px;font-weight:400">構成案</h3>' +
+    '<div class="muted">' + (c.outline||[]).map(function(o){
+      return "◆ " + esc(o.heading) + "<br>" + (o.points||[]).map(function(p){ return "　・" + esc(p); }).join("<br>");
+    }).join("<br><br>") + '</div>' +
+    '<h3 style="font-family:var(--mincho);font-size:13px;letter-spacing:.14em;color:var(--kin);margin:16px 0 6px;font-weight:400">誰に、どれが向くか</h3>' +
+    '<div class="muted">' + (c.fits||[]).map(function(f){
+      return "・<b style='color:var(--kinari);font-weight:400'>" + esc(f.who) + "</b> → " + esc(f.pick) + "(" + esc(f.reason) + ")"; }).join("<br>") + '</div>' +
+    ((c.gaps||[]).length ? '<div class="note" style="margin-top:12px"><b>書く前に自分で確かめること</b><br>' +
+      c.gaps.map(function(g){ return "・" + esc(g); }).join("<br>") + '</div>' : '');
+
+  /* 初稿 */
+  var d = t.draft;
+  $("draftOut").innerHTML = !d ? '' :
+    '<div class="draft"><h1>' + esc(d.title) + '</h1>' + mdToHtml(d.body_md) + '</div>' +
+    '<div class="btnrow" style="margin-top:10px">' +
+      '<button class="btn sm kin" id="copyMd">本文をコピー</button>' +
+      '<button class="btn sm" id="saveMd">.md で保存</button>' +
+    '</div>' +
+    ((d.cautions||[]).length ? '<div class="note" style="margin-top:11px"><b>公開前に人が確かめること</b><br>' +
+      d.cautions.map(function(x){ return "・" + esc(x); }).join("<br>") + '</div>' : '') +
+    ((d.missing||[]).length ? '<div class="note" style="margin-top:9px"><b>情報が足りず書けなかったこと</b><br>' +
+      d.missing.map(function(x){ return "・" + esc(x); }).join("<br>") + '</div>' : '');
+  if(d){
+    $("copyMd").addEventListener("click", function(){ copy(draftText(t), "本文"); });
+    $("saveMd").addEventListener("click", function(){
+      dl((t.name||"draft").replace(/[\\\/:*?"<>|]/g,"_").slice(0,40) + ".md", draftText(t), "text/markdown");
+    });
+  }
+  costHint("draftCost", 2500, 3000);
+
+  /* 検品 */
+  var a2 = t.audit;
+  $("auditOut").innerHTML = !a2 ? '' :
+    '<h3 style="font-family:var(--mincho);font-size:13px;letter-spacing:.14em;color:var(--kin);margin:2px 0 4px;font-weight:400">機械の点検</h3>' +
+    a2.local.map(chkHtml).join("") +
+    (a2.ai ? '<h3 style="font-family:var(--mincho);font-size:13px;letter-spacing:.14em;color:var(--kin);margin:16px 0 4px;font-weight:400">AIの読み</h3>' +
+      ((a2.ai.items||[]).length ? a2.ai.items.map(chkHtml).join("")
+        : '<div class="chk pass"><b>指摘はありません</b></div>') +
+      (a2.ai.verdict ? '<div class="note kin" style="margin-top:11px"><b>いま公開してよいか</b><br>' + esc(a2.ai.verdict) + '</div>' : '') : '') +
+    '<div class="note" style="margin-top:11px">' +
+      'サイトに載せる一文:<br><span style="color:var(--kinari)">' + esc(discloseText()) + '</span><br>' +
+      '文言と掲載位置の要件は改定されます。公開前に原文を確認してください。</div>' +
+    '<button class="btn kin wide sm" id="pubBtn" style="margin-top:12px">直し終えた。公開にする</button>';
+  if(a2) $("pubBtn").addEventListener("click", function(){ openPublish(t.id); });
+}
+function chkHtml(x){
+  var cls = x.level === "高" ? "hi" : x.level === "中" ? "mid" : x.level === "合" ? "pass" : "lo";
+  return '<div class="chk ' + cls + '"><b>[' + esc(x.level) + '] ' + esc(x.what) + '</b><span>' + esc(x.fix) + '</span></div>';
+}
+function draftText(t){
+  var d = t.draft; if(!d) return "";
+  return "# " + d.title + "\n\n" + d.body_md.replace(/\[\[LINK:([\s\S]*?)\]\]/g, "> ◆ ここにアソシエイトリンク — $1") +
+    "\n\n---\n\n" + discloseText() + "\n";
+}
+
+var filterK = "all";
+function renderBook(){
+  var chips = [["all","すべて"]].concat(ST.map(function(s,i){ return [String(i), s]; }));
+  $("filterChips").innerHTML = chips.map(function(c){
+    return '<button class="chip' + (filterK === c[0] ? " on" : "") + '" data-f="' + c[0] + '">' + c[1] + '</button>'; }).join("");
+  var list = S.themes.slice().sort(function(a,b){ return (b.updatedAt||0) - (a.updatedAt||0); })
+    .filter(function(t){ return filterK === "all" || String(t.status) === filterK; });
+  $("bookCount").textContent = list.length + " 件 / 全 " + S.themes.length + " 件";
+  $("bookList").innerHTML = list.length ? list.map(themeRow).join("")
+    : '<div class="empty">この状態のものはまだありません。</div>';
+}
+
+function renderMoney(){
+  var ms = monthsBack(6), sel = $("ledMonth");
+  if(sel.options.length !== ms.length){
+    sel.innerHTML = ms.slice().reverse().map(function(m){ return '<option value="' + m + '">' + m.replace("-","年") + "月</option>"; }).join("");
+  }
+  var m = sel.value || ym();
+  var rec = S.ledger[m] || { count:0, fee:0 };
+  $("ledCount").value = rec.count || "";
+  $("ledFee").value = rec.fee || "";
+
+  var vals = ms.map(function(x){ return (S.ledger[x]||{}).fee || 0; });
+  var mx = Math.max(1, Math.max.apply(null, vals));
+  $("graph").innerHTML = ms.map(function(x, i){
+    return '<div class="gcol"><b>' + (vals[i] ? num(vals[i]) : "") + '</b>' +
+      '<i style="height:' + (vals[i]/mx*82) + '%"></i>' +
+      '<u>' + x.slice(5) + '月</u><u style="color:var(--hai-2)">' + pubInMonth(x) + '本</u></div>';
+  }).join("");
+
+  $("sumFee").textContent = num(feeTotal());
+  $("sumCost").textContent = num(usageYen());
+  $("sumNet").textContent = num(feeTotal() - usageYen());
+  $("rateShow").textContent = USDJPY;
+  $("discloseBox").value = discloseText();
+}
+
+/* ================================================================
+   12. 覆い(入力と詳細)
+   ================================================================ */
+function sheet(html, after){
+  $("sheet").innerHTML = html;
+  $("veil").classList.add("on");
+  $("sheet").scrollTop = 0;
+  $("sheet").querySelectorAll("[data-close]").forEach(function(b){ b.addEventListener("click", closeSheet); });
+  if(after) after();
+}
+function closeSheet(){ $("veil").classList.remove("on"); $("sheet").innerHTML = ""; }
+$("veil").addEventListener("click", function(e){ if(e.target === $("veil")) closeSheet(); });
+
+function head(title, sub){
+  return '<div class="shead"><div><h3>' + esc(title) + '</h3>' +
+    (sub ? '<div class="mini">' + esc(sub) + '</div>' : '') +
+    '</div><button class="x" data-close>×</button></div>';
+}
+
+function openThemeEdit(id){
+  var t = theme(id); if(!t) return;
+  sheet(head("テーマを直す", "AIに渡す前提です。ここが曖昧だと、初稿も曖昧になります。") +
+    '<div class="field"><label>迷い(記事テーマ)</label><input id="tName" value="' + esc(t.name) + '"></div>' +
+    '<div class="field"><label>想定読者</label><textarea id="tReader" rows="2">' + esc(t.reader||"") + '</textarea></div>' +
+    '<div class="field"><label>読者が迷っていること</label><textarea id="tHes" rows="3">' + esc(t.hesitation||"") + '</textarea></div>' +
+    '<div class="field"><label>比較したい項目(1行に1つ)</label><textarea id="tAxes" rows="4">' + esc((t.axes||[]).join("\n")) + '</textarea></div>' +
+    '<div class="field"><label>自分の体験として確認すること(1行に1つ)</label><textarea id="tChecks" rows="3">' + esc((t.checks||[]).join("\n")) + '</textarea></div>' +
+    '<div class="btnrow"><button class="btn pri" id="tSave">保存する</button>' +
+    '<button class="btn" id="tDel">このテーマを消す</button></div>',
+    function(){
+      $("tSave").addEventListener("click", function(){
+        t.name = $("tName").value.trim() || t.name;
+        t.reader = $("tReader").value.trim();
+        t.hesitation = $("tHes").value.trim();
+        t.axes = lines($("tAxes").value);
+        t.checks = lines($("tChecks").value);
+        touch(t); closeSheet(); renderAll(); toast("保存しました");
+      });
+      $("tDel").addEventListener("click", function(){
+        if(!confirm("このテーマと初稿を消します。よろしいですか?")) return;
+        S.themes = S.themes.filter(function(x){ return x.id !== id; });
+        if(S.active === id) S.active = S.themes.length ? S.themes[0].id : "";
+        saveThemes(); lsSet(LS.active, S.active);
+        closeSheet(); renderAll(); toast("消しました");
+      });
+    });
+}
+
+function openNewTheme(){
+  sheet(head("テーマを足す", "商品名ではなく、買う直前に迷ったことを書いてください。") +
+    '<div class="field"><label>迷い(記事テーマ)</label><input id="nName" placeholder="例)電気ケトルは0.8Lと1.2L、どちらが暮らしに合うか"></div>' +
+    '<div class="field"><label>想定読者</label><textarea id="nReader" rows="2" placeholder="例)一人暮らしを始めたばかりで、はじめてケトルを買う人"></textarea></div>' +
+    '<div class="field"><label>読者が迷っていること</label><textarea id="nHes" rows="3" placeholder="例)容量の違いが生活のどこに効くのか分からない"></textarea></div>' +
+    '<button class="btn pri wide" id="nSave">足す</button>',
+    function(){
+      $("nSave").addEventListener("click", function(){
+        var name = $("nName").value.trim();
+        if(!name){ toast("迷いを書いてください"); return; }
+        var t = { id:uid(), name:name, reader:$("nReader").value.trim(), hesitation:$("nHes").value.trim(),
+          axes:[], titles:[], checks:[], products:[], status:0, createdAt:Date.now(), updatedAt:Date.now() };
+        S.themes.unshift(t); S.active = t.id;
+        saveThemes(); lsSet(LS.active, S.active);
+        closeSheet(); renderAll(); go("prep"); toast("足しました");
+      });
+    });
+}
+
+function openProd(pid){
+  var t = cur(); if(!t) return;
+  var p = (t.products||[]).filter(function(x){ return x.id === pid; })[0] ||
+          { id:uid(), name:"", asin:"", price:"", spec:"", source:"", used:false, exp:"" };
+  var isNew = !(t.products||[]).some(function(x){ return x.id === p.id; });
+  sheet(head(isNew ? "商品を足す" : "商品を直す", "レビュー本文と星評価は入れないでください。") +
+    '<div class="field"><label>商品名(型番まで書けるとよい)</label><input id="pName" value="' + esc(p.name) + '"></div>' +
+    '<div class="field"><label>ASIN / 型番(任意)</label><input id="pAsin" value="' + esc(p.asin) + '" placeholder="B0XXXXXXXX"></div>' +
+    '<div class="field"><label>価格帯(変動するので幅で)</label><input id="pPrice" value="' + esc(p.price) + '" placeholder="例)4,000〜5,000円前後"></div>' +
+    '<div class="field"><label>公式情報・自分で確かめた仕様(1行に1つ)</label>' +
+      '<textarea id="pSpec" rows="6" placeholder="例)&#10;容量 0.8L&#10;本体重量 590g&#10;沸騰まで 約3分(満水)&#10;保温機能なし&#10;注ぎ口 細口">' + esc(p.spec) + '</textarea></div>' +
+    '<div class="field"><label>情報の出所</label><input id="pSrc" value="' + esc(p.source) + '" placeholder="例)メーカー公式サイトの仕様表 / 手元の実機を計測"></div>' +
+    '<div class="field"><label>この商品を使ったことがあるか</label>' +
+      '<div class="seg" id="pUsed"><button data-u="0"' + (p.used?"":' class="on"') + '>使っていない</button>' +
+      '<button data-u="1"' + (p.used?' class="on"':"") + '>使った</button></div></div>' +
+    '<div class="field"><label>使って感じたこと(使った場合だけ)</label>' +
+      '<textarea id="pExp" rows="4" placeholder="例)満水だと片手では重い。朝2杯ぶんしか沸かさないので、結局いつも半分まで。">' + esc(p.exp) + '</textarea></div>' +
+    '<div class="note">使っていない商品の使用感は、初稿にも書かせません。書けるのは公式仕様と、そこから言える条件までです。</div>' +
+    '<button class="btn pri wide" id="pSave" style="margin-top:12px">保存する</button>',
+    function(){
+      var used = p.used;
+      $("pUsed").addEventListener("click", function(e){
+        var b = e.target.closest("[data-u]"); if(!b) return;
+        used = b.dataset.u === "1";
+        $("pUsed").querySelectorAll("button").forEach(function(x){ x.classList.toggle("on", x === b); });
+      });
+      $("pSave").addEventListener("click", function(){
+        var name = $("pName").value.trim();
+        if(!name){ toast("商品名を入れてください"); return; }
+        p.name = name; p.asin = $("pAsin").value.trim(); p.price = $("pPrice").value.trim();
+        p.spec = $("pSpec").value.trim(); p.source = $("pSrc").value.trim();
+        p.used = used; p.exp = used ? $("pExp").value.trim() : "";
+        if(isNew){ t.products = t.products || []; t.products.push(p); }
+        if(t.status < 1) t.status = 1;
+        touch(t); closeSheet(); renderPrep(); renderAll(); toast("保存しました");
+      });
+    });
+}
+
+function openPublish(id){
+  var t = theme(id); if(!t) return;
+  sheet(head("公開として記帳する", "審査の数え上げに入ります。") +
+    '<div class="field"><label>記事のURL(任意)</label><input id="pubUrl" value="' + esc(t.url||"") + '" placeholder="https://"></div>' +
+    '<div class="note">公開前の最終確認:<br>' +
+      '・使っていない商品の使用感を書いていないか<br>' +
+      '・レビュー本文や星評価を載せていないか<br>' +
+      '・価格を断定していないか<br>' +
+      '・「' + esc(discloseText()) + '」をサイトに載せたか</div>' +
+    '<button class="btn pri wide" id="pubDo" style="margin-top:12px">公開ずみにする</button>',
+    function(){
+      $("pubDo").addEventListener("click", function(){
+        t.url = $("pubUrl").value.trim();
+        t.status = 3; t.publishedAt = t.publishedAt || Date.now();
+        touch(t); closeSheet(); renderAll();
+        toast("公開ずみにしました(" + pubCount() + " / 10 件)");
+      });
+    });
+}
+
+function openTheme(id){
+  var t = theme(id); if(!t) return;
+  var d = t.draft, r = t.refresh;
+  sheet(head(t.name, ST[t.status] + " / 商品 " + (t.products||[]).length + " 点") +
+    (t.reader ? '<div class="muted" style="margin-bottom:10px"><b style="color:var(--kin);font-weight:400">読者</b> ' + esc(t.reader) +
+      '<br><b style="color:var(--kin);font-weight:400">迷い</b> ' + esc(t.hesitation||"") + '</div>' : '') +
+    (d ? '<div class="draft">' + mdToHtml(d.body_md) + '</div>' : '<div class="empty">まだ初稿がありません。</div>') +
+    '<div class="btnrow" style="margin-top:11px">' +
+      '<button class="btn sm pri" id="tOpenPrep">仕込みで開く</button>' +
+      (d ? '<button class="btn sm kin" id="tCopy">本文をコピー</button>' : '') +
+      (d ? '<button class="btn sm" id="tMd">.md で保存</button>' : '') +
+    '</div>' +
+    (t.url ? '<div class="mini" style="margin-top:9px">公開先: <a href="' + esc(t.url) + '" target="_blank" rel="noopener">' + esc(t.url) + '</a></div>' : '') +
+    (d ? '<h2 class="sec">型の差し替え</h2>' +
+      '<div class="muted" style="margin-bottom:9px">商品が入れ替わっても、迷いは繰り返されます。' +
+      '記事を書き直さず、<b>直す場所だけ</b>を出します。先に「仕込み」で新しい商品情報を入れてください。</div>' +
+      '<button class="btn kin wide sm" id="refBtn">差し替えの案を出す</button>' +
+      (r ? '<div style="margin-top:12px">' +
+        (r.changes||[]).map(function(c){
+          return '<div class="card" style="margin-bottom:9px"><h3>' + esc(c.where) + '</h3>' +
+            '<div class="mini">いま: ' + esc(c.before) + '</div>' +
+            '<div class="muted" style="margin-top:6px;color:var(--kinari)">' + esc(c.after) + '</div>' +
+            '<div class="mini" style="margin-top:6px">理由: ' + esc(c.why) + '</div></div>';
+        }).join("") +
+        '<div class="note kin"><b>比較軸</b> ' + esc(r.axes_note||"") +
+        ((r.keep||[]).length ? '<br><b>触らなくてよい部分</b><br>' + r.keep.map(function(k){ return "・" + esc(k); }).join("<br>") : "") +
+        '</div></div>' : '') : '') +
+    '<div class="btnrow" style="margin-top:14px">' +
+      (t.status >= 3 ? '<button class="btn sm" id="tNeed">要更新にする</button>' : '') +
+      (t.audit && t.status < 3 ? '<button class="btn sm kin" id="tPub">公開にする</button>' : '') +
+      '<button class="btn sm" id="tEdit">テーマを直す</button>' +
+    '</div>',
+    function(){
+      $("tOpenPrep").addEventListener("click", function(){
+        S.active = id; lsSet(LS.active, S.active); closeSheet(); renderPrep(); go("prep");
+      });
+      if(d){
+        $("tCopy").addEventListener("click", function(){ copy(draftText(t), "本文"); });
+        $("tMd").addEventListener("click", function(){
+          dl((t.name||"draft").replace(/[\\\/:*?"<>|]/g,"_").slice(0,40) + ".md", draftText(t), "text/markdown");
+        });
+        $("refBtn").addEventListener("click", function(){ S.active = id; lsSet(LS.active, S.active); runRefresh(id); });
+      }
+      if($("tNeed")) $("tNeed").addEventListener("click", function(){
+        t.status = 4; touch(t); closeSheet(); renderAll(); toast("要更新にしました");
+      });
+      if($("tPub")) $("tPub").addEventListener("click", function(){ openPublish(id); });
+      $("tEdit").addEventListener("click", function(){ openThemeEdit(id); });
+    });
+}
+
+/* ---------- 設定 ---------- */
+function openSettings(){
+  sheet(head("設定", "APIキーはこの端末のブラウザにだけ残ります。") +
+    '<div class="field"><label>Anthropic APIキー</label>' +
+      '<input id="setKey" type="password" value="' + esc(S.key) + '" placeholder="sk-ant-..."></div>' +
+    '<div class="field"><label>使うモデル</label><select id="setModel">' +
+      Object.keys(MODELS).map(function(k){
+        return '<option value="' + k + '"' + (k === S.model ? " selected" : "") + '>' + MODELS[k].label + '</option>'; }).join("") +
+      '</select></div>' +
+    '<div class="btnrow"><button class="btn pri" id="setSave">保存する</button>' +
+      '<button class="btn" id="setTest">接続を確かめる</button></div>' +
+    '<div class="mini" id="setMsg" style="margin-top:9px">' +
+      'キーを入れないあいだは<b>見本モード</b>で、通信せずに全部の流れを試せます。' +
+      'キーは <a href="https://platform.claude.com" target="_blank" rel="noopener">platform.claude.com</a> で取得します。</div>' +
+
+    '<h2 class="sec">アソシエイトの控え</h2>' +
+    '<div class="field"><label>サイト名(表示の一文に入ります)</label>' +
+      '<input id="setSite" value="' + esc(S.biz.site) + '" placeholder="例)くらしの迷い帳"></div>' +
+    '<div class="field"><label>アソシエイトタグ</label>' +
+      '<input id="setTag" value="' + esc(S.biz.tag) + '" placeholder="例)yourname-22"></div>' +
+    '<div class="field"><label>申請日(180日を数えます)</label>' +
+      '<input id="setApp" type="date" value="' + esc(S.biz.applied) + '"></div>' +
+    '<button class="btn kin wide sm" id="bizSave">控えを保存</button>' +
+    '<div class="mini" style="margin-top:8px">' + esc(discloseText()) + '</div>' +
+
+    '<h2 class="sec">控えの持ち出し</h2>' +
+    '<div class="btnrow">' +
+      '<button class="btn sm" id="expBtn">書き出す(JSON)</button>' +
+      '<button class="btn sm" id="impBtn">読み込む</button>' +
+    '</div>' +
+    '<input type="file" id="impFile" accept="application/json,.json" style="display:none">' +
+    '<div class="mini" style="margin-top:8px">端末を変えるとき、ブラウザの記録が消える前に。APIキーは書き出しに含めません。</div>' +
+
+    '<h2 class="sec">利用料</h2>' +
+    '<div class="kv"><span>これまでの概算</span><b><span class="num">' + num(usageYen()) + '</span> 円</b></div>' +
+    '<div class="mini">送受信 ' + num(S.usage.in) + " / " + num(S.usage.out) + ' トークン(1ドル=' + USDJPY + '円で換算)</div>' +
+    '<button class="btn wide sm" id="resetAll" style="margin-top:16px">この端末の記録をすべて消す</button>',
+    function(){
+      $("setSave").addEventListener("click", function(){
+        S.key = $("setKey").value.trim(); S.model = $("setModel").value;
+        lsSet(LS.key, S.key); lsSet(LS.model, S.model);
+        renderAll(); toast(S.key ? "保存しました" : "見本モードに戻しました");
+      });
+      $("setTest").addEventListener("click", async function(){
+        var k = $("setKey").value.trim();
+        if(!k){ $("setMsg").textContent = "キーが空です。"; return; }
+        $("setMsg").innerHTML = '<span class="spin"></span> 確かめています';
+        try{
+          var r = await fetch("https://api.anthropic.com/v1/messages", {
+            method:"POST",
+            headers:{ "content-type":"application/json", "x-api-key":k,
+              "anthropic-version":"2023-06-01", "anthropic-dangerous-direct-browser-access":"true" },
+            body: JSON.stringify({ model:$("setModel").value, max_tokens:16, messages:[{ role:"user", content:"ok" }] })
+          });
+          $("setMsg").textContent = r.ok ? "つながりました。" : "つながりません: " + apiErr(r.status, await r.text());
+        }catch(e){ $("setMsg").textContent = "通信できませんでした。"; }
+      });
+      $("bizSave").addEventListener("click", function(){
+        S.biz.site = $("setSite").value.trim();
+        S.biz.tag = $("setTag").value.trim();
+        S.biz.applied = $("setApp").value;
+        saveBiz(); renderAll(); toast("控えを保存しました");
+      });
+      $("expBtn").addEventListener("click", function(){
+        dl("mayoichou-" + ymd() + ".json", JSON.stringify({
+          v:1, at:Date.now(), themes:S.themes, ledger:S.ledger, biz:S.biz, usage:S.usage }, null, 1), "application/json");
+      });
+      $("impBtn").addEventListener("click", function(){ $("impFile").click(); });
+      $("impFile").addEventListener("change", function(){
+        var f = this.files[0]; this.value = ""; if(!f) return;
+        var fr = new FileReader();
+        fr.onload = function(){
+          try{
+            var j = JSON.parse(fr.result);
+            if(!j.themes) throw new Error();
+            if(!confirm("いまの記録に上書きします。よろしいですか?")) return;
+            S.themes = j.themes || []; S.ledger = j.ledger || {}; S.biz = j.biz || S.biz; S.usage = j.usage || S.usage;
+            S.active = S.themes.length ? S.themes[0].id : "";
+            saveThemes(); lsSet(LS.ledger, S.ledger); saveBiz(); lsSet(LS.usage, S.usage); lsSet(LS.active, S.active);
+            closeSheet(); renderAll(); toast("読み込みました");
+          }catch(e){ toast("この書き出しは読めませんでした"); }
+        };
+        fr.readAsText(f);
+      });
+      $("resetAll").addEventListener("click", function(){
+        if(!confirm("テーマ・初稿・帳簿をすべて消します。元に戻せません。")) return;
+        Object.keys(LS).forEach(function(k){ try{ localStorage.removeItem(LS[k]); }catch(e){} });
+        location.reload();
+      });
+    });
+}
+
+/* ================================================================
+   13. 配線
+   ================================================================ */
+function renderAll(){ renderHome(); renderDig(); renderPrep(); renderBook(); renderMoney(); }
+function go(v){
+  document.querySelectorAll(".view").forEach(function(s){ s.classList.toggle("on", s.id === "v-" + v); });
+  document.querySelectorAll("#tabs button").forEach(function(b){ b.classList.toggle("on", b.dataset.v === v); });
+  document.querySelector("main").scrollTop = 0;
+}
+document.querySelectorAll("#tabs button").forEach(function(b){
+  b.addEventListener("click", function(){ go(b.dataset.v); });
+});
+document.querySelectorAll("[data-go]").forEach(function(b){
+  b.addEventListener("click", function(){ go(b.dataset.go); });
+});
+$("gearBtn").addEventListener("click", openSettings);
+$("digBtn").addEventListener("click", runDig);
+$("addThemeBtn").addEventListener("click", openNewTheme);
+$("addProdBtn").addEventListener("click", function(){ openProd(null); });
+$("axBtn").addEventListener("click", runCmp);
+$("draftBtn").addEventListener("click", runDraft);
+$("auditBtn").addEventListener("click", runAudit);
+
+$("nextGo").addEventListener("click", function(){
+  var id = this.dataset.id, act = this.dataset.act;
+  if(id){ S.active = id; lsSet(LS.active, S.active); renderPrep(); }
+  if(act === "book" && id){ go("book"); openTheme(id); return; }
+  go(act);
+});
+
+$("digOut").addEventListener("click", function(e){
+  var b = e.target.closest("[data-adopt]"); if(!b) return;
+  var arr = JSON.parse($("digOut").dataset.json || "[]");
+  var c = arr[Number(b.dataset.adopt)]; if(!c) return;
+  if(S.themes.some(function(x){ return x.name === c.name; })){ toast("同じ迷いが台帳にあります"); return; }
+  delete c.demo;
+  S.themes.unshift(c); S.active = c.id;
+  saveThemes(); lsSet(LS.active, S.active);
+  renderAll(); go("prep"); toast("「" + c.name + "」を仕込みます");
+});
+
+["candList","bookList"].forEach(function(id){
+  $(id).addEventListener("click", function(e){
+    var r = e.target.closest("[data-id]"); if(!r) return;
+    if(id === "candList"){ S.active = r.dataset.id; lsSet(LS.active, S.active); renderPrep(); go("prep"); }
+    else openTheme(r.dataset.id);
+  });
+});
+$("filterChips").addEventListener("click", function(e){
+  var c = e.target.closest("[data-f]"); if(!c) return;
+  filterK = c.dataset.f; renderBook();
+});
+$("prepSel").addEventListener("change", function(){
+  S.active = this.value; lsSet(LS.active, S.active); renderPrep();
+});
+$("prodList").addEventListener("click", function(e){
+  var ed = e.target.closest("[data-edit]"), dl2 = e.target.closest("[data-del]");
+  if(ed) return openProd(ed.dataset.edit);
+  if(dl2){
+    var t = cur(); if(!t) return;
+    if(!confirm("この商品を消しますか?")) return;
+    t.products = t.products.filter(function(p){ return p.id !== dl2.dataset.del; });
+    touch(t); renderPrep(); renderAll();
+  }
+});
+
+$("ledMonth").addEventListener("change", renderMoney);
+$("ledSave").addEventListener("click", function(){
+  var m = $("ledMonth").value || ym();
+  S.ledger[m] = { count: Math.max(0, Number($("ledCount").value) || 0),
+                  fee:   Math.max(0, Number($("ledFee").value) || 0) };
+  lsSet(LS.ledger, S.ledger); renderAll(); toast(m + " を記帳しました");
+});
+$("copyDisclose").addEventListener("click", function(){ copy(discloseText(), "表示文"); });
+$("mkLink").addEventListener("click", function(){
+  var a = $("asinIn").value.trim().toUpperCase();
+  if(!/^[A-Z0-9]{10}$/.test(a)){ toast("ASINは英数字10桁です"); return; }
+  if(!S.biz.tag){ toast("設定でアソシエイトタグを入れてください"); return; }
+  $("linkOut").value = "https://www.amazon.co.jp/dp/" + a + "?tag=" + encodeURIComponent(S.biz.tag);
+});
+$("copyLink").addEventListener("click", function(){
+  if(!$("linkOut").value){ toast("先にリンクを作ってください"); return; }
+  copy($("linkOut").value, "リンク");
+});
+
+/* ---------- はじめの案内 ---------- */
+function welcome(){
+  sheet(head("まよい帳", "商品を量産して紹介するための帳面ではありません。") +
+    '<div class="card"><h3>積むのは商品ページではなく、判断ページ</h3><div class="muted">' +
+    'Amazonの商品は入れ替わります。型番が消えれば、その商品を紹介した記事も弱くなる。<br><br>' +
+    'けれど「一人暮らしなら何Lが扱いやすいか」「純正と互換品は何を見て選ぶか」といった' +
+    '<b>買う前の迷い</b>は、商品が変わっても繰り返されます。<br><br>' +
+    '一度その判断の型を作れば、あとは新しい商品情報を入れ替えるだけで済みます。</div></div>' +
+    '<div class="card"><h3>5手のうち、どこを機械にやらせるか</h3><div class="muted">' +
+    '① <b>棚おろし</b> — 購入履歴から「迷い」を洗い出す(AI)<br>' +
+    '② <b>仕込み</b> — 公式情報と自分の体験を入れる(人)<br>' +
+    '③ <b>比較の型</b> — 軸と構成を組む(AI)<br>' +
+    '④ <b>初稿</b> — 与えた情報だけで書く(AI)<br>' +
+    '⑤ <b>検品</b> — 作り話・価格断定・レビュー転載を点検(機械＋AI)</div></div>' +
+    '<div class="note"><b>AIに渡すのは整理まで。</b>' +
+    '事実(公式仕様・使った感想)と判断(誰に勧めるか・公開してよいか)は、あなたの手元に残します。<br>' +
+    'キーがなくても<b>見本モード</b>で全部の流れを試せます。</div>' +
+    '<button class="btn pri wide" data-close style="margin-top:14px">はじめる</button>');
+  lsSet(LS.seen, 1);
+}
+
+/* ---------- 起ち上げ ---------- */
+(function(){
+  if(!S.active && S.themes.length) S.active = S.themes[0].id;
+  renderAll();
+  if(!lsGet(LS.seen, 0)) welcome();
+})();
+</script>
+</body>
+</html>
