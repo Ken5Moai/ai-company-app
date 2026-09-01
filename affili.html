@@ -327,7 +327,12 @@ nav#tabs button.on{color:var(--kin);border-top-color:var(--shu)}
   <!-- ============ ② 棚おろし ============ -->
   <section class="view" id="v-dig">
     <h2 class="sec">迷いを掘る</h2>
-    <div class="card">
+    <div class="seg" id="digMode" style="margin-bottom:12px">
+      <button data-m="hist" class="on">履歴から掘る</button>
+      <button data-m="scout">条件から掘る</button>
+    </div>
+
+    <div class="card" id="digHist">
       <div class="muted" style="margin-bottom:10px">
         売れ筋ランキングではなく、<b>自分の購入履歴</b>から始めます。
         買ったカテゴリを10〜20ほど並べてください。思い出せる範囲で、迷った点も一緒に。
@@ -343,6 +348,44 @@ nav#tabs button.on{color:var(--kin);border-top-color:var(--shu)}
       <button class="btn pri wide" id="digBtn">迷いを洗い出す</button>
       <div class="mini" id="digCost" style="margin-top:8px"></div>
     </div>
+
+    <div class="card" id="digScout" style="display:none">
+      <div class="muted" style="margin-bottom:10px">
+        自分の履歴に頼らず、<b>条件のほうから</b>ジャンルを探します。満たすのは次の5つ。
+      </div>
+      <div class="mini" style="margin-bottom:11px;line-height:1.9">
+        ① 用途が決まっていて、選ぶ基準が数値やサイズで比べられる<br>
+        ② 型番が変わりにくく、1年後も同じ悩みで検索される<br>
+        ③ 調べる人がいるのに、まともに比べた記事が少ない<br>
+        ④ 3,000〜15,000円。迷って調べる程度の金額<br>
+        ⑤ 効果や効能を語る必要がない
+      </div>
+      <div class="field">
+        <label>自分が土地勘のある領域(任意)</label>
+        <textarea id="scoutIn" rows="3" placeholder="例)一人暮らしの家事まわり。自転車通勤。子どもが1歳。カメラを少し。"></textarea>
+      </div>
+      <div class="field">
+        <label>避けたい領域(任意)</label>
+        <input id="scoutNg" placeholder="例)ペット用品、ガジェット">
+      </div>
+      <div class="field">
+        <label>出す件数</label>
+        <select id="scoutN">
+          <option value="5">5件(まず試す)</option>
+          <option value="10" selected>10件</option>
+          <option value="15">15件(棚を埋める)</option>
+        </select>
+      </div>
+      <button class="btn pri wide" id="scoutBtn">ジャンルを洗い出す</button>
+      <div class="mini" id="scoutCost" style="margin-top:8px"></div>
+      <div class="note" style="margin-top:10px">
+        <b>条件③だけは、AIには確かめられません。</b>
+        検索ボリュームも競合の数も見えないからです。そこで各ジャンルに
+        <b>確認用の検索クエリ</b>を付けさせます。着手前に自分で引いて、
+        「おすすめ◯選」しか並んでいなければ狙い目です。
+      </div>
+    </div>
+
     <div id="digOut"></div>
 
     <h2 class="sec">迷いの種(未着手)</h2>
@@ -759,15 +802,163 @@ async function runDig(){
   }catch(e){ toast(e.message || "うまくいきませんでした"); }
   b.disabled = false; b.textContent = "迷いを洗い出す";
 }
+/* ================================================================
+   4-b. ① 条件から掘る — 市場側からジャンルを洗い出す
+   ================================================================ */
+var SCOUT_SCHEMA = {
+  type:"object",
+  properties:{ genres:{ type:"array", items:{
+    type:"object",
+    properties:{
+      name:        { type:"string" },
+      keywords:    { type:"array", items:{ type:"string" } },
+      scene:       { type:"string" },
+      reader:      { type:"string" },
+      hesitation:  { type:"string" },
+      axes:        { type:"array", items:{ type:"string" } },
+      titles:      { type:"array", items:{ type:"string" } },
+      exclude:     { type:"string" },
+      next_trouble:{ type:"string" },
+      price:       { type:"string" },
+      stable:      { type:"string" },
+      verify:      { type:"string" }
+    },
+    required:["name","keywords","scene","reader","hesitation","axes","titles",
+              "exclude","next_trouble","price","stable","verify"],
+    additionalProperties:false } } },
+  required:["genres"], additionalProperties:false
+};
+var SCOUT_SYS =
+"あなたはAmazonの商品比較記事に詳しいリサーチャーです。\n" +
+"次の条件をすべて満たす商品ジャンルを挙げてください。\n\n" +
+"1. 用途が決まっていて、選ぶ基準が数値やサイズで比べられること\n" +
+"2. 型番が変わりにくく、1年後も同じ悩みで検索されること\n" +
+"3. 検索して調べる人がいるのに、まともに比べた記事が少ないこと\n" +
+"4. 3,000円から15,000円の価格帯で、迷って調べる程度の金額であること\n" +
+"5. 効果や効能を語る必要がないジャンルであること\n\n" +
+"各ジャンルについて:\n" +
+"name … ジャンル名。商品名ではなく、買う直前の迷いが分かる形で\n" +
+"keywords … 想定される検索キーワードを3つ。実際に打ち込まれる言葉づかいで\n" +
+"scene … この悩みが発生する場面。いつ、何がきっかけで検索するのか\n" +
+"reader … 想定読者(60字以内)\n" +
+"hesitation … 読者が迷っていること。候補は見えているのに決められない状態(80字以内)\n" +
+"axes … 選ぶときに比べるべき基準を3つ。数値・サイズ・規格など、実際に確かめられるもの\n" +
+"titles … 記事タイトル案を2つ。煽らず、迷いがそのまま出ている形\n" +
+"exclude … 記事の冒頭で外すべき人。この記事を読んでも解決しない読者を名指しし、" +
+"なぜ外れるのかを一言で(60字以内)\n" +
+"next_trouble … 同じ読者が次に困りそうなこと。買った後に発生する次の迷い(60字以内)\n" +
+"price … 想定される価格帯。3,000〜15,000円の範囲に収まること\n" +
+"stable … 型番が変わっても同じ悩みが残る理由(条件2の根拠、50字以内)\n" +
+"verify … 条件3を自分で確かめるための検索クエリを1つ。" +
+"そのクエリで『おすすめ◯選』しか出てこなければ狙い目、という形で使えるもの\n\n" +
+"優先順位: 報酬額が高いジャンルより、繰り返し検索されるジャンルを優先してください。\n\n" +
+"挙げてはいけないもの:\n" +
+"・条件5に触れるジャンル。効果や効能を語らないと記事が成立しないもの" +
+"(化粧品、サプリメント、健康器具、シャワーヘッド、加湿器、浄水器カートリッジなど)\n" +
+"・型番の入れ替わりが速いジャンル(最新スマホ、PCパーツ、流行家電)\n" +
+"・価格帯が条件4から外れるもの\n\n" +
+"重要 — 条件3について:\n" +
+"あなたには検索ボリュームも競合記事の数も確認できません。" +
+"『検索需要が高い』『競合が少ない』と断定しないでください。" +
+"代わりに verify に確認用のクエリを書き、判断は人間に委ねること。\n\n" + GUARD;
+
+function demoScout(n){
+  var base = [
+    { name:"保温水筒は、JISの保温効力をどう読んで選ぶか(見本)",
+      keywords:["水筒 保温効力 見方","水筒 6時間後 何度","水筒 容量 500 750 どっち"],
+      scene:"通勤・通学用に買い替えるとき。昼にはぬるくなっていると気づいて、初めて仕様表を見に行ったとき",
+      reader:"毎日水筒を持ち歩いていて、そろそろ買い替える会社員・学生",
+      hesitation:"保温効力という数値があることは分かったが、何度あれば十分なのか、容量とどちらを優先するのかが決められない",
+      axes:["JIS保温効力(6時間後の温度)","容量と満水時の重さ","口径とパーツ点数"],
+      titles:["水筒の保温効力、6時間後は何度あれば足りるか","水筒の容量、500mlと750mlで生活はどう変わるか"],
+      exclude:"保冷しか使わない人。保温効力の数値は判断材料にならないため",
+      next_trouble:"においが取れない。パッキンの分解点数と洗いやすさの問題",
+      price:"2,500〜6,000円", stable:"容量と保温性能の悩みは、型番が変わっても毎回発生するため",
+      verify:"水筒 保温効力 比較 一覧" },
+    { name:"脚立と踏み台、家庭用ではどちらの高さを買うべきか(見本)",
+      keywords:["脚立 高さ 選び方 家庭用","踏み台 何cm 照明 交換","脚立 踏み台 違い"],
+      scene:"照明器具の交換やエアコン掃除で、椅子に乗って怖い思いをした直後",
+      reader:"家の高い場所の作業を、椅子で済ませてきた人",
+      hesitation:"天板高の数字は見えるが、それで実際どこまで手が届くのかが分からず高さを決められない",
+      axes:["天板高と実際の作業高さの差","耐荷重と踏ざんの幅","折りたたみ厚と収納場所"],
+      titles:["脚立と踏み台、家庭で使うならどちらの高さか","照明交換のために買うなら、天板高は何cmか"],
+      exclude:"屋外や不整地で使う人。平面設置が前提の家庭用とは別の製品になるため",
+      next_trouble:"買ったが結局こわい。手すり付き・4脚安定型への買い直し",
+      price:"4,000〜12,000円", stable:"住まいの天井高と作業内容は変わらず、同じ計算が毎回必要になるため",
+      verify:"脚立 天板高 作業高さ 違い 比較" },
+    { name:"雷ガード付き電源タップは、ジュール値をどこまで見るべきか(見本)",
+      keywords:["電源タップ 雷ガード 効果","雷サージ ジュール 目安","雷ガード 寿命 わからない"],
+      scene:"近所に落雷があった後。PCやテレビを買い替えた直後。在宅勤務の環境を組むとき",
+      reader:"守りたい機器がはっきりしていて、タップの価格差の理由を知りたい人",
+      hesitation:"雷ガードと書かれた製品は多いが、値段の差が何なのか、そもそも効いているのかが分からない",
+      axes:["最大サージ電圧と吸収量(ジュール値)","保護素子の作動ランプの有無","個口数と差込ピッチ"],
+      titles:["雷ガード付き電源タップ、ジュール値はいくつあれば足りるか","雷ガードは使い切り。買い替えの目安をどこに置くか"],
+      exclude:"延長と個口数だけが目的の人。雷ガードの価格差を払う理由がないため",
+      next_trouble:"もう守られていないかもしれない。素子の寿命の見分け方",
+      price:"3,000〜8,000円", stable:"落雷は毎年あり、素子は使い切りなので同じ判断が繰り返されるため",
+      verify:"電源タップ 雷ガード ジュール値 比較" }
+  ];
+  var out = [];
+  for(var i=0;i<n;i++) out.push(JSON.parse(JSON.stringify(base[i % base.length])));
+  return { genres: out.slice(0, Math.min(n, base.length)) };
+}
+
+async function runScout(){
+  var area = $("scoutIn").value.trim(), ng = $("scoutNg").value.trim(), n = Number($("scoutN").value) || 10;
+  var b = $("scoutBtn"); b.disabled = true; b.innerHTML = '<span class="spin"></span> ジャンルを探しています';
+  try{
+    var out;
+    if(S.key){
+      out = await ask({
+        system: SCOUT_SYS, effort:"high", max:8000, schema: SCOUT_SCHEMA,
+        content:[{ type:"text", text:
+          "ジャンルを " + n + " 個、条件を満たす順に挙げてください。\n\n" +
+          (area ? "【書き手が土地勘のある領域】\n" + area + "\n\n" : "") +
+          (ng   ? "【避けたい領域】\n" + ng + "\n\n" : "") +
+          "似たジャンルを並べず、比較軸の性質が違うものを選んでください。" }]
+      });
+    } else {
+      await new Promise(function(r){ setTimeout(r, 700); });
+      out = demoScout(n);
+    }
+    var arr = (out.genres||[]).map(function(g){
+      return { id:uid(), name:g.name, reader:g.reader, hesitation:g.hesitation,
+        scene:g.scene, keywords:g.keywords||[], axes:g.axes||[], titles:g.titles||[], checks:[],
+        exclude:g.exclude, nextTrouble:g.next_trouble, price:g.price, stable:g.stable, verify:g.verify,
+        products:[], status:0, createdAt:Date.now(), updatedAt:Date.now() };
+    });
+    $("digOut").dataset.json = JSON.stringify(arr);
+    $("digOut").innerHTML =
+      '<h2 class="sec">洗い出したジャンル</h2>' +
+      arr.map(function(c, i){
+        return '<div class="card">' + candHtml(c) +
+          '<button class="btn sm kin wide" data-adopt="' + i + '" style="margin-top:10px">この迷いを仕込む</button></div>';
+      }).join("") +
+      '<div class="note" style="margin-top:4px"><b>着手する前に</b>、各ジャンルの' +
+      '「確認クエリ」で実際に検索してください。良質な比較記事が既にあるなら、そのジャンルは見送りです。</div>';
+    if(!S.key) toast("見本です。設定でAPIキーを入れると、条件から実際に探します");
+  }catch(e){ toast(e.message || "うまくいきませんでした"); }
+  b.disabled = false; b.textContent = "ジャンルを洗い出す";
+}
+
 function candHtml(c){
   return '<div class="cand">' +
     '<h4>' + esc(c.name) + '</h4><dl>' +
     '<dt>想定読者</dt><dd>' + esc(c.reader) + '</dd>' +
     '<dt>読者が迷っていること</dt><dd>' + esc(c.hesitation) + '</dd>' +
+    (c.scene ? '<dt>悩みが発生する場面</dt><dd>' + esc(c.scene) + '</dd>' : '') +
+    (c.keywords && c.keywords.length ? '<dt>想定される検索キーワード</dt><dd>' +
+      c.keywords.map(function(k){ return "・" + esc(k); }).join("<br>") + '</dd>' : '') +
     '<dt>比較する項目</dt><dd>' + (c.axes||[]).map(esc).join(" / ") + '</dd>' +
-    '<dt>タイトル案</dt><dd>' + (c.titles||[]).map(function(t){ return "・" + esc(t); }).join("<br>") + '</dd>' +
-    '<dt>自分の体験として確認すること</dt><dd>' + (c.checks||[]).map(function(t){ return "・" + esc(t); }).join("<br>") + '</dd>' +
-    (c.lasting ? '<dt>商品が変わっても残る理由</dt><dd>' + esc(c.lasting) + '</dd>' : '') +
+    (c.exclude ? '<dt>冒頭で外すべき人</dt><dd>' + esc(c.exclude) + '</dd>' : '') +
+    (c.nextTrouble ? '<dt>次に困りそうなこと</dt><dd>' + esc(c.nextTrouble) + '</dd>' : '') +
+    (c.price ? '<dt>想定価格帯</dt><dd>' + esc(c.price) + '</dd>' : '') +
+    ((c.titles||[]).length ? '<dt>タイトル案</dt><dd>' +
+      c.titles.map(function(t){ return "・" + esc(t); }).join("<br>") + '</dd>' : '') +
+    ((c.checks||[]).length ? '<dt>自分の体験として確認すること</dt><dd>' +
+      c.checks.map(function(t){ return "・" + esc(t); }).join("<br>") + '</dd>' : '') +
+    (c.lasting || c.stable ? '<dt>商品が変わっても残る理由</dt><dd>' + esc(c.lasting || c.stable) + '</dd>' : '') +
+    (c.verify ? '<dt>競合を確かめる検索クエリ</dt><dd style="color:var(--kin)">' + esc(c.verify) + '</dd>' : '') +
     '</dl></div>';
 }
 
@@ -826,7 +1017,11 @@ function themeText(t){
   return "【記事テーマ】\n" + (t.name||"") + "\n\n" +
     "【想定読者】\n" + (t.reader||"未記入") + "\n\n" +
     "【読者が迷っていること】\n" + (t.hesitation||"未記入") + "\n\n" +
-    (t.axes && t.axes.length ? "【比較したい項目(下書き)】\n" + t.axes.map(function(a){ return "・" + a; }).join("\n") + "\n\n" : "");
+    (t.scene ? "【この悩みが発生する場面】\n" + t.scene + "\n\n" : "") +
+    (t.axes && t.axes.length ? "【比較したい項目(下書き)】\n" + t.axes.map(function(a){ return "・" + a; }).join("\n") + "\n\n" : "") +
+    (t.keywords && t.keywords.length ? "【想定される検索キーワード】\n" + t.keywords.map(function(k){ return "・" + k; }).join("\n") + "\n\n" : "") +
+    (t.exclude ? "【記事の冒頭で外すべき人】\n" + t.exclude + "\n\n" : "") +
+    (t.nextTrouble ? "【同じ読者が次に困りそうなこと】\n" + t.nextTrouble + "\n\n" : "");
 }
 
 function demoCmp(t){
@@ -898,7 +1093,14 @@ var DRAFT_SYS =
 "・最後に『Aが向く人』『Bが向く人』、必要なら『どちらも選ばなくていい人』を明確にする\n" +
 "・使用経験『なし』の商品については、使用感・体験・期間を一切書かない。" +
 "公式仕様と、そこから言える条件(『この条件ならAが候補に入りやすい』)までにとどめる\n" +
-"・使用経験『あり』の商品だけ、渡された体験の範囲で具体的に書く。書かれていないことは足さない\n\n" +
+"・使用経験『あり』の商品だけ、渡された体験の範囲で具体的に書く。書かれていないことは足さない\n" +
+"・【記事の冒頭で外すべき人】が渡されている場合、最初の見出しまでに、その読者を名指しで外す。" +
+"『この記事は◯◯の人には向きません』と言い切り、代わりにどこを見ればよいかを一行だけ添える。" +
+"読者の時間を返すことが、その先を読ませる根拠になる\n" +
+"・【同じ読者が次に困りそうなこと】が渡されている場合、記事の最後に一段落だけ置く。" +
+"そこで解決までは書かず、次に何を調べることになるかを示すにとどめる\n" +
+"・【想定される検索キーワード】が渡されている場合、見出しと本文に自然な形で入れる。" +
+"詰め込まない。文章として不自然になるくらいなら入れない\n\n" +
 "body_md は Markdown で書いてください。使ってよいのは見出し(##, ###)、段落、箇条書き、" +
 "表(| で区切る)、水平線(---)、強調(**) だけです。h1 は書かない(title が見出しになります)。\n\n" +
 "アソシエイトリンクを置くべき場所には、その行に単独で\n" +
@@ -1078,6 +1280,23 @@ function localChecks(t){
 
   if(!S.biz.site) out.push({ level:"中", what:"アソシエイトの表示に入れるサイト名が未設定です",
     fix:"設定でサイト名を入れると、掲載する一文を作れます" });
+
+  if(t.exclude){
+    var opening = plain.slice(0, 700);
+    if(!/(向きません|向いていません|向かない|向いていない|対象外|扱いません|読む必要は|お役に立て|当てはまらない)/.test(opening))
+      out.push({ level:"中", what:"冒頭で読者を外していません(" + t.exclude.slice(0,24) + "…)",
+        fix:"最初の見出しまでに『この記事は◯◯の人には向きません』と言い切り、代わりの行き先を一行添えてください" });
+  }
+  if(t.nextTrouble){
+    var segs = t.nextTrouble.split(/[、。,.・\/\s]+/).filter(function(x){ return x.length >= 4; });
+    if(segs.length && !segs.some(function(x){ return plain.indexOf(x) >= 0; }))
+      out.push({ level:"低", what:"『次に困りそうなこと』に触れていません",
+        fix:"末尾に一段落だけ置くと、次の判断ページへの導線になります(解決までは書かない)" });
+  }
+  var kouno = (plain.match(/(効果があり|効果的で|効きます|よく効く|改善します|改善でき|治り|治し|痩せ|やせ|健康に良|美肌|除菌率|抗菌効果|殺菌でき|症状が)/g) || []);
+  if(kouno.length) out.push({ level:"高", what:"効果・効能を語っています(" + kouno.slice(0,3).join("・") + ")",
+    fix:"このジャンルは効能を語らずに成立するはずです。数値・サイズ・規格の話に戻してください。" +
+        "効能表示は景品表示法や薬機法に触れる場合があります" });
 
   var len = plain.replace(/\s/g,"").length;
   if(len && len < 1200) out.push({ level:"低", what:"本文が" + len + "字と短めです",
@@ -1281,6 +1500,7 @@ function renderDig(){
   $("candList").innerHTML = c.length ? c.map(themeRow).join("")
     : '<div class="empty">まだ迷いの種がありません。<br>上の欄に、買ったことがあるカテゴリを並べてください。</div>';
   costHint("digCost", 900, 2200);
+  costHint("scoutCost", 1200, 4500);
 }
 
 function prodCard(p, i){
@@ -1313,6 +1533,13 @@ function renderPrep(){
     '<div style="color:var(--kinari);margin-bottom:6px">' + esc(t.name) + '</div>' +
     '<b style="color:var(--kin);font-weight:400;font-size:11px;letter-spacing:.1em">想定読者</b> ' + esc(t.reader || "未記入") + '<br>' +
     '<b style="color:var(--kin);font-weight:400;font-size:11px;letter-spacing:.1em">迷っていること</b> ' + esc(t.hesitation || "未記入") +
+    (t.exclude ? '<br><b style="color:var(--shu);font-weight:400;font-size:11px;letter-spacing:.1em">冒頭で外す</b> ' + esc(t.exclude) : '') +
+    (t.nextTrouble ? '<br><b style="color:var(--kin);font-weight:400;font-size:11px;letter-spacing:.1em">次に困ること</b> ' + esc(t.nextTrouble) : '') +
+    ((t.keywords||[]).length ? '<div class="chips" style="margin-top:8px">' +
+      t.keywords.map(function(k){ return '<span class="chip">' + esc(k) + '</span>'; }).join("") + '</div>' : '') +
+    (t.verify && t.status === 0 ? '<div class="note" style="margin-top:9px"><b>着手前に確認</b><br>' +
+      'この検索で良質な比較記事が既にあるなら、見送りです。<br>' +
+      '<span style="color:var(--kin)">' + esc(t.verify) + '</span></div>' : '') +
     '<div class="btnrow" style="margin-top:10px"><button class="btn sm" id="editThemeBtn">テーマを直す</button></div>';
   $("editThemeBtn").addEventListener("click", function(){ openThemeEdit(t.id); });
 
@@ -1450,6 +1677,12 @@ function openThemeEdit(id){
     '<div class="field"><label>読者が迷っていること</label><textarea id="tHes" rows="3">' + esc(t.hesitation||"") + '</textarea></div>' +
     '<div class="field"><label>比較したい項目(1行に1つ)</label><textarea id="tAxes" rows="4">' + esc((t.axes||[]).join("\n")) + '</textarea></div>' +
     '<div class="field"><label>自分の体験として確認すること(1行に1つ)</label><textarea id="tChecks" rows="3">' + esc((t.checks||[]).join("\n")) + '</textarea></div>' +
+    '<div class="field"><label>想定される検索キーワード(1行に1つ)</label><textarea id="tKw" rows="3">' + esc((t.keywords||[]).join("\n")) + '</textarea></div>' +
+    '<div class="field"><label>この悩みが発生する場面</label><textarea id="tScene" rows="2">' + esc(t.scene||"") + '</textarea></div>' +
+    '<div class="field"><label>記事の冒頭で外すべき人</label><textarea id="tExc" rows="2" placeholder="例)保冷しか使わない人。保温効力の数値が判断材料にならないため">' + esc(t.exclude||"") + '</textarea></div>' +
+    '<div class="field"><label>同じ読者が次に困りそうなこと</label><textarea id="tNext" rows="2" placeholder="例)においが取れない。パッキンの分解点数の問題">' + esc(t.nextTrouble||"") + '</textarea></div>' +
+    '<div class="field"><label>想定価格帯</label><input id="tPrice" value="' + esc(t.price||"") + '" placeholder="例)3,000〜8,000円"></div>' +
+    '<div class="field"><label>競合を確かめる検索クエリ</label><input id="tVerify" value="' + esc(t.verify||"") + '" placeholder="例)水筒 保温効力 比較 一覧"></div>' +
     '<div class="btnrow"><button class="btn pri" id="tSave">保存する</button>' +
     '<button class="btn" id="tDel">このテーマを消す</button></div>',
     function(){
@@ -1459,6 +1692,12 @@ function openThemeEdit(id){
         t.hesitation = $("tHes").value.trim();
         t.axes = lines($("tAxes").value);
         t.checks = lines($("tChecks").value);
+        t.keywords = lines($("tKw").value);
+        t.scene = $("tScene").value.trim();
+        t.exclude = $("tExc").value.trim();
+        t.nextTrouble = $("tNext").value.trim();
+        t.price = $("tPrice").value.trim();
+        t.verify = $("tVerify").value.trim();
         touch(t); closeSheet(); renderAll(); toast("保存しました");
       });
       $("tDel").addEventListener("click", function(){
@@ -1709,6 +1948,15 @@ document.querySelectorAll("[data-go]").forEach(function(b){
 });
 $("gearBtn").addEventListener("click", openSettings);
 $("digBtn").addEventListener("click", runDig);
+$("scoutBtn").addEventListener("click", runScout);
+$("digMode").addEventListener("click", function(e){
+  var b = e.target.closest("[data-m]"); if(!b) return;
+  var scout = b.dataset.m === "scout";
+  this.querySelectorAll("button").forEach(function(x){ x.classList.toggle("on", x === b); });
+  $("digHist").style.display = scout ? "none" : "";
+  $("digScout").style.display = scout ? "" : "none";
+  $("digOut").innerHTML = ""; $("digOut").dataset.json = "";
+});
 $("addThemeBtn").addEventListener("click", openNewTheme);
 $("addProdBtn").addEventListener("click", function(){ openProd(null); });
 $("axBtn").addEventListener("click", runCmp);
@@ -1786,7 +2034,7 @@ function welcome(){
     '<b>買う前の迷い</b>は、商品が変わっても繰り返されます。<br><br>' +
     '一度その判断の型を作れば、あとは新しい商品情報を入れ替えるだけで済みます。</div></div>' +
     '<div class="card"><h3>5手のうち、どこを機械にやらせるか</h3><div class="muted">' +
-    '① <b>棚おろし</b> — 購入履歴から「迷い」を洗い出す(AI)<br>' +
+    '① <b>棚おろし</b> — 購入履歴から、または5つの条件から「迷い」を洗い出す(AI)<br>' +
     '② <b>仕込み</b> — 公式情報と自分の体験を入れる(人)<br>' +
     '③ <b>比較の型</b> — 軸と構成を組む(AI)<br>' +
     '④ <b>初稿</b> — 与えた情報だけで書く(AI)<br>' +
