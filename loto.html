@@ -1,0 +1,1208 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#0b1420">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>帯組み — ロト7 買い目メーカー</title>
+<style>
+/* ================================================================
+   帯組み — ロト7 買い目メーカー
+   「候補を選ぶ → 帯構成にそろえる → 買い目リストにする → 記録する」
+   までを自動化する単一HTML。通信ゼロ・保存はこの端末のブラウザ内だけ。
+   ※ 購入そのものは行いません(人間の手で買う)。
+   ================================================================ */
+:root{
+  --ai:#0b1420;
+  --ai-2:#122132;
+  --ai-3:#1b2f45;
+  --sen:#25405c;
+  --kinari:#eaf0f6;
+  --hai:#8a9cb0;
+  --hai-2:#5f7386;
+  --kin:#d9b451;
+  --kin-awai:rgba(217,180,81,.22);
+  --tei:#5aa0e0;   /* 低帯 */
+  --chu:#d9b451;   /* 中帯 */
+  --kou:#e0705a;   /* 高帯 */
+  --ok:#68b98a;
+  --ng:#e0705a;
+  --gothic:"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic",YuGothic,"Noto Sans JP","Noto Sans CJK JP",sans-serif;
+  --num:"SF Mono",Menlo,Consolas,"Courier New",monospace;
+  --ease:cubic-bezier(.19,1,.22,1);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{
+  background:var(--ai);color:var(--kinari);
+  font-family:var(--gothic);
+  font-size:15px;line-height:1.7;
+  -webkit-tap-highlight-color:transparent;
+  overscroll-behavior-y:none;
+  font-feature-settings:"palt";
+  padding-bottom:env(safe-area-inset-bottom);
+}
+button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
+button{cursor:pointer;border:none;background:none}
+input,select,textarea{
+  background:var(--ai);border:1px solid var(--sen);border-radius:8px;
+  padding:8px 10px;color:var(--kinari);width:100%;
+}
+input:focus,select,textarea:focus{outline:none;border-color:var(--kin)}
+input[type=number]{font-family:var(--num)}
+
+/* ---- 骨格 ---- */
+.wrap{max-width:720px;margin:0 auto;padding:0 14px 120px}
+header{
+  position:sticky;top:0;z-index:20;background:rgba(11,20,32,.94);
+  backdrop-filter:blur(8px);border-bottom:1px solid var(--sen);
+  padding:calc(12px + env(safe-area-inset-top)) 14px 0;
+}
+header .inner{max-width:720px;margin:0 auto}
+.brand{display:flex;align-items:baseline;gap:10px;margin-bottom:10px}
+.brand h1{font-size:17px;letter-spacing:.08em;font-weight:700}
+.brand small{color:var(--hai-2);font-size:11px;letter-spacing:.06em}
+nav{display:flex;gap:2px}
+nav button{
+  flex:1;padding:10px 2px 11px;font-size:12.5px;letter-spacing:.04em;
+  color:var(--hai);border-bottom:2px solid transparent;transition:.2s var(--ease);
+}
+nav button.on{color:var(--kin);border-bottom-color:var(--kin)}
+
+section{display:none;padding-top:18px}
+section.on{display:block;animation:fade .3s var(--ease)}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+.card{
+  background:var(--ai-2);border:1px solid var(--sen);border-radius:12px;
+  padding:14px;margin-bottom:12px;
+}
+.card > h2{
+  font-size:13px;letter-spacing:.1em;color:var(--kin);margin-bottom:2px;font-weight:700;
+}
+.card > .lead{font-size:12px;color:var(--hai-2);margin-bottom:12px;line-height:1.6}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.row.tight{gap:6px}
+.grow{flex:1;min-width:0}
+label.f{display:block;font-size:11.5px;color:var(--hai);margin-bottom:4px;letter-spacing:.04em}
+
+/* ---- ボタン ---- */
+.btn{
+  border:1px solid var(--sen);border-radius:9px;padding:10px 14px;
+  font-size:13.5px;letter-spacing:.04em;color:var(--kinari);background:var(--ai-3);
+  transition:.16s var(--ease);
+}
+.btn:active{transform:scale(.97)}
+.btn.pri{background:var(--kin);color:#20180a;border-color:var(--kin);font-weight:700}
+.btn.gho{background:transparent;color:var(--hai)}
+.btn.sm{padding:6px 10px;font-size:12px;border-radius:7px}
+.btn.wide{width:100%;justify-content:center}
+.btn.danger{color:var(--ng);border-color:rgba(224,112,90,.4)}
+.btn[disabled]{opacity:.4;pointer-events:none}
+
+/* ---- 数字グリッド ---- */
+.bandlabel{
+  display:flex;align-items:center;gap:8px;margin:12px 0 7px;
+  font-size:11.5px;letter-spacing:.08em;color:var(--hai);
+}
+.bandlabel .dot{width:8px;height:8px;border-radius:50%}
+.bandlabel .cnt{margin-left:auto;font-family:var(--num);font-size:11px;color:var(--hai-2)}
+.grid{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+.grid .n{
+  aspect-ratio:1;border-radius:9px;border:1px solid var(--sen);
+  background:var(--ai);color:var(--hai);
+  font-family:var(--num);font-size:15px;font-weight:600;
+  display:flex;align-items:center;justify-content:center;
+  transition:.14s var(--ease);position:relative;
+}
+.grid .n:active{transform:scale(.92)}
+.grid .n.on{color:#0b1420;font-weight:700;border-color:transparent}
+.grid .n.b0.on{background:var(--tei)}
+.grid .n.b1.on{background:var(--chu)}
+.grid .n.b2.on{background:var(--kou)}
+.grid .n.prev::after{
+  content:"";position:absolute;top:3px;right:3px;width:5px;height:5px;
+  border-radius:50%;background:var(--kin);
+}
+.grid .n.on.prev::after{background:rgba(11,20,32,.7)}
+
+/* ---- 比率 ---- */
+.ratio{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.rbox{background:var(--ai);border:1px solid var(--sen);border-radius:10px;padding:8px;text-align:center}
+.rbox .rl{font-size:10.5px;color:var(--hai-2);letter-spacing:.06em}
+.rbox .rv{font-family:var(--num);font-size:24px;font-weight:700;line-height:1.3}
+.rbox .rc{display:flex;gap:6px;justify-content:center;margin-top:4px}
+.rbox .rc button{
+  width:30px;height:26px;border-radius:6px;border:1px solid var(--sen);
+  background:var(--ai-3);font-size:14px;line-height:1;color:var(--hai);
+}
+.rbox.b0 .rv{color:var(--tei)} .rbox.b1 .rv{color:var(--chu)} .rbox.b2 .rv{color:var(--kou)}
+.preset{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.preset button{
+  font-family:var(--num);font-size:12px;padding:5px 9px;border-radius:6px;
+  border:1px solid var(--sen);background:var(--ai);color:var(--hai);
+}
+.preset button.on{border-color:var(--kin);color:var(--kin);background:var(--kin-awai)}
+.preset button i{font-style:normal;font-family:var(--gothic);font-size:10px;color:var(--hai-2);margin-left:5px}
+
+/* ---- スイッチ ---- */
+.sw{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid rgba(37,64,92,.5)}
+.sw:first-of-type{border-top:none}
+.sw .tx{flex:1;min-width:0}
+.sw .tx b{display:block;font-size:13px;font-weight:500}
+.sw .tx span{display:block;font-size:11px;color:var(--hai-2);line-height:1.5}
+.tog{
+  width:44px;height:25px;border-radius:13px;background:var(--sen);
+  position:relative;flex:none;transition:.2s var(--ease);
+}
+.tog::after{
+  content:"";position:absolute;top:3px;left:3px;width:19px;height:19px;
+  border-radius:50%;background:var(--hai);transition:.2s var(--ease);
+}
+.tog.on{background:var(--kin-awai)}
+.tog.on::after{left:22px;background:var(--kin)}
+.subf{display:none;padding:0 0 10px 0}
+.subf.on{display:block}
+.subf .row{gap:8px}
+.subf input{width:74px;text-align:center}
+
+/* ---- 買い目 ---- */
+.tickets{display:flex;flex-direction:column;gap:6px}
+.tk{
+  display:flex;align-items:center;gap:8px;
+  background:var(--ai);border:1px solid var(--sen);border-radius:9px;padding:9px 10px;
+}
+.tk .idx{font-family:var(--num);font-size:11px;color:var(--hai-2);width:26px;flex:none}
+.tk .nums{font-family:var(--num);font-size:15px;letter-spacing:.06em;flex:1;min-width:0}
+.tk .nums em{font-style:normal}
+.tk .nums em.b0{color:var(--tei)} .tk .nums em.b1{color:var(--chu)} .tk .nums em.b2{color:var(--kou)}
+.tk .meta{font-family:var(--num);font-size:10.5px;color:var(--hai-2);flex:none;text-align:right}
+.tk .del{color:var(--hai-2);font-size:16px;padding:0 2px;flex:none}
+.tk.hit{border-color:var(--kin);background:rgba(217,180,81,.09)}
+.tk .rank{
+  font-size:11px;font-weight:700;color:var(--kin);flex:none;
+  border:1px solid var(--kin);border-radius:5px;padding:1px 5px;
+}
+
+.note{
+  font-size:11.5px;color:var(--hai);background:var(--ai);border-left:2px solid var(--kin);
+  border-radius:0 7px 7px 0;padding:8px 10px;margin-bottom:8px;line-height:1.6;
+}
+.note.warn{border-left-color:var(--ng);color:#f0b8ac}
+.note.ok{border-left-color:var(--ok)}
+
+.sum{
+  display:flex;gap:12px;align-items:baseline;flex-wrap:wrap;
+  padding:11px 12px;background:var(--ai);border-radius:9px;margin-bottom:10px;
+}
+.sum b{font-family:var(--num);font-size:21px;color:var(--kin);font-weight:700}
+.sum span{font-size:11.5px;color:var(--hai-2)}
+
+/* ---- 表 ---- */
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th,td{padding:7px 6px;text-align:left;border-bottom:1px solid rgba(37,64,92,.55)}
+th{font-size:11px;color:var(--hai-2);font-weight:500;letter-spacing:.04em}
+td.r,th.r{text-align:right;font-family:var(--num);white-space:nowrap}
+tr.top td{color:var(--kin)}
+.bar{height:4px;background:var(--sen);border-radius:2px;overflow:hidden;margin-top:3px}
+.bar i{display:block;height:100%;background:var(--kin);border-radius:2px}
+
+/* ---- 記録 ---- */
+.rec{background:var(--ai);border:1px solid var(--sen);border-radius:10px;padding:11px 12px;margin-bottom:8px}
+.rec .hd{display:flex;align-items:baseline;gap:8px;margin-bottom:6px}
+.rec .hd b{font-size:14px}
+.rec .hd time{font-family:var(--num);font-size:11px;color:var(--hai-2)}
+.rec .hd .st{margin-left:auto;font-size:11px;color:var(--hai-2)}
+.rec .hd .st.win{color:var(--kin)}
+.rec .bd{font-size:12px;color:var(--hai);line-height:1.6}
+.rec .ac{display:flex;gap:6px;margin-top:9px;flex-wrap:wrap}
+
+.money{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.money div{background:var(--ai);border-radius:9px;padding:10px;text-align:center}
+.money div .l{font-size:10.5px;color:var(--hai-2);letter-spacing:.05em}
+.money div .v{font-family:var(--num);font-size:17px;font-weight:700;margin-top:2px}
+.money div .v.plus{color:var(--ok)} .money div .v.minus{color:var(--ng)}
+
+.empty{text-align:center;color:var(--hai-2);font-size:12.5px;padding:26px 10px;line-height:1.8}
+
+/* ---- 下部固定バー ---- */
+.dock{
+  position:fixed;left:0;right:0;bottom:0;z-index:30;
+  background:rgba(11,20,32,.95);backdrop-filter:blur(8px);
+  border-top:1px solid var(--sen);
+  padding:10px 14px calc(10px + env(safe-area-inset-bottom));
+}
+.dock .inner{max-width:720px;margin:0 auto;display:flex;gap:8px;align-items:center}
+.dock .info{flex:1;min-width:0;font-size:11px;color:var(--hai-2);line-height:1.45}
+.dock .info b{font-family:var(--num);color:var(--kinari);font-size:13px}
+
+/* ---- トースト ---- */
+#toast{
+  position:fixed;left:50%;bottom:96px;transform:translate(-50%,14px);
+  background:var(--ai-3);border:1px solid var(--kin);color:var(--kinari);
+  padding:9px 16px;border-radius:20px;font-size:12.5px;z-index:60;
+  opacity:0;pointer-events:none;transition:.26s var(--ease);white-space:nowrap;
+  max-width:90vw;overflow:hidden;text-overflow:ellipsis;
+}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+
+/* ---- モーダル ---- */
+.mask{
+  position:fixed;inset:0;background:rgba(4,9,15,.8);z-index:50;
+  display:none;align-items:center;justify-content:center;padding:16px;
+}
+.mask.on{display:flex}
+.modal{
+  background:var(--ai-2);border:1px solid var(--sen);border-radius:14px;
+  padding:18px;max-width:440px;width:100%;max-height:86vh;overflow:auto;
+}
+.modal h3{font-size:15px;margin-bottom:6px}
+.modal p{font-size:12.5px;color:var(--hai);line-height:1.7;margin-bottom:14px}
+.modal .ac{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+
+.fine{font-size:11px;color:var(--hai-2);line-height:1.75}
+.fine b{color:var(--hai)}
+hr.sep{border:none;border-top:1px solid rgba(37,64,92,.55);margin:12px 0}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="inner">
+    <div class="brand">
+      <h1>帯組み</h1>
+      <small>ロト7 買い目メーカー</small>
+    </div>
+    <nav>
+      <button data-tab="make" class="on">組む</button>
+      <button data-tab="list">控え帳</button>
+      <button data-tab="check">照合</button>
+      <button data-tab="data">帯データ</button>
+    </nav>
+  </div>
+</header>
+
+<div class="wrap">
+
+<!-- ============ 組む ============ -->
+<section id="make" class="on">
+
+  <div class="card">
+    <h2>① 帯構成</h2>
+    <p class="lead">低帯01〜12／中帯13〜24／高帯25〜37 から何個ずつ選ぶか。合計は7個。</p>
+    <div class="ratio">
+      <div class="rbox b0"><div class="rl">低帯 01–12</div><div class="rv" id="rv0">2</div>
+        <div class="rc"><button data-r="0" data-d="-1">−</button><button data-r="0" data-d="1">＋</button></div></div>
+      <div class="rbox b1"><div class="rl">中帯 13–24</div><div class="rv" id="rv1">3</div>
+        <div class="rc"><button data-r="1" data-d="-1">−</button><button data-r="1" data-d="1">＋</button></div></div>
+      <div class="rbox b2"><div class="rl">高帯 25–37</div><div class="rv" id="rv2">2</div>
+        <div class="rc"><button data-r="2" data-d="-1">−</button><button data-r="2" data-d="1">＋</button></div></div>
+    </div>
+    <div class="preset" id="preset"></div>
+    <div id="ratioNote"></div>
+  </div>
+
+  <div class="card">
+    <h2>② 候補数字</h2>
+    <p class="lead">使いたい数字をタップ。<b>選ばなくてもOK</b>（その帯は01〜37全体から選ばれます）。</p>
+    <div id="numgrid"></div>
+    <div class="row tight" style="margin-top:12px">
+      <button class="btn sm gho" id="clearCand">候補をクリア</button>
+      <button class="btn sm gho" id="allCand">全部を候補に</button>
+      <button class="btn sm gho" id="pullPrev">前回数字を候補に</button>
+    </div>
+    <hr class="sep">
+    <label class="f">前回の当選数字（任意・スペース区切り／引っ張りと重複チェックに使用）</label>
+    <div class="row tight">
+      <input class="grow" id="prevWin" placeholder="例: 07 09 15 18 20 28 31" inputmode="numeric">
+      <button class="btn sm" id="setPrev">反映</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>③ しぼり込み（任意）</h2>
+    <p class="lead">全部OFFでも動きます。きつすぎて作れないときは自動でゆるめ、その旨を表示します。</p>
+    <div class="sw">
+      <div class="tx"><b>連番をきらう</b><span>3つ以上の連続（例 15 16 17）を含む口を避ける</span></div>
+      <div class="tog" data-f="seq"></div>
+    </div>
+    <div class="subf" id="sub-seq"><div class="row tight"><span class="fine">連続</span><input type="number" id="seqN" min="2" max="7" value="3"><span class="fine">個以上を除外</span></div></div>
+
+    <div class="sw">
+      <div class="tx"><b>末尾かぶりをきらう</b><span>下1桁が同じ数字（例 03 13 23）の重なりを避ける</span></div>
+      <div class="tog" data-f="tail"></div>
+    </div>
+    <div class="subf" id="sub-tail"><div class="row tight"><span class="fine">同じ末尾</span><input type="number" id="tailN" min="2" max="7" value="3"><span class="fine">個以上を除外</span></div></div>
+
+    <div class="sw">
+      <div class="tx"><b>合計値を中央に寄せる</b><span>7個の合計。理論上の平均は133</span></div>
+      <div class="tog" data-f="sum"></div>
+    </div>
+    <div class="subf" id="sub-sum"><div class="row tight"><input type="number" id="sumMin" value="100"><span class="fine">〜</span><input type="number" id="sumMax" value="166"><span class="fine">の範囲だけ採用</span></div></div>
+
+    <div class="sw">
+      <div class="tx"><b>前回とのかぶりを制限</b><span>前回当選数字と重なりすぎる口を避ける</span></div>
+      <div class="tog" data-f="prev"></div>
+    </div>
+    <div class="subf" id="sub-prev"><div class="row tight"><span class="fine">前回と</span><input type="number" id="prevN" min="1" max="7" value="4"><span class="fine">個以上かぶる口を除外</span></div></div>
+  </div>
+
+  <div class="card">
+    <h2>④ 生成</h2>
+    <div class="row tight" style="margin-bottom:12px">
+      <div style="flex:1"><label class="f">口数</label><input type="number" id="count" min="1" max="50" value="5" inputmode="numeric"></div>
+      <div style="flex:1"><label class="f">1口の金額</label><input type="number" id="unit" min="1" value="300" inputmode="numeric"></div>
+    </div>
+    <button class="btn pri wide" id="gen">この条件で買い目をつくる</button>
+    <button class="btn gho wide sm" id="quick" style="margin-top:8px">おまかせ（2-3-2で5口をすぐ出す）</button>
+  </div>
+
+  <div class="card" id="resultCard" style="display:none">
+    <h2>⑤ 買い目</h2>
+    <div id="genNotes"></div>
+    <div class="sum"><b id="sumCount">0</b><span>口</span><b id="sumYen">0</b><span>円</span><span id="sumBudget"></span></div>
+    <div class="tickets" id="tickets"></div>
+    <div class="row tight" style="margin-top:12px">
+      <button class="btn sm" id="copyTk">テキストをコピー</button>
+      <button class="btn sm" id="csvTk">CSVで保存</button>
+      <button class="btn sm gho" id="reroll">作り直す</button>
+    </div>
+    <hr class="sep">
+    <label class="f">控え帳に保存する回号</label>
+    <div class="row tight">
+      <input class="grow" id="roundNo" placeholder="例: 第693回">
+      <button class="btn pri sm" id="save">控えに保存</button>
+    </div>
+    <p class="fine" style="margin-top:10px">
+      <b>※ このアプリは購入しません。</b>
+      表示された数字を、みずほ銀行のネット購入・ATM・売場で<b>自分の手で</b>買ってください。
+    </p>
+  </div>
+</section>
+
+<!-- ============ 控え帳 ============ -->
+<section id="list">
+  <div class="card">
+    <h2>収支</h2>
+    <p class="lead">買った金額と戻ってきた金額。ここだけは正直に。</p>
+    <div class="money">
+      <div><div class="l">購入 累計</div><div class="v" id="mCost">¥0</div></div>
+      <div><div class="l">当選 累計</div><div class="v" id="mPrize">¥0</div></div>
+      <div><div class="l">収支</div><div class="v" id="mNet">¥0</div></div>
+    </div>
+    <label class="f">1か月の上限（超えると警告します）</label>
+    <div class="row tight">
+      <input class="grow" type="number" id="budget" value="3000" inputmode="numeric">
+      <span class="fine">円 / 月</span>
+    </div>
+    <div id="budgetBar" style="margin-top:10px"></div>
+  </div>
+
+  <div class="card">
+    <h2>控え</h2>
+    <p class="lead">保存した買い目。照合すると等級が入ります。</p>
+    <div id="records"></div>
+    <div class="row tight" style="margin-top:10px">
+      <button class="btn sm gho" id="csvAll">全件をCSVで保存</button>
+      <button class="btn sm danger" id="wipe">全消去</button>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 照合 ============ -->
+<section id="check">
+  <div class="card">
+    <h2>当選番号で照合</h2>
+    <p class="lead">控えに保存した買い目を、まとめて自動判定します。手で見比べる必要はありません。</p>
+    <label class="f">照合する控え</label>
+    <select id="checkTarget"></select>
+    <div style="margin-top:12px">
+      <label class="f">本数字 7個（スペース区切り）</label>
+      <input id="winMain" placeholder="例: 07 09 15 18 20 28 31" inputmode="numeric">
+    </div>
+    <div style="margin-top:10px">
+      <label class="f">ボーナス数字 2個</label>
+      <input id="winBonus" placeholder="例: 12 26" inputmode="numeric">
+    </div>
+    <button class="btn pri wide" id="doCheck" style="margin-top:14px">照合する</button>
+    <div id="checkResult" style="margin-top:14px"></div>
+  </div>
+
+  <div class="card">
+    <h2>等級のきまり</h2>
+    <table>
+      <tr><th>等級</th><th>条件</th></tr>
+      <tr><td>1等</td><td>本数字が7個すべて一致</td></tr>
+      <tr><td>2等</td><td>本数字6個 ＋ ボーナス数字1個</td></tr>
+      <tr><td>3等</td><td>本数字6個</td></tr>
+      <tr><td>4等</td><td>本数字5個</td></tr>
+      <tr><td>5等</td><td>本数字4個</td></tr>
+      <tr><td>6等</td><td>本数字3個 ＋ ボーナス数字1個</td></tr>
+    </table>
+    <p class="fine" style="margin-top:10px">当選金は回ごとに変わるため、金額は控え帳で手入力してください。</p>
+  </div>
+</section>
+
+<!-- ============ 帯データ ============ -->
+<section id="data">
+  <div class="card">
+    <h2>帯構成の出やすさ</h2>
+    <p class="lead">
+      37個から7個を選ぶ全<b id="totalComb">—</b>通りのうち、その帯構成が何％を占めるか。
+      実際の抽せん結果ではなく、<b>組合せの数から計算した理論値</b>です。
+    </p>
+    <table id="compTable"></table>
+    <p class="fine" style="margin-top:12px">
+      2-3-2 は上位の型ですが、<b>1位ではありません</b>。
+      そして最も大事な点として、<b>どの構成を選んでも1口あたりの当選確率は変わりません</b>。
+      帯構成は「当たりやすさ」ではなく「偏った買い方を避ける」ための道具です。
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>知っておくこと</h2>
+    <p class="fine">
+      <b>・還元率は約45%。</b>売上のおよそ半分が当せん金に回ります。
+      長く買えば買うほど、収支は購入額の約マイナス55%に近づきます。これは買い方では変えられません。<br><br>
+      <b>・1等の確率は 1/10,295,472。</b>1口300円で全通り買うと約31億円かかります。<br><br>
+      <b>・帯構成・連番・末尾などの条件は、確率を上げません。</b>
+      効果があるのは「他人と同じ買い目を避ける＝当たったとき山分けになりにくい」という一点だけです。<br><br>
+      <b>・このアプリは購入しません。</b>ログイン情報も扱わず、通信も一切しません。
+      入力したデータはこの端末のブラウザ内にだけ保存されます。<br><br>
+      <b>・上限を決めて、余剰資金の範囲で。</b>控え帳の月上限を必ず設定してください。
+    </p>
+  </div>
+
+  <div class="card">
+    <h2>データの持ち出し</h2>
+    <p class="lead">端末を変えるとき用。JSONで書き出し／読み込みできます。</p>
+    <div class="row tight">
+      <button class="btn sm" id="expJson">書き出し</button>
+      <button class="btn sm" id="impJson">読み込み</button>
+      <input type="file" id="fileIn" accept="application/json" style="display:none">
+    </div>
+  </div>
+</section>
+
+</div><!-- /wrap -->
+
+<div class="dock">
+  <div class="inner">
+    <div class="info" id="dockInfo">帯構成 2-3-2 ／ 候補 0 個</div>
+    <button class="btn pri sm" id="dockGen">つくる</button>
+  </div>
+</div>
+
+<div class="mask" id="mask">
+  <div class="modal">
+    <h3 id="mTitle">確認</h3>
+    <p id="mBody"></p>
+    <div class="ac">
+      <button class="btn gho sm" id="mNo">やめる</button>
+      <button class="btn pri sm" id="mYes">実行する</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+(function(){
+"use strict";
+
+/* ================= 定数 ================= */
+var BANDS = [[1,12],[13,24],[25,37]];
+var BNAME = ["低帯","中帯","高帯"];
+var FNAME = {seq:"連番をきらう", tail:"末尾かぶりをきらう", sum:"合計値を中央に寄せる", prev:"前回とのかぶりを制限"};
+var KEY = "obigumi-loto7-v1";
+var PRESETS = [
+  {r:[2,3,2], t:"ミドルコア"},
+  {r:[2,2,3], t:"最頻"},
+  {r:[3,2,2], t:""},
+  {r:[3,3,1], t:""},
+  {r:[1,3,3], t:""},
+  {r:[3,1,3], t:""},
+  {r:[2,4,1], t:""},
+  {r:[1,2,4], t:""}
+];
+
+/* ================= 状態 ================= */
+var S = {
+  ratio:[2,3,2],
+  cands:[],
+  prevWin:[],
+  filters:{seq:false,seqN:3,tail:false,tailN:3,sum:false,sumMin:100,sumMax:166,prev:false,prevN:4},
+  unit:300,
+  count:5,
+  budget:3000,
+  records:[]
+};
+var tickets = [];
+var genNotes = [];
+
+function load(){
+  try{
+    var raw = localStorage.getItem(KEY);
+    if(!raw) return;
+    var d = JSON.parse(raw);
+    if(d && typeof d === "object"){
+      if(Array.isArray(d.ratio) && d.ratio.length===3) S.ratio = d.ratio.map(Number);
+      if(Array.isArray(d.cands)) S.cands = d.cands.map(Number);
+      if(Array.isArray(d.prevWin)) S.prevWin = d.prevWin.map(Number);
+      if(d.filters) for(var k in S.filters){ if(k in d.filters) S.filters[k] = d.filters[k]; }
+      if(d.unit) S.unit = Number(d.unit);
+      if(d.count) S.count = Number(d.count);
+      if(d.budget != null) S.budget = Number(d.budget);
+      if(Array.isArray(d.records)) S.records = d.records;
+    }
+  }catch(e){ /* 壊れていても初期値で動かす */ }
+}
+function save(){
+  try{ localStorage.setItem(KEY, JSON.stringify(S)); }
+  catch(e){ toast("保存できませんでした（ブラウザの設定をご確認ください）"); }
+}
+
+/* ================= 小道具 ================= */
+function $(s,r){ return (r||document).querySelector(s); }
+function $$(s,r){ return Array.prototype.slice.call((r||document).querySelectorAll(s)); }
+function pad(n){ return (n<10?"0":"")+n; }
+function band(n){ return n<=12 ? 0 : (n<=24 ? 1 : 2); }
+function bandNums(i){ var a=[]; for(var n=BANDS[i][0]; n<=BANDS[i][1]; n++) a.push(n); return a; }
+function yen(n){ return "¥" + Number(n||0).toLocaleString("ja-JP"); }
+function todayISO(){ var d=new Date(); return d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+pad(d.getDate()); }
+function rnd(max){
+  if(window.crypto && window.crypto.getRandomValues){
+    var u=new Uint32Array(1); window.crypto.getRandomValues(u); return u[0] % max;
+  }
+  return Math.floor(Math.random()*max);
+}
+function sample(arr,n){
+  var a=arr.slice(), o=[];
+  while(o.length<n && a.length) o.push(a.splice(rnd(a.length),1)[0]);
+  return o;
+}
+function comb(n,k){
+  if(k<0||k>n) return 0;
+  var r=1; for(var i=1;i<=k;i++) r = r*(n-k+i)/i;
+  return Math.round(r);
+}
+function parseNums(str,max){
+  var seen={}, out=[];
+  String(str||"").split(/[^0-9]+/).forEach(function(s){
+    if(!s) return;
+    var v = parseInt(s,10);
+    if(v>=1 && v<=37 && !seen[v]){ seen[v]=1; out.push(v); }
+  });
+  out.sort(function(a,b){return a-b;});
+  return max ? out.slice(0,max) : out;
+}
+var toastT;
+function toast(msg){
+  var el=$("#toast"); el.textContent=msg; el.classList.add("on");
+  clearTimeout(toastT); toastT=setTimeout(function(){ el.classList.remove("on"); }, 2400);
+}
+function ask(title, body, cb){
+  $("#mTitle").textContent=title; $("#mBody").innerHTML=body;
+  $("#mask").classList.add("on");
+  $("#mYes").onclick=function(){ $("#mask").classList.remove("on"); cb(); };
+  $("#mNo").onclick=function(){ $("#mask").classList.remove("on"); };
+}
+function copyText(txt){
+  function fallback(){
+    var ta=document.createElement("textarea");
+    ta.value=txt; ta.style.position="fixed"; ta.style.opacity="0";
+    document.body.appendChild(ta); ta.select();
+    var ok=false; try{ ok=document.execCommand("copy"); }catch(e){}
+    document.body.removeChild(ta);
+    toast(ok ? "コピーしました" : "コピーできませんでした。長押しで選択してください");
+  }
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(txt).then(function(){ toast("コピーしました"); }, fallback);
+  } else fallback();
+}
+function download(name, text, mime){
+  try{
+    var blob=new Blob(["﻿"+text], {type:(mime||"text/csv")+";charset=utf-8"});
+    var a=document.createElement("a");
+    a.href=URL.createObjectURL(blob); a.download=name;
+    document.body.appendChild(a); a.click();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 400);
+    toast(name+" を保存しました");
+  }catch(e){ toast("保存できませんでした"); }
+}
+function tkText(t){ return t.map(pad).join(" "); }
+function tkHtml(t){
+  return t.map(function(n){ return '<em class="b'+band(n)+'">'+pad(n)+'</em>'; }).join(" ");
+}
+
+/* ================= 生成 ================= */
+function pools(){
+  var p=[], notes=[];
+  for(var i=0;i<3;i++){
+    var all = bandNums(i);
+    var cand = all.filter(function(n){ return S.cands.indexOf(n)>=0; });
+    var rest = all.filter(function(n){ return S.cands.indexOf(n)<0; });
+    var need = S.ratio[i];
+    if(need>0 && cand.length < need){
+      if(cand.length===0) notes.push(BNAME[i]+"の候補が未選択のため、"+BNAME[i]+"全体から選びました。");
+      else notes.push(BNAME[i]+"の候補が"+cand.length+"個しかないため、不足分を"+BNAME[i]+"全体から補いました。");
+    }
+    p.push({cand:cand, rest:rest, all:all});
+  }
+  return {p:p, notes:notes};
+}
+function build(P){
+  var t=[];
+  for(var i=0;i<3;i++){
+    var need=S.ratio[i]; if(need<=0) continue;
+    var c=P[i].cand;
+    if(c.length>=need){ t=t.concat(sample(c,need)); }
+    else { t=t.concat(c); t=t.concat(sample(P[i].rest, need-c.length)); }
+  }
+  return t.sort(function(a,b){return a-b;});
+}
+function pass(t,f){
+  if(f.seq){
+    var run=1, mx=1;
+    for(var i=1;i<t.length;i++){ run = (t[i]===t[i-1]+1) ? run+1 : 1; if(run>mx) mx=run; }
+    if(mx>=f.seqN) return false;
+  }
+  if(f.tail){
+    var c={}, m2=0;
+    for(var j=0;j<t.length;j++){ var d=t[j]%10; c[d]=(c[d]||0)+1; if(c[d]>m2) m2=c[d]; }
+    if(m2>=f.tailN) return false;
+  }
+  if(f.sum){
+    var s=0; for(var k=0;k<t.length;k++) s+=t[k];
+    if(s<f.sumMin || s>f.sumMax) return false;
+  }
+  if(f.prev && S.prevWin.length){
+    var ov=t.filter(function(n){ return S.prevWin.indexOf(n)>=0; }).length;
+    if(ov>=f.prevN) return false;
+  }
+  return true;
+}
+function generate(n){
+  var P = pools();
+  var notes = P.notes.slice();
+  var cur = {}; for(var k in S.filters) cur[k]=S.filters[k];
+  var relax = ["prev","sum","tail","seq"];
+  var seen = {}, out = [];
+  for(var i=0;i<n;i++){
+    var got=null, guard=0;
+    while(!got && guard<8){
+      guard++;
+      for(var a=0;a<1200;a++){
+        var t=build(P.p), key=t.join(",");
+        if(seen[key]) continue;
+        if(pass(t,cur)){ got=t; break; }
+      }
+      if(!got){
+        var nxt=null;
+        for(var r=0;r<relax.length;r++){ if(cur[relax[r]]){ nxt=relax[r]; break; } }
+        if(!nxt) break;
+        cur[nxt]=false;
+        notes.push("条件がきびしく作れなかったため「"+FNAME[nxt]+"」をゆるめました。");
+      }
+    }
+    if(!got){
+      for(var b=0;b<4000 && !got;b++){
+        var t2=build(P.p), k2=t2.join(",");
+        if(!seen[k2]) got=t2;
+      }
+    }
+    if(!got){
+      notes.push("これ以上ちがう組合せが作れないため、"+out.length+"口で止めました。候補数字を増やしてください。");
+      break;
+    }
+    seen[got.join(",")]=1;
+    out.push(got);
+  }
+  var uniq=[], m={};
+  notes.forEach(function(x){ if(!m[x]){ m[x]=1; uniq.push(x); } });
+  return {tickets:out, notes:uniq};
+}
+
+/* ================= 判定 ================= */
+function grade(t, main, bonus){
+  var m=0,b=0;
+  for(var i=0;i<t.length;i++){
+    if(main.indexOf(t[i])>=0) m++;
+    else if(bonus.indexOf(t[i])>=0) b++;
+  }
+  if(m===7) return 1;
+  if(m===6 && b>=1) return 2;
+  if(m===6) return 3;
+  if(m===5) return 4;
+  if(m===4) return 5;
+  if(m===3 && b>=1) return 6;
+  return 0;
+}
+
+/* ================= 描画 ================= */
+function renderGrid(){
+  var host = $("#numgrid"); host.innerHTML="";
+  for(var i=0;i<3;i++){
+    var cnt = S.cands.filter(function(n){ return band(n)===i; }).length;
+    var lab = document.createElement("div");
+    lab.className="bandlabel";
+    lab.innerHTML = '<span class="dot" style="background:var(--'+["tei","chu","kou"][i]+')"></span>'
+      + BNAME[i] + " " + pad(BANDS[i][0]) + "–" + pad(BANDS[i][1])
+      + '<span class="cnt">候補 ' + cnt + " / 必要 " + S.ratio[i] + "</span>";
+    host.appendChild(lab);
+    var g = document.createElement("div"); g.className="grid";
+    bandNums(i).forEach(function(n){
+      var b=document.createElement("button");
+      b.className = "n b"+band(n)
+        + (S.cands.indexOf(n)>=0 ? " on":"")
+        + (S.prevWin.indexOf(n)>=0 ? " prev":"");
+      b.textContent = pad(n);
+      b.setAttribute("aria-pressed", S.cands.indexOf(n)>=0 ? "true":"false");
+      b.onclick=function(){
+        var k=S.cands.indexOf(n);
+        if(k>=0) S.cands.splice(k,1); else S.cands.push(n);
+        S.cands.sort(function(a,b2){return a-b2;});
+        save(); renderGrid(); renderDock();
+      };
+      g.appendChild(b);
+    });
+    host.appendChild(g);
+  }
+}
+function renderRatio(){
+  for(var i=0;i<3;i++) $("#rv"+i).textContent = S.ratio[i];
+  var tot = S.ratio[0]+S.ratio[1]+S.ratio[2];
+  var note = $("#ratioNote");
+  if(tot!==7){
+    note.innerHTML = '<div class="note warn">合計が '+tot+' 個です。ロト7は7個ちょうどに合わせてください。</div>';
+  } else {
+    var c = comb(12,S.ratio[0])*comb(12,S.ratio[1])*comb(13,S.ratio[2]);
+    var tc = comb(37,7);
+    note.innerHTML = '<div class="note">この型は全'+tc.toLocaleString("ja-JP")+'通りのうち '
+      + c.toLocaleString("ja-JP") + ' 通り（<b>'+(c/tc*100).toFixed(1)+'%</b>）を占めます。'
+      + 'ただし1口あたりの当選確率はどの型でも同じです。</div>';
+  }
+  $$("#preset button").forEach(function(b){
+    b.classList.toggle("on", b.dataset.r === S.ratio.join("-"));
+  });
+  $("#gen").disabled = (tot!==7);
+  $("#dockGen").disabled = (tot!==7);
+}
+function renderPreset(){
+  var host=$("#preset"); host.innerHTML="";
+  PRESETS.forEach(function(p){
+    var b=document.createElement("button");
+    b.dataset.r = p.r.join("-");
+    b.innerHTML = p.r.join("-") + (p.t ? '<i>'+p.t+'</i>' : "");
+    b.onclick=function(){ S.ratio=p.r.slice(); save(); renderRatio(); renderGrid(); renderDock(); };
+    host.appendChild(b);
+  });
+}
+function renderFilters(){
+  $$(".tog").forEach(function(t){
+    var k=t.dataset.f;
+    t.classList.toggle("on", !!S.filters[k]);
+    $("#sub-"+k).classList.toggle("on", !!S.filters[k]);
+  });
+  $("#seqN").value=S.filters.seqN; $("#tailN").value=S.filters.tailN;
+  $("#sumMin").value=S.filters.sumMin; $("#sumMax").value=S.filters.sumMax;
+  $("#prevN").value=S.filters.prevN;
+}
+function renderTickets(){
+  var card=$("#resultCard");
+  if(!tickets.length){ card.style.display="none"; return; }
+  card.style.display="block";
+  var nh=$("#genNotes"); nh.innerHTML="";
+  genNotes.forEach(function(t){
+    var d=document.createElement("div"); d.className="note"; d.textContent=t; nh.appendChild(d);
+  });
+  var host=$("#tickets"); host.innerHTML="";
+  tickets.forEach(function(t,i){
+    var sum=0; t.forEach(function(n){ sum+=n; });
+    var row=document.createElement("div"); row.className="tk";
+    row.innerHTML = '<span class="idx">'+pad(i+1)+'</span>'
+      + '<span class="nums">'+tkHtml(t)+'</span>'
+      + '<span class="meta">計'+sum+'</span>';
+    var del=document.createElement("button");
+    del.className="del"; del.textContent="×"; del.title="この口を消す";
+    del.onclick=function(){ tickets.splice(i,1); renderTickets(); };
+    row.appendChild(del);
+    host.appendChild(row);
+  });
+  var cost = tickets.length * S.unit;
+  $("#sumCount").textContent = tickets.length;
+  $("#sumYen").textContent = cost.toLocaleString("ja-JP");
+  var used = monthCost() + cost;
+  $("#sumBudget").textContent = S.budget>0
+    ? "（今月の合計は " + yen(used) + " / 上限 " + yen(S.budget) + "）" : "";
+  $("#sumBudget").style.color = (S.budget>0 && used>S.budget) ? "var(--ng)" : "var(--hai-2)";
+}
+function renderDock(){
+  $("#dockInfo").innerHTML = "帯構成 <b>"+S.ratio.join("-")+"</b> ／ 候補 <b>"+S.cands.length+"</b> 個"
+    + (S.prevWin.length ? " ／ 前回 <b>"+S.prevWin.length+"</b> 個" : "");
+}
+function monthCost(){
+  var ym = todayISO().slice(0,7), s=0;
+  S.records.forEach(function(r){ if((r.date||"").slice(0,7)===ym) s += (r.cost||0); });
+  return s;
+}
+function renderMoney(){
+  var cost=0, prize=0;
+  S.records.forEach(function(r){ cost+=(r.cost||0); prize+=(r.prize||0); });
+  var net = prize-cost;
+  $("#mCost").textContent = yen(cost);
+  $("#mPrize").textContent = yen(prize);
+  var nv=$("#mNet"); nv.textContent = (net>=0?"+":"−") + yen(Math.abs(net)).slice(1);
+  nv.className = "v " + (net>=0 ? "plus":"minus");
+  $("#budget").value = S.budget;
+  var mc = monthCost();
+  var pct = S.budget>0 ? Math.min(100, mc/S.budget*100) : 0;
+  $("#budgetBar").innerHTML = S.budget>0
+    ? '<div class="fine">今月の購入 '+yen(mc)+' / '+yen(S.budget)
+      + (mc>S.budget ? ' <b style="color:var(--ng)">← 上限を超えています</b>' : '')
+      + '</div><div class="bar"><i style="width:'+pct+'%;background:'
+      + (mc>S.budget?"var(--ng)":"var(--kin)")+'"></i></div>'
+    : '<div class="fine">上限を0にすると警告しません。</div>';
+}
+function renderRecords(){
+  var host=$("#records"); host.innerHTML="";
+  if(!S.records.length){
+    host.innerHTML='<div class="empty">まだ控えがありません。<br>「組む」で買い目をつくって保存してください。</div>';
+  }
+  S.records.slice().reverse().forEach(function(r){
+    var el=document.createElement("div"); el.className="rec";
+    var st = r.checked
+      ? (r.grades && Object.keys(r.grades).length ? "当せんあり" : "はずれ")
+      : "未照合";
+    var gtxt = "";
+    if(r.checked && r.grades){
+      var ks=Object.keys(r.grades).sort();
+      gtxt = ks.length ? ks.map(function(g){ return g+"等 "+r.grades[g]+"口"; }).join(" / ") : "当せんなし";
+    }
+    el.innerHTML =
+      '<div class="hd"><b>'+(r.round||"（回号なし）")+'</b><time>'+(r.date||"")+'</time>'
+      + '<span class="st'+(r.checked && gtxt && gtxt!=="当せんなし" ? " win":"")+'">'+st+'</span></div>'
+      + '<div class="bd">'+r.tickets.length+'口 / '+yen(r.cost)
+      + (gtxt ? ' ・ '+gtxt : "") + '</div>';
+    var list=document.createElement("div");
+    list.className="tickets"; list.style.marginTop="8px";
+    r.tickets.forEach(function(t,i){
+      var g = r.checked && r.tgrades ? r.tgrades[i] : 0;
+      var row=document.createElement("div");
+      row.className="tk"+(g?" hit":"");
+      row.innerHTML='<span class="idx">'+pad(i+1)+'</span><span class="nums">'+tkHtml(t)+'</span>'
+        + (g ? '<span class="rank">'+g+'等</span>' : '');
+      list.appendChild(row);
+    });
+    el.appendChild(list);
+
+    var ac=document.createElement("div"); ac.className="ac";
+    var bCopy=document.createElement("button"); bCopy.className="btn sm gho"; bCopy.textContent="コピー";
+    bCopy.onclick=function(){ copyText(r.tickets.map(tkText).join("\n")); };
+    var wrap=document.createElement("div");
+    wrap.style.cssText="display:flex;align-items:center;gap:6px";
+    wrap.innerHTML='<span class="fine">当選金</span>';
+    var pi=document.createElement("input");
+    pi.type="number"; pi.value=r.prize||0; pi.style.width="110px"; pi.inputMode="numeric";
+    pi.onchange=function(){
+      r.prize = Math.max(0, Number(pi.value)||0);
+      save(); renderMoney(); renderRecords();
+    };
+    wrap.appendChild(pi);
+    var bDel=document.createElement("button"); bDel.className="btn sm danger"; bDel.textContent="削除";
+    bDel.onclick=function(){
+      ask("この控えを削除しますか", (r.round||"（回号なし）")+" の "+r.tickets.length+"口を消します。元に戻せません。", function(){
+        var idx=S.records.indexOf(r);
+        if(idx>=0) S.records.splice(idx,1);
+        save(); renderRecords(); renderMoney(); renderCheckTarget();
+        toast("削除しました");
+      });
+    };
+    ac.appendChild(bCopy); ac.appendChild(wrap); ac.appendChild(bDel);
+    el.appendChild(ac);
+    host.appendChild(el);
+  });
+}
+function renderCheckTarget(){
+  var sel=$("#checkTarget"); var cur=sel.value;
+  sel.innerHTML="";
+  if(!S.records.length){
+    var o=document.createElement("option");
+    o.value=""; o.textContent="控えがありません";
+    sel.appendChild(o); return;
+  }
+  S.records.slice().reverse().forEach(function(r){
+    var o=document.createElement("option");
+    o.value=r.id;
+    o.textContent=(r.round||"（回号なし）")+" ／ "+r.tickets.length+"口 ／ "+(r.checked?"照合済":"未照合");
+    sel.appendChild(o);
+  });
+  if(cur) sel.value=cur;
+}
+function renderComp(){
+  var tc = comb(37,7);
+  $("#totalComb").textContent = tc.toLocaleString("ja-JP");
+  var rows=[];
+  for(var a=0;a<=7;a++) for(var b=0;a+b<=7;b++){
+    var c=7-a-b;
+    if(a>12||b>12||c>13) continue;
+    var n = comb(12,a)*comb(12,b)*comb(13,c);
+    if(n>0) rows.push({r:[a,b,c], n:n});
+  }
+  rows.sort(function(x,y){ return y.n-x.n; });
+  var max=rows[0].n;
+  var html='<tr><th>順位</th><th>帯構成</th><th class="r">通り</th><th class="r">割合</th></tr>';
+  rows.slice(0,12).forEach(function(row,i){
+    var isCur = row.r.join("-")===S.ratio.join("-");
+    html += '<tr'+(isCur?' class="top"':'')+'>'
+      + '<td class="r">'+(i+1)+'</td>'
+      + '<td style="font-family:var(--num)">'+row.r.join("-")+(isCur?' ←今':'')+'</td>'
+      + '<td class="r">'+row.n.toLocaleString("ja-JP")+'</td>'
+      + '<td class="r">'+(row.n/tc*100).toFixed(2)+'%'
+      + '<div class="bar"><i style="width:'+(row.n/max*100)+'%"></i></div></td></tr>';
+  });
+  $("#compTable").innerHTML=html;
+}
+function renderAll(){
+  renderPreset(); renderRatio(); renderGrid(); renderFilters();
+  renderTickets(); renderDock(); renderMoney(); renderRecords();
+  renderCheckTarget(); renderComp();
+  $("#count").value=S.count; $("#unit").value=S.unit;
+  $("#prevWin").value=S.prevWin.map(pad).join(" ");
+}
+
+/* ================= 操作 ================= */
+$$("nav button").forEach(function(b){
+  b.onclick=function(){
+    $$("nav button").forEach(function(x){ x.classList.remove("on"); });
+    $$("section").forEach(function(x){ x.classList.remove("on"); });
+    b.classList.add("on");
+    $("#"+b.dataset.tab).classList.add("on");
+    window.scrollTo(0,0);
+  };
+});
+function goTab(name){
+  var b = document.querySelector('nav button[data-tab="'+name+'"]');
+  if(b) b.click();
+}
+
+$$(".rbox .rc button").forEach(function(b){
+  b.onclick=function(){
+    var i=Number(b.dataset.r), d=Number(b.dataset.d);
+    var max = (i===2) ? 13 : 12;
+    S.ratio[i] = Math.max(0, Math.min(Math.min(7,max), S.ratio[i]+d));
+    save(); renderRatio(); renderGrid(); renderDock();
+  };
+});
+
+$$(".tog").forEach(function(t){
+  t.onclick=function(){
+    var k=t.dataset.f;
+    S.filters[k] = !S.filters[k];
+    save(); renderFilters();
+  };
+});
+[["seqN",2,7],["tailN",2,7],["prevN",1,7]].forEach(function(spec){
+  $("#"+spec[0]).onchange=function(){
+    var v=Number(this.value)||spec[1];
+    v=Math.max(spec[1],Math.min(spec[2],v));
+    this.value=v; S.filters[spec[0]]=v; save();
+  };
+});
+$("#sumMin").onchange=function(){
+  var v=Math.max(28,Math.min(238,Number(this.value)||28));
+  if(v>S.filters.sumMax) v=S.filters.sumMax;
+  this.value=v; S.filters.sumMin=v; save();
+};
+$("#sumMax").onchange=function(){
+  var v=Math.max(28,Math.min(238,Number(this.value)||238));
+  if(v<S.filters.sumMin) v=S.filters.sumMin;
+  this.value=v; S.filters.sumMax=v; save();
+};
+
+$("#clearCand").onclick=function(){ S.cands=[]; save(); renderGrid(); renderDock(); toast("候補をクリアしました"); };
+$("#allCand").onclick=function(){
+  S.cands=[]; for(var n=1;n<=37;n++) S.cands.push(n);
+  save(); renderGrid(); renderDock(); toast("01〜37すべてを候補にしました");
+};
+$("#pullPrev").onclick=function(){
+  if(!S.prevWin.length){ toast("前回の当選数字が未入力です"); return; }
+  S.prevWin.forEach(function(n){ if(S.cands.indexOf(n)<0) S.cands.push(n); });
+  S.cands.sort(function(a,b){return a-b;});
+  save(); renderGrid(); renderDock(); toast("前回数字を候補に追加しました");
+};
+$("#setPrev").onclick=function(){
+  var v=parseNums($("#prevWin").value,7);
+  S.prevWin=v; save(); renderGrid(); renderDock();
+  $("#prevWin").value = v.map(pad).join(" ");
+  toast(v.length ? v.length+"個を前回数字に設定しました" : "数字を読み取れませんでした");
+};
+
+$("#count").onchange=function(){
+  var v=Math.max(1,Math.min(50,Number(this.value)||1));
+  this.value=v; S.count=v; save();
+};
+$("#unit").onchange=function(){
+  var v=Math.max(1,Number(this.value)||300);
+  this.value=v; S.unit=v; save(); renderTickets();
+};
+$("#budget").onchange=function(){
+  S.budget=Math.max(0,Number(this.value)||0); save(); renderMoney(); renderTickets();
+};
+
+function runGen(){
+  if(S.ratio[0]+S.ratio[1]+S.ratio[2] !== 7){
+    toast("帯構成の合計を7個にしてください"); goTab("make"); return;
+  }
+  var res = generate(S.count);
+  tickets = res.tickets; genNotes = res.notes;
+  if(!tickets.length){ toast("買い目を作れませんでした"); return; }
+  var cost = tickets.length*S.unit;
+  if(S.budget>0 && monthCost()+cost > S.budget){
+    genNotes.unshift("今月の購入額が上限（"+yen(S.budget)+"）を超えます。買う前にもう一度考えてください。");
+  }
+  renderTickets(); renderMoney();
+  goTab("make");
+  setTimeout(function(){
+    var el=$("#resultCard");
+    if(el) window.scrollTo({top:el.offsetTop-70, behavior:"smooth"});
+  }, 60);
+}
+$("#gen").onclick=runGen;
+$("#reroll").onclick=runGen;
+$("#dockGen").onclick=runGen;
+$("#quick").onclick=function(){
+  S.ratio=[2,3,2]; S.count=Math.max(1,S.count);
+  save(); renderRatio(); renderGrid(); renderDock(); runGen();
+};
+
+$("#copyTk").onclick=function(){ copyText(tickets.map(tkText).join("\n")); };
+$("#csvTk").onclick=function(){
+  var rows=["口,数字1,数字2,数字3,数字4,数字5,数字6,数字7,合計"];
+  tickets.forEach(function(t,i){
+    var s=0; t.forEach(function(n){ s+=n; });
+    rows.push((i+1)+","+t.map(pad).join(",")+","+s);
+  });
+  download("loto7_"+todayISO()+".csv", rows.join("\n"));
+};
+
+$("#save").onclick=function(){
+  if(!tickets.length){ toast("先に買い目をつくってください"); return; }
+  var round = $("#roundNo").value.trim() || "（回号なし）";
+  var cost = tickets.length*S.unit;
+  var over = (S.budget>0 && monthCost()+cost > S.budget);
+  var body = round+" として "+tickets.length+"口（"+yen(cost)+"）を控えに保存します。"
+    + (over ? '<br><br><b style="color:var(--ng)">今月の購入額が上限を超えます。</b>' : "");
+  ask("控えに保存しますか", body, function(){
+    S.records.push({
+      id:"r"+Date.now()+"_"+rnd(100000),
+      round:round, date:todayISO(),
+      tickets:tickets.map(function(t){ return t.slice(); }),
+      unit:S.unit, cost:cost,
+      checked:false, prize:0, grades:null, tgrades:null
+    });
+    save(); renderRecords(); renderMoney(); renderCheckTarget();
+    toast("控えに保存しました");
+    goTab("list");
+  });
+};
+
+$("#doCheck").onclick=function(){
+  var id=$("#checkTarget").value;
+  var rec=null;
+  for(var i=0;i<S.records.length;i++) if(S.records[i].id===id) rec=S.records[i];
+  if(!rec){ toast("照合する控えを選んでください"); return; }
+  var main=parseNums($("#winMain").value,7);
+  var bonus=parseNums($("#winBonus").value,2);
+  if(main.length!==7){
+    $("#checkResult").innerHTML='<div class="note warn">本数字が'+main.length+'個です。7個入力してください。</div>';
+    return;
+  }
+  var dup = bonus.filter(function(n){ return main.indexOf(n)>=0; });
+  if(dup.length){
+    $("#checkResult").innerHTML='<div class="note warn">ボーナス数字が本数字と重複しています（'+dup.map(pad).join(" ")+'）。入力を確認してください。</div>';
+    return;
+  }
+  var grades={}, tg=[];
+  rec.tickets.forEach(function(t){
+    var g=grade(t,main,bonus);
+    tg.push(g);
+    if(g) grades[g]=(grades[g]||0)+1;
+  });
+  rec.checked=true; rec.grades=grades; rec.tgrades=tg;
+  rec.win={main:main,bonus:bonus};
+  save(); renderRecords(); renderCheckTarget(); renderMoney();
+
+  var ks=Object.keys(grades).sort();
+  var html='<div class="note ok"><b>'+rec.round+'</b> の '+rec.tickets.length+'口を照合しました。<br>'
+    + '本数字 '+main.map(pad).join(" ")+' ／ ボーナス '+(bonus.length?bonus.map(pad).join(" "):"—")+'</div>';
+  if(ks.length){
+    html += '<table><tr><th>等級</th><th class="r">口数</th></tr>'
+      + ks.map(function(g){ return '<tr class="top"><td>'+g+'等</td><td class="r">'+grades[g]+'</td></tr>'; }).join("")
+      + '</table><p class="fine" style="margin-top:10px">当選金額は控え帳で入力すると収支に反映されます。'
+      + '受け取りには期限（支払開始日から1年）があります。</p>';
+  } else {
+    html += '<div class="note">当せんはありませんでした。</div>';
+  }
+  $("#checkResult").innerHTML=html;
+};
+
+$("#csvAll").onclick=function(){
+  if(!S.records.length){ toast("控えがありません"); return; }
+  var rows=["回号,購入日,口,数字1,数字2,数字3,数字4,数字5,数字6,数字7,合計,1口金額,等級"];
+  S.records.forEach(function(r){
+    r.tickets.forEach(function(t,i){
+      var s=0; t.forEach(function(n){ s+=n; });
+      var g = (r.tgrades && r.tgrades[i]) ? r.tgrades[i]+"等" : (r.checked ? "はずれ" : "");
+      rows.push('"'+r.round+'",'+r.date+","+(i+1)+","+t.map(pad).join(",")+","+s+","+r.unit+","+g);
+    });
+  });
+  download("loto7_控え_"+todayISO()+".csv", rows.join("\n"));
+};
+$("#wipe").onclick=function(){
+  ask("すべての控えを消去しますか",
+      "控え "+S.records.length+"件と収支の記録をすべて削除します。<b>元に戻せません。</b><br><br>先に「全件をCSVで保存」で控えを残しておくことをおすすめします。",
+      function(){
+        S.records=[]; save(); renderRecords(); renderMoney(); renderCheckTarget();
+        toast("すべて消去しました");
+      });
+};
+
+$("#expJson").onclick=function(){
+  download("obigumi_backup_"+todayISO()+".json", JSON.stringify(S,null,2), "application/json");
+};
+$("#impJson").onclick=function(){ $("#fileIn").click(); };
+$("#fileIn").onchange=function(e){
+  var f=e.target.files && e.target.files[0];
+  if(!f) return;
+  var fr=new FileReader();
+  fr.onload=function(){
+    var d;
+    try{ d=JSON.parse(fr.result); }
+    catch(err){ toast("読み込めないファイルです"); return; }
+    if(!d || !Array.isArray(d.records)){ toast("このアプリのバックアップではありません"); return; }
+    ask("読み込みますか",
+        "今の控え "+S.records.length+"件を、ファイルの "+d.records.length+"件で<b>置きかえます</b>。元に戻せません。",
+        function(){
+          S.records = d.records;
+          if(Array.isArray(d.ratio) && d.ratio.length===3) S.ratio=d.ratio.map(Number);
+          if(Array.isArray(d.cands)) S.cands=d.cands.map(Number);
+          if(Array.isArray(d.prevWin)) S.prevWin=d.prevWin.map(Number);
+          if(d.budget!=null) S.budget=Number(d.budget);
+          save(); renderAll(); toast("読み込みました");
+        });
+  };
+  fr.readAsText(f);
+  e.target.value="";
+};
+
+$("#mask").onclick=function(e){ if(e.target===this) this.classList.remove("on"); };
+
+/* ================= 起動 ================= */
+load();
+renderAll();
+})();
+</script>
+</body>
+</html>
