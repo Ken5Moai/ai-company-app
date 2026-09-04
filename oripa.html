@@ -1,0 +1,1516 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0e1116">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>オリパ帳場 — オリジナルパックの設計・販売・発送台帳</title>
+<style>
+/* ================================================================
+   オリパ帳場(おりぱ ちょうば)
+   トレカのオリジナルパック(オリパ)を「作る → 売る → 渡す → 締める」まで
+   1つの画面でまわす単一HTML。通信ゼロ・保存はこの端末のブラウザ内だけ。
+
+   ・封入は販売前にすべて確定させ、その指紋(コミット)を先に公開する。
+     販売後にたねを公開すれば、誰でも中身が入れ替わっていないか検算できる。
+   ・還元率と原価率は、店主が隠せないように常に画面に出す。
+   ・実際の決済は行わない(現金・外部決済で受け取った結果を記帳する)。
+   ================================================================ */
+:root{
+  --sumi:#0e1116;
+  --sumi-2:#161b23;
+  --sumi-3:#1e2530;
+  --sumi-4:#28313e;
+  --sen:#2f3a49;
+  --kinari:#eef1f5;
+  --hai:#94a2b3;
+  --hai-2:#67768a;
+  --kin:#d9b451;
+  --kin-awai:rgba(217,180,81,.16);
+  --aka:#e0705a;
+  --aka-awai:rgba(224,112,90,.14);
+  --ao:#5aa0e0;
+  --midori:#68b98a;
+  --midori-awai:rgba(104,185,138,.14);
+  --murasaki:#a98ede;
+  --r-S:#ff8ad8;
+  --r-A:#e6c15a;
+  --r-B:#b8c4d0;
+  --r-C:#c08a5a;
+  --r-D:#7d8894;
+  --gothic:"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic",YuGothic,"Noto Sans JP","Noto Sans CJK JP",sans-serif;
+  --num:"SF Mono",Menlo,Consolas,"Courier New",monospace;
+  --ease:cubic-bezier(.19,1,.22,1);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{
+  background:var(--sumi);color:var(--kinari);
+  font-family:var(--gothic);font-size:15px;line-height:1.7;
+  -webkit-tap-highlight-color:transparent;
+  overscroll-behavior-y:none;font-feature-settings:"palt";
+}
+button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
+button{cursor:pointer;border:none;background:none}
+input,select,textarea{
+  background:var(--sumi);border:1px solid var(--sen);border-radius:8px;
+  padding:8px 10px;color:var(--kinari);width:100%;
+}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--kin)}
+input[type=number]{font-family:var(--num)}
+textarea{resize:vertical;line-height:1.6}
+h2{font-size:17px;letter-spacing:.04em}
+h3{font-size:15px;letter-spacing:.03em}
+small{font-size:12px;color:var(--hai)}
+.num{font-family:var(--num)}
+
+/* ---- 骨格 ---- */
+main.wrap{max-width:760px;margin:0 auto;padding:0 14px 140px}
+header{
+  position:sticky;top:0;z-index:30;background:rgba(14,17,22,.95);
+  backdrop-filter:blur(10px);border-bottom:1px solid var(--sen);
+  padding-top:env(safe-area-inset-top);
+}
+.hd{max-width:760px;margin:0 auto;padding:10px 14px 0;display:flex;align-items:baseline;gap:10px}
+.hd h1{font-size:16px;letter-spacing:.14em;color:var(--kin)}
+.hd .shop{font-size:12px;color:var(--hai);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hd .gear{font-size:12px;color:var(--hai-2);padding:4px 6px;flex:none}
+nav.tabs{max-width:760px;margin:0 auto;display:flex;gap:2px;overflow-x:auto;padding:8px 8px 0;scrollbar-width:none}
+nav.tabs::-webkit-scrollbar{display:none}
+nav.tabs button{
+  flex:none;padding:8px 12px 9px;font-size:13px;color:var(--hai-2);
+  border-bottom:2px solid transparent;white-space:nowrap;letter-spacing:.06em;
+}
+nav.tabs button.on{color:var(--kin);border-bottom-color:var(--kin)}
+nav.tabs button .badge{
+  display:inline-block;min-width:16px;margin-left:5px;padding:0 4px;
+  background:var(--aka);color:#fff;border-radius:8px;font-size:10px;line-height:16px;
+  font-family:var(--num);vertical-align:1px;
+}
+nav.tabs button .badge[hidden]{display:none}
+section.view{display:none;padding-top:16px;animation:fade .24s var(--ease)}
+section.view.on{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* ---- 部品 ---- */
+.panel{background:var(--sumi-2);border:1px solid var(--sen);border-radius:12px;padding:14px;margin-bottom:12px}
+.panel>h2,.panel>h3{margin-bottom:10px}
+.ttl{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.ttl h2,.ttl h3{flex:1}
+.hint{font-size:12px;color:var(--hai-2);line-height:1.65}
+.row{display:flex;gap:8px;align-items:center}
+.row.wrap{flex-wrap:wrap}
+.col{flex:1;min-width:0}
+.field{margin-bottom:10px}
+.field label{display:block;font-size:12px;color:var(--hai);margin-bottom:4px;letter-spacing:.04em}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:6px;
+  padding:9px 14px;border-radius:9px;border:1px solid var(--sen);
+  background:var(--sumi-3);font-size:14px;letter-spacing:.04em;
+  transition:transform .12s var(--ease),background .16s;
+}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--kin);color:#20180a;border-color:var(--kin);font-weight:700}
+.btn.danger{color:var(--aka);border-color:rgba(224,112,90,.5)}
+.btn.ghost{background:none;color:var(--hai)}
+.btn.wide{width:100%}
+.btn.sm{padding:6px 10px;font-size:12.5px;border-radius:8px}
+.btn:disabled{opacity:.38;cursor:not-allowed}
+.chip{
+  display:inline-flex;align-items:center;gap:4px;padding:3px 9px;border-radius:999px;
+  background:var(--sumi-3);border:1px solid var(--sen);font-size:11.5px;color:var(--hai);
+}
+.chip.on{background:var(--kin-awai);border-color:var(--kin);color:var(--kin)}
+.note{border-radius:10px;padding:10px 12px;font-size:12.5px;line-height:1.7;margin-bottom:10px}
+.note.bad{background:var(--aka-awai);border:1px solid rgba(224,112,90,.45);color:#f0b3a6}
+.note.ok{background:var(--midori-awai);border:1px solid rgba(104,185,138,.4);color:#a7dcbe}
+.note.info{background:var(--sumi-3);border:1px solid var(--sen);color:var(--hai)}
+.note.warnc{background:var(--kin-awai);border:1px solid rgba(217,180,81,.42);color:#e8d49a}
+.note b{color:inherit}
+.empty{text-align:center;color:var(--hai-2);font-size:13px;padding:26px 10px;line-height:1.9}
+.sep{height:1px;background:var(--sen);margin:12px 0}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:7px 6px;border-bottom:1px solid var(--sumi-4);text-align:left;vertical-align:middle}
+th{color:var(--hai-2);font-size:11.5px;font-weight:400;letter-spacing:.05em}
+td.r,th.r{text-align:right;font-family:var(--num)}
+.scrollx{overflow-x:auto;-webkit-overflow-scrolling:touch}
+
+/* ---- レアリティ ---- */
+.rk{display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:6px;
+  font-size:11px;font-weight:700;font-family:var(--num);color:#12161c;flex:none}
+.rk.S{background:linear-gradient(135deg,#ff8ad8,#8ad8ff,#ffe08a);}
+.rk.A{background:var(--r-A)}
+.rk.B{background:var(--r-B)}
+.rk.C{background:var(--r-C)}
+.rk.D{background:var(--r-D)}
+.rt-S{color:var(--r-S)}.rt-A{color:var(--r-A)}.rt-B{color:var(--r-B)}.rt-C{color:var(--r-C)}.rt-D{color:var(--r-D)}
+
+/* ---- 在庫行 ---- */
+.item{display:flex;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid var(--sumi-4)}
+.item:last-child{border-bottom:none}
+.item .nm{flex:1;min-width:0}
+.item .nm b{display:block;font-size:13.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item .nm small{display:block;font-size:11px;color:var(--hai-2)}
+.item .qt{font-family:var(--num);font-size:13px;color:var(--hai);text-align:right;flex:none}
+.item .qt b{color:var(--kinari);font-size:15px}
+
+/* ---- メーター ---- */
+.meter{height:10px;border-radius:6px;background:var(--sumi-4);overflow:hidden;position:relative;margin:6px 0}
+.meter i{display:block;height:100%;border-radius:6px;transition:width .4s var(--ease)}
+.meter .mark{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--kinari);opacity:.55}
+.kpi{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0}
+.kpi div{background:var(--sumi-3);border:1px solid var(--sen);border-radius:10px;padding:8px 10px}
+.kpi span{display:block;font-size:11px;color:var(--hai-2);letter-spacing:.04em}
+.kpi b{display:block;font-family:var(--num);font-size:18px;line-height:1.4}
+.kpi.k2{grid-template-columns:repeat(2,1fr)}
+.kpi.k4{grid-template-columns:repeat(4,1fr)}
+@media (max-width:380px){.kpi.k4{grid-template-columns:repeat(2,1fr)}}
+.kpi b.g{color:var(--midori)}.kpi b.r{color:var(--aka)}.kpi b.y{color:var(--kin)}
+
+/* ---- 口番号ボード ---- */
+.board{display:grid;grid-template-columns:repeat(auto-fill,minmax(46px,1fr));gap:6px;max-height:330px;overflow-y:auto;padding:2px}
+.board button{
+  aspect-ratio:3/4;border-radius:7px;border:1px solid var(--sen);
+  background:linear-gradient(160deg,var(--sumi-3),var(--sumi-2));
+  font-family:var(--num);font-size:12px;color:var(--hai);
+  display:flex;align-items:center;justify-content:center;position:relative;
+}
+.board button::after{content:"";position:absolute;inset:3px;border:1px solid rgba(217,180,81,.16);border-radius:5px}
+.board button.sel{background:var(--kin);color:#20180a;border-color:var(--kin);font-weight:700}
+.board button.gone{opacity:.22;text-decoration:line-through;cursor:not-allowed}
+
+/* ---- 引く演出 ---- */
+.g-layer{position:fixed;inset:0;z-index:80;background:rgba(8,10,14,.985);backdrop-filter:blur(6px);display:none;
+  flex-direction:column;align-items:center;justify-content:center;
+  padding:calc(24px + env(safe-area-inset-top)) 20px calc(20px + env(safe-area-inset-bottom))}
+.g-layer.on{display:flex}
+.g-stage{position:relative;width:100%;max-width:460px;flex:1;display:flex;align-items:center;justify-content:center}
+.g-card{
+  width:min(58vw,224px);aspect-ratio:63/88;border-radius:12px;position:relative;
+  transform-style:preserve-3d;transition:transform .55s var(--ease);cursor:pointer;
+}
+.g-card.flip{transform:rotateY(180deg)}
+.g-face{position:absolute;inset:0;border-radius:12px;backface-visibility:hidden;overflow:hidden;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:14px}
+.g-back{background:linear-gradient(155deg,#243247,#141b26 60%);border:2px solid var(--sumi-4)}
+.g-back::before{content:"";position:absolute;inset:10px;border:1px solid rgba(217,180,81,.3);border-radius:7px}
+.g-back span{font-size:26px;color:rgba(217,180,81,.5);letter-spacing:.3em}
+.g-front{transform:rotateY(180deg);background:var(--sumi-2);border:2px solid var(--sen)}
+.g-front .nm{font-size:15px;font-weight:700;line-height:1.5;word-break:break-word}
+.g-front .rr{font-family:var(--num);font-size:11px;letter-spacing:.14em;margin-bottom:8px}
+.g-front .pr{font-family:var(--num);font-size:12px;color:var(--hai);margin-top:8px}
+.g-front.S{border-color:var(--r-S);box-shadow:0 0 26px rgba(255,138,216,.42)}
+.g-front.A{border-color:var(--r-A);box-shadow:0 0 22px rgba(230,193,90,.36)}
+.g-front.B{border-color:var(--r-B)}
+.g-front.C{border-color:var(--r-C)}
+.g-holo{position:absolute;inset:0;opacity:.5;mix-blend-mode:screen;
+  background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.55) 45%,transparent 60%);
+  background-size:280% 280%;animation:holo 2.6s linear infinite}
+@keyframes holo{0%{background-position:0% 0%}100%{background-position:180% 180%}}
+.g-rays{position:absolute;width:340px;height:340px;border-radius:50%;opacity:0;pointer-events:none;
+  background:conic-gradient(from 0deg,transparent 0 8deg,rgba(255,255,255,.16) 8deg 12deg,transparent 12deg 24deg);}
+.g-rays.on{animation:rays 1.4s var(--ease) forwards}
+@keyframes rays{0%{opacity:0;transform:scale(.5) rotate(0)}30%{opacity:.85}100%{opacity:0;transform:scale(1.5) rotate(60deg)}}
+.g-bar{display:flex;gap:8px;align-items:center;justify-content:center;padding-top:14px;flex-wrap:wrap}
+.g-count{font-family:var(--num);font-size:12px;color:var(--hai-2);text-align:center;padding-bottom:8px}
+.g-list{width:100%;max-width:460px;max-height:44vh;overflow-y:auto}
+
+/* ---- 引き結果の並び ---- */
+.hits{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:8px}
+.hit{border:1px solid var(--sen);border-radius:9px;padding:8px 6px;text-align:center;background:var(--sumi-2)}
+.hit .rr{font-family:var(--num);font-size:10px;letter-spacing:.1em}
+.hit .nm{font-size:11px;line-height:1.4;margin-top:3px;word-break:break-word}
+.hit .no{font-family:var(--num);font-size:10px;color:var(--hai-2);margin-top:3px}
+.hit.S{border-color:var(--r-S)}.hit.A{border-color:var(--r-A)}
+
+/* ---- 手引き ---- */
+.doc h3{margin:16px 0 8px;color:var(--kin);font-size:14px;letter-spacing:.06em}
+.doc h3:first-child{margin-top:0}
+.doc p{font-size:13px;line-height:1.85;color:var(--kinari);margin-bottom:8px}
+.doc ul,.doc ol{margin:0 0 10px 20px;font-size:13px;line-height:1.85;color:var(--kinari)}
+.doc li{margin-bottom:3px}
+.doc code{font-family:var(--num);font-size:12px;background:var(--sumi-3);padding:1px 5px;border-radius:4px;color:var(--kin)}
+.check{display:flex;gap:9px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--sumi-4);font-size:13px;line-height:1.65}
+.check:last-child{border-bottom:none}
+.check input{width:18px;height:18px;flex:none;margin-top:2px;accent-color:var(--kin)}
+.check b{display:block;font-weight:600}
+.check small{display:block;color:var(--hai-2);font-size:11.5px;line-height:1.6}
+.check.done b{color:var(--hai-2);text-decoration:line-through}
+
+/* ---- モーダル・トースト ---- */
+.modal{position:fixed;inset:0;z-index:70;background:rgba(8,10,14,.8);display:none;align-items:flex-end;justify-content:center}
+.modal.on{display:flex}
+.modal .box{
+  width:100%;max-width:560px;max-height:88vh;overflow-y:auto;background:var(--sumi-2);
+  border:1px solid var(--sen);border-radius:14px 14px 0 0;padding:16px 14px calc(20px + env(safe-area-inset-bottom));
+  animation:up .26s var(--ease);
+}
+@keyframes up{from{transform:translateY(24px);opacity:0}to{transform:none;opacity:1}}
+#toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);
+  z-index:90;background:var(--sumi-3);border:1px solid var(--sen);border-radius:999px;
+  padding:9px 18px;font-size:13px;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s var(--ease);
+  max-width:90vw;text-align:center}
+#toast.on{opacity:1;transform:translateX(-50%) translateY(-6px)}
+.fab{position:fixed;right:16px;bottom:calc(18px + env(safe-area-inset-bottom));z-index:40;
+  width:52px;height:52px;border-radius:50%;background:var(--kin);color:#20180a;font-size:26px;
+  display:none;align-items:center;justify-content:center;box-shadow:0 6px 20px rgba(0,0,0,.5)}
+.fab.on{display:flex}
+[hidden]{display:none!important}
+.mono-out{font-family:var(--num);font-size:11.5px;word-break:break-all;line-height:1.7;color:var(--hai)}
+.mono-out b{color:var(--kin)}
+</style>
+</head>
+<body>
+<header>
+  <div class="hd">
+    <h1>オリパ帳場</h1>
+    <span class="shop" id="shopName">—</span>
+    <button class="gear" id="btnSetting">設定</button>
+  </div>
+  <nav class="tabs" id="tabs">
+    <button data-v="shop" class="on">売り場</button>
+    <button data-v="design">設計</button>
+    <button data-v="stock">在庫</button>
+    <button data-v="order">注文<span class="badge" id="tabOrderBadge" hidden>0</span></button>
+    <button data-v="book">帳簿</button>
+    <button data-v="verify">検算</button>
+    <button data-v="guide">手引き</button>
+  </nav>
+</header>
+
+<main class="wrap">
+
+<!-- ================= 売り場 ================= -->
+<section class="view on" id="v-shop">
+  <div class="panel" id="shopPick"></div>
+  <div id="shopBody"></div>
+</section>
+
+<!-- ================= 設計 ================= -->
+<section class="view" id="v-design">
+  <div class="panel" id="designIntro">
+    <div class="ttl"><h2>オリパを組む</h2><button class="btn sm" id="btnNewOripa">新しく作る</button></div>
+    <p class="hint">在庫から中身を選び、1口の値段と口数を決めます。還元率(お客に返るぶん)と原価率(自分の仕入れぶん)は組みながら常に出ます。<br>販売を始めると封入は固定され、あとから中身は変えられません。</p>
+  </div>
+  <div id="designList"></div>
+</section>
+
+<!-- ================= 在庫 ================= -->
+<section class="view" id="v-stock">
+  <div class="panel">
+    <div class="ttl"><h2>在庫</h2>
+      <button class="btn sm" id="btnStockIO">入出力</button>
+      <button class="btn sm primary" id="btnAddCard">仕入れる</button>
+    </div>
+    <div class="kpi k4" id="stockKpi"></div>
+    <div class="row wrap" id="stockFilter" style="margin-bottom:8px"></div>
+  </div>
+  <div class="panel"><div id="stockList"></div></div>
+</section>
+
+<!-- ================= 注文 ================= -->
+<section class="view" id="v-order">
+  <div class="panel">
+    <div class="ttl"><h2>注文と発送</h2></div>
+    <div class="row wrap" id="orderFilter" style="margin-bottom:6px"></div>
+    <p class="hint">「発送済み」にすると、その口の中身が在庫から引き落とされます(お客の手に渡ったという意味)。</p>
+  </div>
+  <div id="orderList"></div>
+</section>
+
+<!-- ================= 帳簿 ================= -->
+<section class="view" id="v-book">
+  <div class="panel">
+    <div class="ttl"><h2>帳簿</h2><button class="btn sm" id="btnAddLedger">手で足す</button></div>
+    <div class="row wrap" id="bookRange" style="margin-bottom:8px"></div>
+    <div id="bookKpi"></div>
+  </div>
+  <div class="panel"><h3>オリパごとの成績</h3><div class="scrollx" id="bookByOripa"></div></div>
+  <div class="panel"><h3>出納</h3><div id="bookLedger"></div></div>
+</section>
+
+<!-- ================= 検算 ================= -->
+<section class="view" id="v-verify">
+  <div class="panel">
+    <div class="ttl"><h2>封入の検算</h2></div>
+    <p class="hint">公開した<b>封入表</b>と<b>たね(seed)</b>から、1口目・2口目…の中身を誰でも再計算できます。お客に「本当に入れ替えていないか」を確かめてもらうための画面です。手順は<b>手引き</b>に全部書いてあります。</p>
+  </div>
+  <div class="panel">
+    <div class="field"><label>封入表(公開したものを貼り付け / 1行1種類「名前 x 枚数」)</label>
+      <textarea id="vfList" rows="7" placeholder="炎竜のドラグーン SAR x 1&#10;白翼の聖騎士 SR x 3&#10;はずれ(ノーマル10枚束) x 96"></textarea></div>
+    <div class="grid2">
+      <div class="field"><label>たね(seed)</label><input id="vfSeed" placeholder="販売後に公開された64桁"></div>
+      <div class="field"><label>コミット(販売前に公開したハッシュ)</label><input id="vfCommit" placeholder="任意"></div>
+    </div>
+    <div class="row wrap">
+      <button class="btn primary" id="btnVerify">計算する</button>
+      <button class="btn" id="btnVerifyMine">今のオリパを読み込む</button>
+    </div>
+    <div id="vfOut" style="margin-top:12px"></div>
+  </div>
+</section>
+
+<!-- ================= 手引き ================= -->
+<section class="view" id="v-guide">
+  <div class="panel">
+    <div class="ttl"><h2>開店前チェック</h2><small id="ckCount"></small></div>
+    <div id="ckList"></div>
+  </div>
+
+  <div class="panel doc">
+    <h3>この帳場の使いかた(1周の流れ)</h3>
+    <ol>
+      <li><b>在庫</b>で、仕入れたカードを登録する(仕入値と相場、枚数)</li>
+      <li><b>設計</b>でオリパを組む。1口の値段・口数・中身を決め、還元率を見ながら調整</li>
+      <li><b>販売開始</b>を押す。この時点で全口の中身が確定し、たねの指紋(コミット)が出る。<b>これをSNSや商品ページに先に貼る</b></li>
+      <li><b>売り場</b>でお客に番号を選んでもらい、引く。結果は自動で注文になる</li>
+      <li><b>注文</b>で住所を控えて発送、追跡番号を入れて「発送済み」</li>
+      <li>売り切れたら<b>たねを公開</b>。お客は<b>検算</b>画面で中身を検証できる</li>
+      <li><b>帳簿</b>で、売上・原価・粗利を締める</li>
+    </ol>
+
+    <h3>還元率と原価率のちがい</h3>
+    <p><b>還元率</b> = 封入したカードの<b>相場</b>合計 ÷ 売上(1口の値段 × 口数)。お客から見た「戻ってくる割合」です。<br>
+    <b>原価率</b> = 封入したカードの<b>仕入値</b>合計 ÷ 売上。自分の懐から見た割合です。</p>
+    <p>相場より安く仕入れられていれば、原価率は還元率より低くなり、その差が粗利になります。
+    <b>還元率が100%を超えていても、原価率が100%未満なら店は黒字</b>になり得ます(実際そこが勝負どころです)。
+    逆に相場でしか仕入れられていないなら、還元率を上げるほど直に赤字です。</p>
+    <p>目安として、還元率50%を下回るとお客の評判は続きません。80〜95%あたりに置いて、
+    仕入れの安さ(=原価率)で利益を取る設計が、いちばん長持ちします。</p>
+
+    <h3>封入の公正さを、どう証明するか</h3>
+    <p>「あとから中身を抜いていないか」は、お客からは見えません。この帳場は<b>コミット&リビール</b>という手順で証明します。</p>
+    <ol>
+      <li>販売前に、中身の並び順を決める乱数の<b>たね</b>を作る(64桁の16進)</li>
+      <li>そのたねを SHA-256 でつぶした<b>コミット</b>を先に公開する。たね自体はまだ伏せる</li>
+      <li>販売中は中身を変えられない(変えればコミットと合わなくなる)</li>
+      <li>売り切れ後に<b>たねを公開</b>。誰でも「封入表 + たね」から並び順を再計算し、実際に出たものと突き合わせられる</li>
+    </ol>
+    <p>並べかたの決まり(第三者が別の言語で書き直せるように、そのまま書いておきます):</p>
+    <ul>
+      <li>公開した封入表の<b>上から順</b>に、枚数ぶん展開して配列 A を作る(長さ = 口数)</li>
+      <li>乱数は <code>SHA256(seed + ":" + i)</code> (i = 0,1,2,…)の出力32バイトを、先頭から4バイトずつ32bit整数として使う</li>
+      <li>Fisher–Yates で k = n-1 から 1 まで:
+        j を [0,k] の一様乱数にする。<code>lim = floor(2^32 / (k+1)) * (k+1)</code> とし、
+        取り出した r が lim 以上なら捨てて次の乱数へ(偏りをなくすため)。<code>j = r mod (k+1)</code>。A[k] と A[j] を交換</li>
+      <li>できた A の先頭が1口目、次が2口目…</li>
+    </ul>
+    <p>ハッシュ・並べかたとも、この画面の<b>検算</b>タブでそのまま動きます。</p>
+
+    <h3>法律まわり(専門家に必ず確認してください)</h3>
+    <p class="hint">以下は「調べるべき論点の一覧」です。法律の助言ではありません。開業前に、古物商は警察署(公安委員会)、
+    表示や決済は弁護士・行政書士に確認してください。</p>
+    <ul>
+      <li><b>古物商許可</b> — 中古カードを買い取って売るなら必要。無許可営業は刑事罰。ネット販売なら「URLの届出」も要る</li>
+      <li><b>特定商取引法に基づく表記</b> — 通信販売なら、氏名・住所・電話・代金・送料・引渡時期・返品の可否を明示。個人でも省略できません</li>
+      <li><b>景品表示法</b> — 「高還元」「〇〇確定」は根拠が要る(優良誤認・有利誤認)。<b>排出確率と封入枚数、残数は正しく出す</b>。この帳場が確率表を自動生成するのはこのため</li>
+      <li><b>賭博罪の線引き</b> — 「必ず商品が届く物販」であることが生命線。<b>店が自分で買い戻す(換金する)と、賭博・景品交換とみなされる危険が跳ね上がります</b>。買取は必ず別の話にする</li>
+      <li><b>資金決済法</b> — 先にポイントを買わせる方式は「前払式支払手段」に当たり、未使用残高が基準日に1000万円を超えると供託・届出の義務。<b>都度払い(引くたびに決済)にすればこの論点を避けやすい</b></li>
+      <li><b>年齢確認</b> — 未成年の高額購入はトラブルの筆頭。年齢確認と1回・1日の上限額を必ず入れる</li>
+      <li><b>決済代行の審査</b> — オリパはギャンブル類似として断られることがある。契約前に業態を正直に申告する</li>
+      <li><b>知的財産</b> — カード画像の無断掲載は権利者の許諾が必要な場合がある。自分で撮った写真を使い、公式ロゴは使わない</li>
+    </ul>
+
+    <h3>この単一HTMLでできること / できないこと</h3>
+    <p><b>できる</b> — 在庫と原価の管理、封入設計と還元率計算、公正な抽選と検算、対面・イベントでの実売、当選と発送の台帳、収支。
+    店頭やイベントの「その場で引いてもらう」形式なら、これ1本で実運営できます。</p>
+    <p><b>できない</b> — 不特定多数がネット越しに同時に引くこと、クレジット決済、会員登録、住所の自動収集。
+    これらはサーバが要ります。移植の設計は下に書きました。</p>
+
+    <h3>Web公開版に移すときの設計(そのまま発注書に使えます)</h3>
+    <ul>
+      <li><b>構成</b> — Next.js(App Router) + PostgreSQL + Stripe Checkout。抽選は必ず<b>サーバ側</b>で行う。クライアントに封入表の中身を先に送らない</li>
+      <li><b>テーブル</b> — <code>cards</code>(在庫) / <code>oripas</code>(価格・口数・状態・commit・seedは販売終了まで非公開列) / <code>packs</code>(口番号・card_id・order_id、UNIQUE(oripa_id,no)) / <code>orders</code> / <code>shipments</code> / <code>ledger</code></li>
+      <li><b>引く処理</b> — 1トランザクション内で <code>SELECT ... FOR UPDATE</code> により口番号をロック → 決済確定 → packs.order_id を埋める。二重販売はDBのユニーク制約で止める</li>
+      <li><b>決済</b> — Stripe Checkout の webhook(<code>checkout.session.completed</code>)で確定。冪等キーを付け、webhookの署名を必ず検証</li>
+      <li><b>公正さ</b> — 販売開始時に commit を公開ページに載せ、完売時に seed を自動公開。検算ページは本ファイルの実装をそのまま移植</li>
+      <li><b>表示義務</b> — 特商法表記ページ、排出確率表(自動生成)、残数のリアルタイム表示、発送目安、年齢確認</li>
+      <li><b>運用</b> — 発送は注文CSVを吐いてラベル印刷。追跡番号の一括取り込み</li>
+    </ul>
+
+    <h3>データの置き場所</h3>
+    <p>入力したものはこの端末のブラウザ内(localStorage)だけに保存され、外へは一切送りません。
+    端末を替えるとき・バックアップを取るときは、<b>在庫 → 入出力</b> からJSONで書き出し / 読み込みできます。
+    ブラウザの履歴消去で消えるので、<b>週に一度は書き出してください</b>。</p>
+  </div>
+</section>
+
+</main>
+
+<button class="fab" id="fab">+</button>
+<div class="modal" id="modal"><div class="box" id="modalBox"></div></div>
+<div class="g-layer" id="gLayer"></div>
+<div id="toast"></div>
+<script>
+"use strict";
+/* ==============================================================
+   0. 道具箱
+   ============================================================== */
+const $=(s,r=document)=>r.querySelector(s);
+const $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const yen=n=>"¥"+Math.round(n||0).toLocaleString("ja-JP");
+const pct=(n,d=1)=>(isFinite(n)?n.toFixed(d):"—")+"%";
+const today=()=>new Date().toISOString().slice(0,10);
+const clamp=(n,a,b)=>Math.min(b,Math.max(a,n));
+const RANKS=["S","A","B","C","D"];
+const RANK_NAME={S:"目玉",A:"当たり",B:"上",C:"並",D:"はずれ枠"};
+function toast(msg){const t=$("#toast");t.textContent=msg;t.classList.add("on");clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove("on"),2000);}
+
+/* ==============================================================
+   1. SHA-256(自前実装 / 検算を誰でも再現できるように同期処理)
+   ============================================================== */
+const _K=new Uint32Array([
+0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
+0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
+0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
+0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
+0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
+0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
+0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
+0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2]);
+const rotr=(x,n)=>((x>>>n)|(x<<(32-n)))>>>0;
+function sha256(bytes){
+  const H=new Uint32Array([0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19]);
+  const l=bytes.length,bits=l*8;
+  const buf=new Uint8Array((((l+9)+63)>>6)<<6);
+  buf.set(bytes);buf[l]=0x80;
+  const dv=new DataView(buf.buffer);
+  dv.setUint32(buf.length-8,Math.floor(bits/4294967296));
+  dv.setUint32(buf.length-4,bits>>>0);
+  const w=new Uint32Array(64);
+  for(let off=0;off<buf.length;off+=64){
+    for(let i=0;i<16;i++)w[i]=dv.getUint32(off+i*4);
+    for(let i=16;i<64;i++){
+      const a1=w[i-15],a2=w[i-2];
+      const s0=(rotr(a1,7)^rotr(a1,18)^(a1>>>3))>>>0;
+      const s1=(rotr(a2,17)^rotr(a2,19)^(a2>>>10))>>>0;
+      w[i]=(w[i-16]+s0+w[i-7]+s1)>>>0;
+    }
+    let a=H[0],b=H[1],c=H[2],d=H[3],e=H[4],f=H[5],g=H[6],h=H[7];
+    for(let i=0;i<64;i++){
+      const S1=(rotr(e,6)^rotr(e,11)^rotr(e,25))>>>0;
+      const ch=((e&f)^(~e&g))>>>0;
+      const t1=(h+S1+ch+_K[i]+w[i])>>>0;
+      const S0=(rotr(a,2)^rotr(a,13)^rotr(a,22))>>>0;
+      const mj=((a&b)^(a&c)^(b&c))>>>0;
+      const t2=(S0+mj)>>>0;
+      h=g;g=f;f=e;e=(d+t1)>>>0;d=c;c=b;b=a;a=(t1+t2)>>>0;
+    }
+    H[0]=(H[0]+a)>>>0;H[1]=(H[1]+b)>>>0;H[2]=(H[2]+c)>>>0;H[3]=(H[3]+d)>>>0;
+    H[4]=(H[4]+e)>>>0;H[5]=(H[5]+f)>>>0;H[6]=(H[6]+g)>>>0;H[7]=(H[7]+h)>>>0;
+  }
+  const out=new Uint8Array(32),odv=new DataView(out.buffer);
+  for(let i=0;i<8;i++)odv.setUint32(i*4,H[i]);
+  return out;
+}
+const utf8=s=>new TextEncoder().encode(s);
+const hex=b=>[...b].map(x=>x.toString(16).padStart(2,"0")).join("");
+const sha256hex=s=>hex(sha256(utf8(s)));
+function newSeed(){
+  const a=new Uint8Array(32);
+  (self.crypto||self.msCrypto).getRandomValues(a);
+  return hex(a);
+}
+/* 封入表を たね で並べ替える(手引きに書いた手順そのもの) */
+function shuffleBySeed(arr,seed){
+  const a=arr.slice();let ctr=0,dv=null,bi=8;
+  const next=()=>{
+    if(bi>=8){dv=new DataView(sha256(utf8(seed+":"+ctr)).buffer);ctr++;bi=0;}
+    return dv.getUint32(bi++*4)>>>0;
+  };
+  for(let k=a.length-1;k>=1;k--){
+    const m=k+1,lim=Math.floor(4294967296/m)*m;
+    let r;do{r=next();}while(r>=lim);
+    const j=r%m,t=a[k];a[k]=a[j];a[j]=t;
+  }
+  return a;
+}
+
+/* ==============================================================
+   2. 台帳(localStorage)
+   ============================================================== */
+const KEY="oripa-choba-v1";
+let DB=null;
+const blank=()=>({v:1,shop:{name:"",tokushoho:""},cards:[],oripas:[],orders:[],ledger:[],checks:{},ui:{stockRank:"",orderFilter:"待",bookRange:"all"}});
+function save(){try{localStorage.setItem(KEY,JSON.stringify(DB));}catch(e){toast("保存できませんでした(容量不足かも)");}}
+function load(){
+  try{const s=localStorage.getItem(KEY);if(s){DB=Object.assign(blank(),JSON.parse(s));return true;}}catch(e){}
+  DB=blank();seedDemo();save();return false;
+}
+const card=id=>DB.cards.find(c=>c.id===id);
+const oripa=id=>DB.oripas.find(o=>o.id===id);
+const order=id=>DB.orders.find(o=>o.id===id);
+
+/* 見本データ(架空のカード名です) */
+function seedDemo(){
+  DB.shop.name="見本堂トレカ";
+  const D=[
+    ["炎竜のドラグーン SAR","S",42000,68000,1],
+    ["白翼の聖騎士 SR","A",9800,15000,2],
+    ["深海の歌姫 SR","A",7200,11000,2],
+    ["雷帝ヴォルガ AR","B",2600,4200,6],
+    ["森の守り手 AR","B",1900,3000,6],
+    ["機工兵アルマ R","C",480,900,20],
+    ["星詠みの巫女 R","C",520,950,20],
+    ["ノーマル10枚束","D",60,150,200],
+  ];
+  DB.cards=D.map(([name,rank,cost,market,qty])=>({id:uid(),name,rank,cost,market,qty,note:"",at:today()}));
+  DB.ledger=[{id:uid(),date:today(),type:"仕入",amount:DB.cards.reduce((s,c)=>s+c.cost*c.qty,0),memo:"見本データの仕入れ",auto:true}];
+}
+
+/* ==============================================================
+   3. 集計
+   ============================================================== */
+function shippedIds(){                       // 発送済み注文が持ち出したカード
+  const m={};
+  DB.orders.filter(o=>o.status==="済").forEach(o=>o.cardIds.forEach(id=>m[id]=(m[id]||0)+1));
+  return m;
+}
+function reservedMap(){                      // 未発送のオリパに拘束されている枚数
+  const m={},ship=shippedIds(),used={};
+  DB.oripas.forEach(o=>{
+    if(o.status==="draft")return;
+    o.packs.forEach(p=>{used[p.cardId]=(used[p.cardId]||0)+1;});
+  });
+  Object.keys(used).forEach(id=>{m[id]=Math.max(0,used[id]-(ship[id]||0));});
+  return m;
+}
+function freeQty(id,exceptOripa){             // 新しく組むときに使える枚数
+  const c=card(id);if(!c)return 0;
+  const r=reservedMap();
+  let n=c.qty-(r[id]||0);
+  if(exceptOripa&&exceptOripa.status!=="draft")n+=exceptOripa.packs.filter(p=>p.cardId===id).length;
+  return n;
+}
+function statsOf(o){
+  const rows=(o.items||[]).map(it=>{
+    const c=card(it.cardId);
+    return {cardId:it.cardId,count:+it.count||0,name:c?c.name:"(消えたカード)",rank:c?c.rank:"D",
+            cost:c?c.cost:0,market:c?c.market:0,free:c?freeQty(it.cardId,o):0};
+  });
+  const filled=rows.reduce((s,r)=>s+r.count,0);
+  const total=+o.total||0;
+  const sales=(+o.price||0)*total;
+  const market=rows.reduce((s,r)=>s+r.market*r.count,0);
+  const cost=rows.reduce((s,r)=>s+r.cost*r.count,0);
+  const back=sales?market/sales*100:0;
+  const cogs=sales?cost/sales*100:0;
+  const sold=(o.packs||[]).filter(p=>p.orderId).length;
+  const rest=(o.packs||[]).filter(p=>!p.orderId);
+  const restMarket=rest.reduce((s,p)=>{const c=card(p.cardId);return s+(c?c.market:0);},0);
+  const restBack=rest.length&&o.price?restMarket/(o.price*rest.length)*100:0;
+  const soldAmount=(o.price||0)*sold;
+  const soldCost=(o.packs||[]).filter(p=>p.orderId).reduce((s,p)=>{const c=card(p.cardId);return s+(c?c.cost:0);},0);
+  return {rows,filled,total,sales,market,cost,back,cogs,profit:sales-cost,sold,
+          left:total-sold,restBack,soldAmount,soldCost,soldProfit:soldAmount-soldCost};
+}
+function warnsOf(o,st){
+  const w=[];
+  if(!o.price||o.price<=0)w.push(["bad","1口の値段が入っていません。"]);
+  if(!st.total)w.push(["bad","口数が入っていません。"]);
+  if(st.filled!==st.total)w.push(["bad",`封入の合計 <b>${st.filled}枚</b> と口数 <b>${st.total}口</b> が合っていません。差 ${st.total-st.filled} 枚。`]);
+  st.rows.forEach(r=>{if(r.count>r.free)w.push(["bad",`「${esc(r.name)}」が在庫より ${r.count-r.free} 枚多いです(使えるのは ${r.free} 枚)。`]);});
+  if(st.total&&st.filled===st.total){
+    if(st.cogs>=100)w.push(["warnc",`原価率 ${pct(st.cogs)} — 完売しても <b>${yen(st.cost-st.sales)} の赤字</b>です。値段か中身を見直してください(承知のうえの客寄せなら、そのまま進めても止めません)。`]);
+    else if(st.cogs>=85)w.push(["warnc",`原価率 ${pct(st.cogs)} — 粗利が薄すぎます。送料と手数料で消えます。`]);
+    if(st.back>=100)w.push(["warnc",`還元率 ${pct(st.back)} — 相場でいえば出し過ぎ。仕入れが安いなら成立しますが(原価率 ${pct(st.cogs)})、根拠を説明できるようにしておいてください。`]);
+    else if(st.back<50)w.push(["warnc",`還元率 ${pct(st.back)} — お客の手元に半分も戻りません。リピートは期待しにくいです。`]);
+    const dead=st.rows.filter(r=>r.market<o.price*0.3).reduce((s,r)=>s+r.count,0);
+    if(dead/st.total>=0.7&&st.back<70)w.push(["warnc",`1口の値段の3割に満たない中身が <b>${(dead/st.total*100).toFixed(0)}%</b> あり、還元率も ${pct(st.back)} です。「実質はずれ」ばかりの設計になっています。`]);
+    if(!st.rows.some(r=>r.market>=o.price*3))w.push(["info","1口の3倍以上になるカードが1枚もありません。目玉がないオリパは動きが鈍くなります。"]);
+  }
+  if(o.status==="selling"&&!o.commit)w.push(["bad","コミットが出ていません(不具合)。作り直してください。"]);
+  return w;
+}
+function probText(o){
+  const st=statsOf(o);
+  const L=[`【${o.name||"オリパ"}】1口 ${yen(o.price)} / 全${st.total}口`,"","■ 封入内容と排出確率"];
+  canonicalRows(o)
+    .forEach(r=>L.push(`${r.rank} ${r.name} … ${r.count}枚 / ${(r.count/st.total*100).toFixed(2)}%`));
+  L.push("",`■ 封入総額(相場) ${yen(st.market)} / 還元率 ${pct(st.back)}`);
+  L.push("※ 中身は販売開始前にすべて確定しています。並び順を決めた たね の指紋(SHA-256):");
+  L.push(o.commit||"(販売開始前)");
+  if(o.revealed)L.push(`※ たね(公開済み): ${o.seed}`);
+  L.push("※ 完売後に たね を公開します。封入表と合わせて誰でも検算できます。");
+  return L.join("\n");
+}
+function copyText(t){
+  const done=()=>toast("コピーしました");
+  if(navigator.clipboard&&window.isSecureContext)navigator.clipboard.writeText(t).then(done,()=>fallback());
+  else fallback();
+  function fallback(){
+    const ta=document.createElement("textarea");ta.value=t;ta.style.position="fixed";ta.style.opacity="0";
+    document.body.appendChild(ta);ta.select();try{document.execCommand("copy");done();}catch(e){toast("コピーできませんでした");}
+    ta.remove();
+  }
+}
+
+/* ==============================================================
+   4. 在庫
+   ============================================================== */
+function renderStock(){
+  const r=reservedMap();
+  const kinds=DB.cards.length;
+  const qty=DB.cards.reduce((s,c)=>s+c.qty,0);
+  const cost=DB.cards.reduce((s,c)=>s+c.cost*c.qty,0);
+  const mk=DB.cards.reduce((s,c)=>s+c.market*c.qty,0);
+  $("#stockKpi").innerHTML=`
+    <div><span>種類</span><b>${kinds}</b></div>
+    <div><span>枚数</span><b>${qty}</b></div>
+    <div><span>仕入額</span><b class="y" style="font-size:15px">${yen(cost)}</b></div>
+    <div><span>相場額</span><b class="g" style="font-size:15px">${yen(mk)}</b></div>`;
+  const f=DB.ui.stockRank||"";
+  $("#stockFilter").innerHTML=[["","すべて"],...RANKS.map(x=>[x,x+" "+RANK_NAME[x]])]
+    .map(([v,l])=>`<button class="chip ${f===v?"on":""}" data-rank="${v}">${l}</button>`).join("");
+  const list=DB.cards.filter(c=>!f||c.rank===f)
+    .slice().sort((a,b)=>RANKS.indexOf(a.rank)-RANKS.indexOf(b.rank)||b.market-a.market);
+  $("#stockList").innerHTML=list.length?list.map(c=>{
+    const res=r[c.id]||0,free=c.qty-res;
+    return `<div class="item" data-card="${c.id}">
+      <span class="rk ${c.rank}">${c.rank}</span>
+      <div class="nm"><b>${esc(c.name)}</b>
+        <small>仕入 ${yen(c.cost)} ／ 相場 ${yen(c.market)}${res?` ／ <span style="color:var(--kin)">${res}枚 オリパに拘束中</span>`:""}</small></div>
+      <div class="qt"><b>${free}</b>/${c.qty}枚</div>
+    </div>`;}).join(""):`<div class="empty">まだ在庫がありません。<br>右上の「仕入れる」から登録してください。</div>`;
+}
+function cardForm(id){
+  const c=id?card(id):{name:"",rank:"C",cost:"",market:"",qty:1,note:""};
+  openModal(`
+    <h2>${id?"カードを直す":"カードを仕入れる"}</h2>
+    <div class="field"><label>カード名(型番や状態も入れておくと後で困りません)</label><input id="f-name" value="${esc(c.name)}" placeholder="例: 炎竜のドラグーン SAR / PSA10"></div>
+    <div class="grid2">
+      <div class="field"><label>ランク</label><select id="f-rank">${RANKS.map(x=>`<option value="${x}" ${c.rank===x?"selected":""}>${x} ${RANK_NAME[x]}</option>`).join("")}</select></div>
+      <div class="field"><label>枚数</label><input id="f-qty" type="number" min="0" value="${c.qty}"></div>
+      <div class="field"><label>仕入値(1枚)</label><input id="f-cost" type="number" min="0" value="${c.cost}"></div>
+      <div class="field"><label>相場(1枚)</label><input id="f-market" type="number" min="0" value="${c.market}"></div>
+    </div>
+    <div class="field"><label>覚え書き</label><input id="f-note" value="${esc(c.note||"")}" placeholder="仕入先・状態など"></div>
+    <label class="hint" style="display:${id?"none":"flex"};gap:8px;align-items:center;margin-bottom:10px">
+      <input type="checkbox" id="f-led" checked style="width:18px;height:18px;flex:none;accent-color:var(--kin)"> 仕入額を帳簿にも書く</label>
+    <div class="row"><button class="btn primary col" id="f-ok">${id?"直す":"登録する"}</button>
+      ${id?'<button class="btn danger" id="f-del">消す</button>':""}
+      <button class="btn ghost" data-close>やめる</button></div>`);
+  $("#f-ok").onclick=()=>{
+    const name=$("#f-name").value.trim();
+    if(!name)return toast("カード名を入れてください");
+    const o={name,rank:$("#f-rank").value,cost:+$("#f-cost").value||0,market:+$("#f-market").value||0,
+             qty:Math.max(0,+$("#f-qty").value||0),note:$("#f-note").value.trim()};
+    if(id){Object.assign(card(id),o);}
+    else{
+      const nc={id:uid(),...o,at:today()};DB.cards.push(nc);
+      if($("#f-led").checked&&o.cost*o.qty>0)
+        DB.ledger.push({id:uid(),date:today(),type:"仕入",amount:o.cost*o.qty,memo:name+" ×"+o.qty,auto:true});
+    }
+    save();closeModal();renderAll();toast(id?"直しました":"登録しました");
+  };
+  if(id)$("#f-del").onclick=()=>{
+    const used=DB.oripas.some(o=>o.status!=="draft"&&o.packs.some(p=>p.cardId===id));
+    if(used)return toast("販売中/販売済みのオリパで使われているため消せません");
+    if(!confirm("このカードを在庫から消します。よろしいですか?"))return;
+    DB.cards=DB.cards.filter(c=>c.id!==id);save();closeModal();renderAll();toast("消しました");
+  };
+}
+function stockIO(){
+  openModal(`
+    <h2>在庫と台帳の入出力</h2>
+    <p class="hint">この端末のブラウザ内だけに保存されています。端末を替えるとき・バックアップに使ってください。</p>
+    <div class="sep"></div>
+    <h3>書き出す</h3>
+    <div class="row wrap" style="margin:8px 0 14px">
+      <button class="btn" id="io-json">台帳ぜんぶ(JSON)</button>
+      <button class="btn" id="io-csv">在庫だけ(CSV)</button>
+      <button class="btn" id="io-ocsv">注文(CSV)</button>
+    </div>
+    <h3>読み込む</h3>
+    <p class="hint">JSONを貼り付けると<b>いまの台帳をすべて置き換えます</b>。先に書き出しておいてください。</p>
+    <textarea id="io-in" rows="4" placeholder="書き出したJSONを貼り付け" style="margin:8px 0"></textarea>
+    <div class="row"><button class="btn danger col" id="io-load">置き換える</button><button class="btn ghost" data-close>閉じる</button></div>`);
+  $("#io-json").onclick=()=>dl("oripa-choba-"+today()+".json",JSON.stringify(DB,null,1));
+  $("#io-csv").onclick=()=>{
+    const r=reservedMap();
+    dl("stock-"+today()+".csv",csv([["カード名","ランク","仕入値","相場","枚数","拘束","空き","覚え書き"],
+      ...DB.cards.map(c=>[c.name,c.rank,c.cost,c.market,c.qty,r[c.id]||0,c.qty-(r[c.id]||0),c.note||""])]));
+  };
+  $("#io-ocsv").onclick=()=>{
+    dl("orders-"+today()+".csv",csv([["日付","注文番号","オリパ","口番号","金額","状態","お客","住所","電話","追跡番号","中身"],
+      ...DB.orders.map(o=>{const op=oripa(o.oripaId);
+        return [o.at,o.id,op?op.name:"",o.nos.join(" "),o.amount,o.status,o.customer.name,o.customer.addr,o.customer.tel,o.tracking||"",
+                o.cardIds.map(id=>{const c=card(id);return c?c.name:"?";}).join(" / ")];})]));
+  };
+  $("#io-load").onclick=()=>{
+    let d;try{d=JSON.parse($("#io-in").value);}catch(e){return toast("JSONとして読めません");}
+    if(!d||!Array.isArray(d.cards))return toast("この帳場のJSONではないようです");
+    if(!confirm("いまの台帳をすべて置き換えます。よろしいですか?"))return;
+    DB=Object.assign(blank(),d);save();closeModal();renderAll();toast("読み込みました");
+  };
+}
+function csv(rows){
+  return "﻿"+rows.map(r=>r.map(v=>`"${String(v??"").replace(/"/g,'""')}"`).join(",")).join("\r\n");
+}
+function dl(name,text){
+  const b=new Blob([text],{type:"text/plain;charset=utf-8"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=name;
+  document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},400);
+  toast("書き出しました");
+}
+
+/* ==============================================================
+   5. 設計(オリパを組む)
+   ============================================================== */
+const UI={edit:null,shopId:null,sel:[]};
+function renderDesign(){
+  const box=$("#designList");
+  $("#designIntro").hidden=!!UI.edit;
+  $("#fab").classList.toggle("on",VIEW==="stock"||(VIEW==="design"&&!UI.edit));
+  if(UI.edit){box.innerHTML=editorHTML(oripa(UI.edit));bindEditor();return;}
+  const L=DB.oripas.slice().reverse();
+  box.innerHTML=L.length?L.map(o=>{
+    const st=statsOf(o);
+    const tag=o.status==="draft"?'<span class="chip">下書き</span>'
+      :o.status==="selling"?'<span class="chip on">販売中</span>':'<span class="chip">終了</span>';
+    return `<div class="panel">
+      <div class="ttl"><h3>${esc(o.name||"名前のないオリパ")}</h3>${tag}</div>
+      <div class="kpi k4">
+        <div><span>1口</span><b style="font-size:15px">${yen(o.price)}</b></div>
+        <div><span>口数</span><b>${st.total}</b></div>
+        <div><span>還元率</span><b class="${st.back>=100?"r":"y"}" style="font-size:15px">${st.total?pct(st.back):"—"}</b></div>
+        <div><span>原価率</span><b class="${st.cogs>=100?"r":"g"}" style="font-size:15px">${st.total?pct(st.cogs):"—"}</b></div>
+      </div>
+      ${o.status!=="draft"?`<div class="hint" style="margin-bottom:8px">売れた ${st.sold} / 残り ${st.left} 口 ・ 売上 ${yen(st.soldAmount)} ・ 粗利 ${yen(st.soldProfit)}</div>`:""}
+      <div class="row wrap">
+        ${o.status==="draft"?`<button class="btn sm primary" data-edit="${o.id}">組む・直す</button>`:""}
+        ${o.status==="selling"?`<button class="btn sm primary" data-open="${o.id}">売り場へ</button>`:""}
+        <button class="btn sm" data-prob="${o.id}">確率表をコピー</button>
+        ${o.status==="selling"&&st.left===0?`<button class="btn sm" data-close-o="${o.id}">販売を締める</button>`:""}
+        ${o.status!=="draft"&&!o.revealed?`<button class="btn sm" data-reveal="${o.id}">たねを公開</button>`:`${o.revealed?'<span class="chip">たね公開ずみ</span>':""}`}
+        <button class="btn sm" data-copy="${o.id}">複製</button>
+        <button class="btn sm danger" data-del="${o.id}">消す</button>
+      </div>
+      ${o.commit?`<div class="mono-out" style="margin-top:8px">コミット <b>${o.commit}</b>${o.revealed?`<br>たね <b>${o.seed}</b>`:""}</div>`:""}
+    </div>`;}).join(""):`<div class="empty">まだオリパがありません。<br>「新しく作る」から始めてください。</div>`;
+  box.onclick=e=>{
+    const b=e.target.closest("button[data-edit],button[data-prob],button[data-open],button[data-reveal],button[data-copy],button[data-del],button[data-close-o]");
+    if(!b)return;
+    const d=b.dataset;
+    if(d.edit){UI.edit=d.edit;renderDesign();scrollTop();}
+    else if(d.prob){copyText(probText(oripa(d.prob)));}
+    else if(d.open){UI.shopId=d.open;go("shop");}
+    else if(d.reveal){revealSeed(d.reveal);}
+    else if(d.copy){dupOripa(d.copy);}
+    else if(d.closeO){const o=oripa(d.closeO);o.status="closed";o.closedAt=today();save();renderAll();toast("販売を締めました");}
+    else if(d.del){delOripa(d.del);}
+  };
+}
+function newOripa(){
+  const o={id:uid(),name:"",price:1000,total:100,items:[],status:"draft",packs:[],
+           seed:"",commit:"",revealed:false,at:today()};
+  DB.oripas.push(o);UI.edit=o.id;save();go("design");renderDesign();
+}
+function dupOripa(id){
+  const s=oripa(id);
+  const o={...JSON.parse(JSON.stringify(s)),id:uid(),name:(s.name||"オリパ")+" の写し",
+           status:"draft",packs:[],seed:"",commit:"",revealed:false,at:today(),startedAt:null,closedAt:null};
+  DB.oripas.push(o);UI.edit=o.id;save();renderDesign();toast("複製しました");
+}
+function delOripa(id){
+  const o=oripa(id);
+  if(o.status!=="draft"&&o.packs.some(p=>p.orderId))return toast("売れた口があるオリパは消せません");
+  if(!confirm("このオリパを消します。よろしいですか?"))return;
+  DB.oripas=DB.oripas.filter(x=>x.id!==id);if(UI.edit===id)UI.edit=null;save();renderAll();toast("消しました");
+}
+function editorHTML(o){
+  return `<div class="panel">
+    <div class="ttl"><h2>オリパを組む</h2><button class="btn sm ghost" id="ed-back">一覧へ</button></div>
+    <div class="field"><label>オリパ名</label><input id="ed-name" value="${esc(o.name)}" placeholder="例: 9月の高額オリパ 第1弾"></div>
+    <div class="grid2">
+      <div class="field"><label>1口の値段(円)</label><input id="ed-price" type="number" min="0" step="100" value="${o.price}"></div>
+      <div class="field"><label>口数</label><input id="ed-total" type="number" min="1" value="${o.total}"></div>
+    </div>
+    <div id="ed-stats"></div>
+  </div>
+  <div class="panel">
+    <div class="ttl"><h3>中身</h3>
+      <button class="btn sm" id="ed-fill">残りを埋める</button>
+      <button class="btn sm primary" id="ed-add">カードを足す</button></div>
+    <div id="ed-items"></div>
+  </div>
+  <div class="panel">
+    <div class="row wrap">
+      <button class="btn primary col" id="ed-start">販売を始める</button>
+      <button class="btn" id="ed-back2">下書きのまま閉じる</button>
+    </div>
+    <p class="hint" style="margin-top:8px">販売を始めると、全口の中身がその場で確定します(以後、中身は変えられません)。
+    たねの指紋(コミット)が出るので、商品ページやSNSに先に貼ってください。</p>
+  </div>`;
+}
+function itemsHTML(o){
+  const st=statsOf(o);
+  if(!o.items.length)return `<div class="empty">まだ中身がありません。<br>「カードを足す」から選んでください。</div>`;
+  return st.rows.map((r,i)=>`
+    <div class="item">
+      <span class="rk ${r.rank}">${r.rank}</span>
+      <div class="nm"><b>${esc(r.name)}</b>
+        <small>相場 ${yen(r.market)} ／ 使える ${r.free}枚${st.total?` ／ 確率 ${(r.count/st.total*100).toFixed(2)}%`:""}</small></div>
+      <input type="number" min="0" value="${r.count}" data-idx="${i}" class="ed-cnt" style="width:74px;text-align:right;flex:none">
+      <button class="btn sm ghost" data-rm="${i}" style="flex:none">×</button>
+    </div>`).join("");
+}
+function statsHTML(o){
+  const st=statsOf(o),w=warnsOf(o,st);
+  const bw=clamp(st.back,0,130)/130*100, cw=clamp(st.cogs,0,130)/130*100;
+  const col=v=>v>=100?"var(--aka)":v>=85?"var(--kin)":"var(--midori)";
+  return `
+    <div class="kpi k2" style="margin-bottom:4px">
+      <div><span>封入ずみ / 口数</span><b class="${st.filled===st.total?"g":"r"}" style="font-size:16px">${st.filled} / ${st.total}</b></div>
+      <div><span>完売したときの粗利</span><b class="${st.profit<0?"r":"g"}" style="font-size:16px">${yen(st.profit)}</b></div>
+    </div>
+    <div style="margin:10px 0 2px"><small>還元率(相場 ${yen(st.market)} ÷ 売上 ${yen(st.sales)})</small>
+      <div class="meter"><i style="width:${bw}%;background:${col(st.back)}"></i><span class="mark" style="left:${100/130*100}%"></span></div>
+      <div class="row"><small class="col">お客に戻るぶん</small><b class="num" style="color:${col(st.back)}">${st.total?pct(st.back):"—"}</b></div></div>
+    <div style="margin:10px 0 2px"><small>原価率(仕入 ${yen(st.cost)} ÷ 売上 ${yen(st.sales)})</small>
+      <div class="meter"><i style="width:${cw}%;background:${col(st.cogs)}"></i><span class="mark" style="left:${100/130*100}%"></span></div>
+      <div class="row"><small class="col">自分の持ち出し</small><b class="num" style="color:${col(st.cogs)}">${st.total?pct(st.cogs):"—"}</b></div></div>
+    ${w.map(([k,m])=>`<div class="note ${k}" style="margin-top:8px">${m}</div>`).join("")}`;
+}
+function bindEditor(){
+  const o=oripa(UI.edit);
+  const refresh=()=>{$("#ed-stats").innerHTML=statsHTML(o);};
+  const redraw=()=>{$("#ed-items").innerHTML=itemsHTML(o);refresh();};
+  $("#ed-items").innerHTML=itemsHTML(o);refresh();
+  const bind=(sel,key,num)=>{
+    const el=$(sel);
+    el.addEventListener("input",()=>{o[key]=num?(+el.value||0):el.value;refresh();save();});
+  };
+  bind("#ed-name","name",false);bind("#ed-price","price",true);bind("#ed-total","total",true);
+  $("#ed-items").addEventListener("input",e=>{
+    const t=e.target;if(!t.classList.contains("ed-cnt"))return;
+    o.items[+t.dataset.idx].count=Math.max(0,+t.value||0);refresh();save();
+  });
+  $("#ed-items").addEventListener("click",e=>{
+    const b=e.target.closest("button[data-rm]");if(!b)return;
+    o.items.splice(+b.dataset.rm,1);save();redraw();
+  });
+  $("#ed-add").onclick=()=>pickCard(o,redraw);
+  $("#ed-fill").onclick=()=>fillRest(o,redraw);
+  $("#ed-back").onclick=$("#ed-back2").onclick=()=>{UI.edit=null;save();renderDesign();scrollTop();};
+  $("#ed-start").onclick=()=>startSelling(o);
+}
+function pickCard(o,after){
+  const used=new Set(o.items.map(i=>i.cardId));
+  const list=DB.cards.filter(c=>!used.has(c.id)).slice()
+    .sort((a,b)=>RANKS.indexOf(a.rank)-RANKS.indexOf(b.rank)||b.market-a.market);
+  openModal(`<h2>カードを足す</h2>
+    ${list.length?`<div id="pk-list">${list.map(c=>`
+      <div class="item" data-pick="${c.id}" style="cursor:pointer">
+        <span class="rk ${c.rank}">${c.rank}</span>
+        <div class="nm"><b>${esc(c.name)}</b><small>相場 ${yen(c.market)} ／ 仕入 ${yen(c.cost)}</small></div>
+        <div class="qt"><b>${freeQty(c.id,o)}</b>枚</div>
+      </div>`).join("")}</div>`
+    :`<div class="empty">足せるカードがありません。<br>在庫に登録するか、すでに全部入っています。</div>`}
+    <div class="row" style="margin-top:10px"><button class="btn ghost wide" data-close>閉じる</button></div>`);
+  const l=$("#pk-list");
+  if(l)l.onclick=e=>{
+    const it=e.target.closest("[data-pick]");if(!it)return;
+    o.items.push({cardId:it.dataset.pick,count:1});save();closeModal();after();
+  };
+}
+function fillRest(o,after){
+  const st=statsOf(o),rest=st.total-st.filled;
+  if(rest<=0)return toast("埋める余地がありません");
+  const list=DB.cards.slice().sort((a,b)=>a.market-b.market);
+  openModal(`<h2>残り ${rest}口 を埋める</h2>
+    <p class="hint">はずれ枠にするカードを選んでください。在庫の空きが足りない場合は、入るぶんだけ入れます。</p>
+    <div id="fl-list" style="margin-top:8px">${list.map(c=>{
+      const f=freeQty(c.id,o),cur=(o.items.find(i=>i.cardId===c.id)||{}).count||0;
+      return `<div class="item" data-fill="${c.id}" style="cursor:pointer">
+        <span class="rk ${c.rank}">${c.rank}</span>
+        <div class="nm"><b>${esc(c.name)}</b><small>相場 ${yen(c.market)} ／ 空き ${f-cur}枚</small></div>
+        <div class="qt"><b>+${Math.min(rest,f-cur)}</b></div></div>`;}).join("")}</div>
+    <div class="row" style="margin-top:10px"><button class="btn ghost wide" data-close>閉じる</button></div>`);
+  $("#fl-list").onclick=e=>{
+    const it=e.target.closest("[data-fill]");if(!it)return;
+    const id=it.dataset.fill,cur=o.items.find(i=>i.cardId===id);
+    const add=Math.min(rest,freeQty(id,o)-(cur?cur.count:0));
+    if(add<=0)return toast("そのカードは空きがありません");
+    if(cur)cur.count+=add;else o.items.push({cardId:id,count:add});
+    save();closeModal();after();toast(`${add}枚 入れました`);
+  };
+}
+function startSelling(o){
+  const st=statsOf(o),w=warnsOf(o,st);
+  const bad=w.filter(x=>x[0]==="bad");
+  if(bad.length)return openModal(`<h2>まだ始められません</h2>${bad.map(b=>`<div class="note bad">${b[1]}</div>`).join("")}
+    <button class="btn wide" data-close>閉じる</button>`);
+  const warn=w.filter(x=>x[0]==="warnc");
+  openModal(`<h2>販売を始めますか</h2>
+    ${st.profit<0?`<div class="note bad">完売しても <b>${yen(-st.profit)} の赤字</b>になる設計です。値段の入れ間違いがないか確かめてください。</div>`:""}
+    ${warn.map(b=>`<div class="note warnc">${b[1]}</div>`).join("")}
+    <div class="note info">
+      <b>${esc(o.name||"オリパ")}</b> / 1口 ${yen(o.price)} × ${st.total}口 = ${yen(st.sales)}<br>
+      封入 ${st.filled}枚 ・ 還元率 ${pct(st.back)} ・ 原価率 ${pct(st.cogs)} ・ 完売時の粗利 ${yen(st.profit)}
+    </div>
+    <p class="hint">押すと全口の中身が確定し、<b>あとから中身は変えられません</b>。
+    出てくるコミット(たねの指紋)を、販売ページやSNSに先に貼ってください。</p>
+    <div class="row" style="margin-top:10px"><button class="btn primary col" id="st-go">確定して始める</button>
+      <button class="btn ghost" data-close>やめる</button></div>`);
+  $("#st-go").onclick=()=>{
+    const flat=[];
+    canonicalRows(o).forEach(r=>{for(let i=0;i<r.count;i++)flat.push(r.cardId);});
+    const seed=newSeed();
+    const arr=shuffleBySeed(flat,seed);
+    o.seed=seed;o.commit=sha256hex(seed);o.revealed=false;
+    o.packs=arr.map((cardId,i)=>({no:i+1,cardId,orderId:null}));
+    o.status="selling";o.startedAt=today();
+    UI.edit=null;UI.shopId=o.id;save();closeModal();renderAll();go("shop");
+    setTimeout(()=>{openModal(`<h2>販売を始めました</h2>
+      <div class="note ok">全${o.packs.length}口の中身が確定しました。</div>
+      <p class="hint">下の文面をそのまま商品ページ・SNSに貼ってください。コミットを<b>先に</b>公開しておくことが、
+      あとで「入れ替えていない」と示す唯一の方法です。</p>
+      <textarea rows="9" readonly style="margin:8px 0;font-size:12px">${esc(probText(o))}</textarea>
+      <div class="row"><button class="btn primary col" id="pb-copy">文面をコピー</button>
+        <button class="btn ghost" data-close>閉じる</button></div>`);
+      $("#pb-copy").onclick=()=>copyText(probText(o));},120);
+  };
+}
+function revealSeed(id){
+  const o=oripa(id),st=statsOf(o);
+  openModal(`<h2>たねを公開しますか</h2>
+    ${st.left>0?`<div class="note warnc">まだ <b>${st.left}口</b> 残っています。
+      いま公開すると、残りの口に何が入っているかが<b>全員に分かってしまいます</b>。
+      公開は完売・締め切りのあとにしてください。</div>`:`<div class="note ok">完売しています。公開して問題ありません。</div>`}
+    <p class="hint">公開後は、お客が「検算」画面で封入表とたねから並び順を再計算し、実際に出たものと突き合わせられます。</p>
+    <div class="row" style="margin-top:10px"><button class="btn primary col" id="rv-go">公開する</button>
+      <button class="btn ghost" data-close>やめる</button></div>`);
+  $("#rv-go").onclick=()=>{
+    o.revealed=true;save();closeModal();renderAll();
+    copyText(probText(o));toast("公開しました(文面をコピーしました)");
+  };
+}
+
+/* ==============================================================
+   6. 売り場(お客に引いてもらう)
+   ============================================================== */
+let AC=null;
+function sfx(kind){
+  try{
+    AC=AC||new (window.AudioContext||window.webkitAudioContext)();
+    const t=AC.currentTime,g=AC.createGain();g.connect(AC.destination);
+    const notes=kind==="S"?[784,1047,1319,1568]:kind==="A"?[659,880,1047]:kind==="flip"?[440]:[330];
+    notes.forEach((f,i)=>{
+      const o=AC.createOscillator();o.type=kind==="flip"?"square":"triangle";
+      o.frequency.value=f;o.connect(g);o.start(t+i*0.09);o.stop(t+i*0.09+0.13);
+    });
+    g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(0.16,t+0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001,t+0.1+notes.length*0.09);
+  }catch(e){}
+}
+function sellingList(){return DB.oripas.filter(o=>o.status==="selling");}
+function renderShop(){
+  const sel=sellingList();
+  const pick=$("#shopPick");
+  if(!sel.length){
+    pick.innerHTML=`<div class="empty">販売中のオリパがありません。<br><b>設計</b>で組んで「販売を始める」を押してください。</div>`;
+    $("#shopBody").innerHTML="";return;
+  }
+  if(!UI.shopId||!sel.some(o=>o.id===UI.shopId))UI.shopId=sel[0].id;
+  pick.innerHTML=`<div class="row wrap">${sel.map(o=>
+    `<button class="chip ${o.id===UI.shopId?"on":""}" data-pick="${o.id}">${esc(o.name||"オリパ")}</button>`).join("")}</div>`;
+  pick.onclick=e=>{const b=e.target.closest("[data-pick]");if(!b)return;UI.shopId=b.dataset.pick;UI.sel=[];renderShop();};
+  const o=oripa(UI.shopId),st=statsOf(o);
+  const restCards={};
+  o.packs.filter(p=>!p.orderId).forEach(p=>{restCards[p.cardId]=(restCards[p.cardId]||0)+1;});
+  const rows=Object.keys(restCards).map(id=>({c:card(id),n:restCards[id]}))
+    .filter(x=>x.c).sort((a,b)=>RANKS.indexOf(a.c.rank)-RANKS.indexOf(b.c.rank)||b.c.market-a.c.market);
+  const left=st.left;
+  $("#shopBody").innerHTML=`
+    <div class="panel">
+      <div class="ttl"><h2>${esc(o.name||"オリパ")}</h2><span class="chip on">1口 ${yen(o.price)}</span></div>
+      <div class="kpi k2">
+        <div><span>残り口数</span><b class="${left?"":"r"}">${left} / ${st.total}</b></div>
+        <div><span>残りの還元率</span><b class="y" style="font-size:16px">${left?pct(st.restBack):"—"}</b></div>
+      </div>
+      <div class="hint">残数も残りの還元率も、この場で計算した本当の数字です。中身は販売開始時に確定しています。</div>
+    </div>
+    <div class="panel">
+      <div class="ttl"><h3>いま残っている中身</h3><button class="btn sm ghost" data-act="prob">確率表</button></div>
+      <div class="scrollx"><table><thead><tr><th></th><th>カード</th><th class="r">残り</th><th class="r">出る確率</th></tr></thead><tbody>
+      ${rows.map(x=>`<tr><td style="width:26px"><span class="rk ${x.c.rank}">${x.c.rank}</span></td>
+        <td>${esc(x.c.name)}<br><small>相場 ${yen(x.c.market)}</small></td>
+        <td class="r">${x.n}枚</td><td class="r">${(x.n/left*100).toFixed(2)}%</td></tr>`).join("")||
+        `<tr><td colspan="4"><div class="empty">完売しました</div></td></tr>`}
+      </tbody></table></div>
+    </div>
+    ${left?`
+    <div class="panel">
+      <div class="ttl"><h3>番号を選ぶ</h3><small id="selInfo"></small></div>
+      <div class="row wrap" style="margin-bottom:8px">
+        <button class="btn sm" data-rnd="1">おまかせ1口</button>
+        <button class="btn sm" data-rnd="5">5口</button>
+        <button class="btn sm" data-rnd="10">10口</button>
+        <button class="btn sm ghost" data-act="clear">選び直す</button>
+      </div>
+      <div class="board" id="board">${o.packs.map(p=>
+        `<button data-no="${p.no}" class="${p.orderId?"gone":(UI.sel.includes(p.no)?"sel":"")}">${p.no}</button>`).join("")}</div>
+      <div class="sep"></div>
+      <button class="btn primary wide" id="btnDraw" disabled>引く</button>
+      <p class="hint" style="margin-top:8px">代金を受け取ってから押してください。押した時点で口が売れたことになり、帳簿に売上が立ちます。</p>
+    </div>`:`<div class="panel"><div class="note ok">完売しました。<b>設計</b>で「販売を締める」→「たねを公開」まで済ませてください。</div></div>`}`;
+  const body=$("#shopBody");
+  body.onclick=e=>{
+    const b=e.target.closest("button");if(!b)return;
+    if(b.dataset.no!==undefined){
+      const no=+b.dataset.no,p=o.packs.find(x=>x.no===no);
+      if(p.orderId)return;
+      const i=UI.sel.indexOf(no);
+      if(i>=0)UI.sel.splice(i,1);else{if(UI.sel.length>=20)return toast("一度に選べるのは20口までです");UI.sel.push(no);}
+      b.classList.toggle("sel");updateSel(o);
+    }else if(b.dataset.rnd){
+      const free=o.packs.filter(p=>!p.orderId&&!UI.sel.includes(p.no)).map(p=>p.no);
+      const n=Math.min(+b.dataset.rnd,free.length);
+      for(let i=0;i<n;i++){
+        const k=Math.floor(Math.random()*free.length);
+        UI.sel.push(free.splice(k,1)[0]);
+      }
+      renderShop();
+    }else if(b.dataset.act==="clear"){UI.sel=[];renderShop();}
+    else if(b.dataset.act==="prob"){copyText(probText(o));}
+  };
+  const d=$("#btnDraw");if(d)d.onclick=()=>confirmDraw(o);
+  updateSel(o);
+}
+function updateSel(o){
+  const info=$("#selInfo"),b=$("#btnDraw");
+  if(!b)return;
+  const n=UI.sel.length;
+  if(info)info.textContent=n?`${n}口 えらび中`:"番号をタップ";
+  b.disabled=!n;
+  b.textContent=n?`${n}口 引く(${yen(n*o.price)})`:"引く";
+}
+function confirmDraw(o){
+  const n=UI.sel.length,amount=n*o.price;
+  openModal(`<h2>${n}口 引きます</h2>
+    <div class="note info">番号 <b>${UI.sel.slice().sort((a,b)=>a-b).join(", ")}</b><br>
+      代金 <b>${yen(amount)}</b>(1口 ${yen(o.price)} × ${n})</div>
+    <div class="field"><label>お客の名前(あとから直せます)</label><input id="dw-name" placeholder="例: 山田さん / 店頭A"></div>
+    <p class="hint">代金を受け取ったあとに押してください。押すとこの口は売れたことになり、帳簿に売上が立ちます。取り消しは注文画面からできます。</p>
+    <div class="row" style="margin-top:10px"><button class="btn primary col" id="dw-go">受け取った・引く</button>
+      <button class="btn ghost" data-close>やめる</button></div>`);
+  $("#dw-go").onclick=()=>{
+    const nos=UI.sel.slice().sort((a,b)=>a-b);
+    const packs=nos.map(no=>o.packs.find(p=>p.no===no));
+    if(packs.some(p=>!p||p.orderId)){closeModal();UI.sel=[];renderShop();return toast("すでに売れている口が混ざっていました");}
+    const od={id:"N"+Date.now().toString(36).toUpperCase(),oripaId:o.id,nos,
+      cardIds:packs.map(p=>p.cardId),amount,at:today(),status:"待",tracking:"",
+      customer:{name:$("#dw-name").value.trim()||"名なし",addr:"",tel:""}};
+    packs.forEach(p=>p.orderId=od.id);
+    DB.orders.push(od);
+    DB.ledger.push({id:uid(),date:today(),type:"売上",amount,memo:`${o.name||"オリパ"} ${n}口 (${od.id})`,auto:true,ref:od.id});
+    UI.sel=[];save();closeModal();
+    openGacha(o,od);
+  };
+}
+/* ---- 開封 ---- */
+function openGacha(o,od){
+  const items=od.cardIds.map((id,i)=>({no:od.nos[i],c:card(id)}));
+  const S={o,od,items,i:0,open:new Array(items.length).fill(false)};
+  const L=$("#gLayer");L.classList.add("on");
+  drawStage(S,L);
+}
+function drawStage(S,L){
+  if(S.i>=S.items.length)return gachaResult(S,L);
+  const it=S.items[S.i],rank=it.c?it.c.rank:"D";
+  L.innerHTML=`
+    <div class="g-count">${S.i+1} / ${S.items.length} 口目 ・ 番号 ${it.no}</div>
+    <div class="g-stage">
+      <div class="g-rays" id="gr"></div>
+      <div class="g-card" id="gc">
+        <div class="g-face g-back"><span>オ リ パ</span></div>
+        <div class="g-face g-front ${rank}">
+          ${rank==="S"||rank==="A"?'<div class="g-holo"></div>':""}
+          <div class="rr rt-${rank}">${rank} ${RANK_NAME[rank]}</div>
+          <div class="nm">${esc(it.c?it.c.name:"(在庫から消えたカード)")}</div>
+          <div class="pr">相場 ${yen(it.c?it.c.market:0)}</div>
+        </div>
+      </div>
+    </div>
+    <div class="g-bar">
+      <button class="btn" id="gAll">残りを全部あける</button>
+      <button class="btn primary" id="gNext" disabled>つぎへ</button>
+    </div>`;
+  const gc=$("#gc",L),next=$("#gNext",L);
+  let flipped=false;
+  const flip=()=>{
+    if(flipped)return;flipped=true;gc.classList.add("flip");sfx("flip");
+    setTimeout(()=>{
+      if(rank==="S"||rank==="A"){$("#gr",L).classList.add("on");sfx(rank);}
+      next.disabled=false;
+    },380);
+  };
+  gc.onclick=flip;
+  next.onclick=()=>{S.i++;drawStage(S,L);};
+  $("#gAll",L).onclick=()=>gachaResult(S,L);
+}
+function gachaResult(S,L){
+  const tot=S.items.reduce((s,x)=>s+(x.c?x.c.market:0),0);
+  const best=S.items.slice().sort((a,b)=>(b.c?b.c.market:0)-(a.c?a.c.market:0))[0];
+  if(best&&best.c&&(best.c.rank==="S"||best.c.rank==="A"))sfx(best.c.rank);
+  L.innerHTML=`
+    <div class="g-count">${S.od.id} ・ ${S.items.length}口 ・ 支払 ${yen(S.od.amount)}</div>
+    <div class="g-list">
+      <div class="hits">${S.items.map(x=>{
+        const r=x.c?x.c.rank:"D";
+        return `<div class="hit ${r}"><div class="rr rt-${r}">${r}</div>
+          <div class="nm">${esc(x.c?x.c.name:"?")}</div><div class="no">No.${x.no} ${yen(x.c?x.c.market:0)}</div></div>`;}).join("")}</div>
+      <div class="note ${tot>=S.od.amount?"ok":"info"}" style="margin-top:12px">
+        出たものの相場合計 <b>${yen(tot)}</b>(支払 ${yen(S.od.amount)} の ${pct(tot/S.od.amount*100,0)})</div>
+    </div>
+    <div class="g-bar">
+      <button class="btn" id="gShip">住所を書く</button>
+      <button class="btn primary" id="gClose">終わる</button>
+    </div>`;
+  $("#gClose",L).onclick=()=>{L.classList.remove("on");renderAll();};
+  $("#gShip",L).onclick=()=>{L.classList.remove("on");renderAll();go("order");setTimeout(()=>orderForm(S.od.id),150);};
+}
+
+/* ==============================================================
+   7. 注文と発送
+   ============================================================== */
+function renderOrder(){
+  const f=DB.ui.orderFilter||"待";
+  $("#orderFilter").innerHTML=[["待","発送まち"],["済","発送ずみ"],["","すべて"]]
+    .map(([v,l])=>`<button class="chip ${f===v?"on":""}" data-of="${v}">${l}${v==="待"?` ${DB.orders.filter(o=>o.status==="待").length}`:""}</button>`).join("");
+  const L=DB.orders.filter(o=>!f||o.status===f).slice().reverse();
+  $("#orderList").innerHTML=L.length?L.map(o=>{
+    const op=oripa(o.oripaId);
+    const cards=o.cardIds.map(id=>card(id)).filter(Boolean);
+    const mk=cards.reduce((s,c)=>s+c.market,0);
+    return `<div class="panel">
+      <div class="ttl"><h3>${esc(o.customer.name)}</h3>
+        <span class="chip ${o.status==="待"?"on":""}">${o.status==="待"?"発送まち":"発送ずみ"}</span></div>
+      <div class="hint" style="margin-bottom:8px">${o.at} ・ ${esc(op?op.name:"(消えたオリパ)")} ・ 番号 ${o.nos.join(", ")} ・ ${yen(o.amount)}
+        ${o.tracking?`<br>追跡 <span class="num">${esc(o.tracking)}</span>`:""}
+        ${o.customer.addr?`<br>${esc(o.customer.addr)}`:'<br><span style="color:var(--aka)">住所が未記入です</span>'}</div>
+      <div class="hits" style="margin-bottom:10px">${cards.map((c,i)=>
+        `<div class="hit ${c.rank}"><div class="rr rt-${c.rank}">${c.rank}</div><div class="nm">${esc(c.name)}</div>
+         <div class="no">No.${o.nos[i]}</div></div>`).join("")}</div>
+      <div class="hint" style="margin-bottom:8px">中身の相場合計 ${yen(mk)} ／ 仕入合計 ${yen(cards.reduce((s,c)=>s+c.cost,0))}</div>
+      <div class="row wrap">
+        <button class="btn sm" data-form="${o.id}">住所・追跡番号</button>
+        ${o.status==="待"?`<button class="btn sm primary" data-ship="${o.id}">発送ずみにする</button>`
+                        :`<button class="btn sm ghost" data-unship="${o.id}">発送まちに戻す</button>`}
+        <button class="btn sm danger" data-cancel="${o.id}">取り消す</button>
+      </div></div>`;}).join(""):`<div class="empty">この条件の注文はありません。</div>`;
+  $("#orderFilter").onclick=e=>{const b=e.target.closest("[data-of]");if(!b)return;DB.ui.orderFilter=b.dataset.of;save();renderOrder();};
+  $("#orderList").onclick=e=>{
+    const b=e.target.closest("button");if(!b)return;const d=b.dataset;
+    if(d.form)orderForm(d.form);
+    else if(d.ship)shipOrder(d.ship,true);
+    else if(d.unship)shipOrder(d.unship,false);
+    else if(d.cancel)cancelOrder(d.cancel);
+  };
+  const n=DB.orders.filter(o=>o.status==="待").length;
+  const bd=$("#tabOrderBadge");bd.hidden=!n;bd.textContent=n;
+}
+function orderForm(id){
+  const o=order(id);if(!o)return;
+  openModal(`<h2>${o.id}</h2>
+    <div class="field"><label>お客の名前</label><input id="o-name" value="${esc(o.customer.name)}"></div>
+    <div class="field"><label>住所(発送先)</label><textarea id="o-addr" rows="3">${esc(o.customer.addr)}</textarea></div>
+    <div class="grid2">
+      <div class="field"><label>電話</label><input id="o-tel" value="${esc(o.customer.tel)}"></div>
+      <div class="field"><label>追跡番号</label><input id="o-tr" value="${esc(o.tracking||"")}"></div>
+    </div>
+    <p class="hint">住所と電話はこの端末のブラウザ内だけに残ります。発送が済んだら消してしまってもかまいません。</p>
+    <div class="row" style="margin-top:10px"><button class="btn primary col" id="o-ok">保存</button>
+      <button class="btn ghost" data-close>閉じる</button></div>`);
+  $("#o-ok").onclick=()=>{
+    o.customer.name=$("#o-name").value.trim()||"名なし";
+    o.customer.addr=$("#o-addr").value.trim();
+    o.customer.tel=$("#o-tel").value.trim();
+    o.tracking=$("#o-tr").value.trim();
+    save();closeModal();renderOrder();toast("保存しました");
+  };
+}
+function shipOrder(id,ship){
+  const o=order(id);if(!o)return;
+  if(ship&&!o.customer.addr&&!confirm("住所が未記入です。それでも発送ずみにしますか?"))return;
+  if(ship){o.cardIds.forEach(cid=>{const c=card(cid);if(c)c.qty=Math.max(0,c.qty-1);});o.status="済";o.shippedAt=today();}
+  else{o.cardIds.forEach(cid=>{const c=card(cid);if(c)c.qty+=1;});o.status="待";o.shippedAt=null;}
+  save();renderAll();toast(ship?"発送ずみにしました(在庫から引きました)":"戻しました");
+}
+function cancelOrder(id){
+  const o=order(id);if(!o)return;
+  openModal(`<h2>${o.id} を取り消す</h2>
+    <div class="note warnc">この注文のお客は<b>すでに中身を見ています</b>。
+      番号を売り場に戻すと、その番号に何が入っているかを知っている人が買えてしまいます。
+      返金したときは<b>欠番</b>にするのが安全です。</div>
+    ${o.status==="済"?'<div class="note info">発送ずみなので、引いた在庫を戻します。</div>':""}
+    <div class="row wrap" style="margin-top:10px">
+      <button class="btn danger col" id="c-void">欠番にして取り消す</button>
+      <button class="btn col" id="c-back">番号を売り場に戻す</button>
+      <button class="btn ghost wide" data-close style="margin-top:8px">やめる</button></div>`);
+  const fin=(mode)=>{
+    const op=oripa(o.oripaId);
+    if(op)op.packs.forEach(p=>{if(p.orderId===o.id)p.orderId=(mode==="void"?"VOID":null);});
+    if(o.status==="済")o.cardIds.forEach(cid=>{const c=card(cid);if(c)c.qty+=1;});
+    DB.ledger=DB.ledger.filter(l=>l.ref!==o.id);
+    DB.orders=DB.orders.filter(x=>x.id!==o.id);
+    save();closeModal();renderAll();toast("取り消しました");
+  };
+  $("#c-void").onclick=()=>fin("void");
+  $("#c-back").onclick=()=>fin("back");
+}
+
+/* ==============================================================
+   8. 帳簿
+   ============================================================== */
+function inRange(d,r){
+  if(r==="all")return true;
+  const m=new Date();const ym=d.slice(0,7);
+  if(r==="this")return ym===m.toISOString().slice(0,7);
+  m.setMonth(m.getMonth()-1);return ym===m.toISOString().slice(0,7);
+}
+function renderBook(){
+  const r=DB.ui.bookRange||"all";
+  $("#bookRange").innerHTML=[["this","今月"],["last","先月"],["all","すべて"]]
+    .map(([v,l])=>`<button class="chip ${r===v?"on":""}" data-br="${v}">${l}</button>`).join("");
+  $("#bookRange").onclick=e=>{const b=e.target.closest("[data-br]");if(!b)return;DB.ui.bookRange=b.dataset.br;save();renderBook();};
+  const led=DB.ledger.filter(l=>inRange(l.date,r));
+  const sum=t=>led.filter(l=>l.type===t).reduce((s,l)=>s+l.amount,0);
+  const uri=sum("売上"),shi=sum("仕入"),kei=sum("経費");
+  const ords=DB.orders.filter(o=>inRange(o.at,r));
+  const cogs=ords.reduce((s,o)=>s+o.cardIds.reduce((t,id)=>{const c=card(id);return t+(c?c.cost:0);},0),0);
+  $("#bookKpi").innerHTML=`
+    <div class="kpi k2">
+      <div><span>売上</span><b class="g" style="font-size:16px">${yen(uri)}</b></div>
+      <div><span>出た中身の仕入(原価)</span><b class="y" style="font-size:16px">${yen(cogs)}</b></div>
+      <div><span>粗利(売上 − 原価)</span><b class="${uri-cogs<0?"r":"g"}" style="font-size:16px">${yen(uri-cogs)}</b></div>
+      <div><span>還元率(実績)</span><b class="y" style="font-size:16px">${uri?pct(ords.reduce((s,o)=>s+o.cardIds.reduce((t,id)=>{const c=card(id);return t+(c?c.market:0);},0),0)/uri*100):"—"}</b></div>
+    </div>
+    <div class="kpi k3" style="grid-template-columns:repeat(3,1fr)">
+      <div><span>仕入(現金)</span><b class="y" style="font-size:15px">${yen(shi)}</b></div>
+      <div><span>経費</span><b class="y" style="font-size:15px">${yen(kei)}</b></div>
+      <div><span>現金の増減</span><b class="${uri-shi-kei<0?"r":"g"}" style="font-size:15px">${yen(uri-shi-kei)}</b></div>
+    </div>
+    <p class="hint">粗利は「売れた口に入っていたカードの仕入値」で計算しています(在庫に残っているぶんは原価に入りません)。
+    現金の増減は帳簿に書いた出入りそのままです。</p>`;
+  $("#bookByOripa").innerHTML=`<table><thead><tr><th>オリパ</th><th class="r">売れた</th><th class="r">売上</th><th class="r">原価</th><th class="r">粗利</th></tr></thead><tbody>
+    ${DB.oripas.filter(o=>o.status!=="draft").slice().reverse().map(o=>{const st=statsOf(o);
+      return `<tr><td>${esc(o.name||"オリパ")}<br><small>${o.status==="selling"?"販売中":"終了"}</small></td>
+        <td class="r">${st.sold}/${st.total}</td><td class="r">${yen(st.soldAmount)}</td>
+        <td class="r">${yen(st.soldCost)}</td><td class="r" style="color:${st.soldProfit<0?"var(--aka)":"var(--midori)"}">${yen(st.soldProfit)}</td></tr>`;}).join("")
+      ||`<tr><td colspan="5"><div class="empty">まだ販売したオリパがありません</div></td></tr>`}</tbody></table>`;
+  $("#bookLedger").innerHTML=led.length?led.slice().reverse().map(l=>`
+    <div class="item"><div class="nm"><b>${l.type} ${yen(l.amount)}</b><small>${l.date} ${esc(l.memo||"")}</small></div>
+      <button class="btn sm ghost" data-dl="${l.id}">×</button></div>`).join("")
+    :`<div class="empty">この期間の記録はありません</div>`;
+  $("#bookLedger").onclick=e=>{
+    const b=e.target.closest("[data-dl]");if(!b)return;
+    const l=DB.ledger.find(x=>x.id===b.dataset.dl);
+    if(l&&l.ref)return toast("注文から自動で立った売上です。注文画面で取り消してください");
+    if(!confirm("この記録を消しますか?"))return;
+    DB.ledger=DB.ledger.filter(x=>x.id!==b.dataset.dl);save();renderBook();
+  };
+}
+function ledgerForm(){
+  openModal(`<h2>帳簿に手で足す</h2>
+    <div class="grid2">
+      <div class="field"><label>日付</label><input id="l-date" type="date" value="${today()}"></div>
+      <div class="field"><label>種類</label><select id="l-type"><option>仕入</option><option>経費</option><option>売上</option></select></div>
+    </div>
+    <div class="field"><label>金額</label><input id="l-amt" type="number" min="0" placeholder="0"></div>
+    <div class="field"><label>覚え書き</label><input id="l-memo" placeholder="例: 送料・スリーブ代"></div>
+    <div class="row"><button class="btn primary col" id="l-ok">足す</button><button class="btn ghost" data-close>やめる</button></div>`);
+  $("#l-ok").onclick=()=>{
+    const a=+$("#l-amt").value||0;if(!a)return toast("金額を入れてください");
+    DB.ledger.push({id:uid(),date:$("#l-date").value||today(),type:$("#l-type").value,amount:a,memo:$("#l-memo").value.trim()});
+    save();closeModal();renderBook();toast("書きました");
+  };
+}
+
+/* ==============================================================
+   9. 検算(封入表 + たね → 並び順を再計算)
+   ============================================================== */
+function canonicalRows(o){        /* 公開する順番 = 並べ替えの元になる順番 */
+  return statsOf(o).rows.filter(r=>r.count>0).slice()
+    .sort((a,b)=>RANKS.indexOf(a.rank)-RANKS.indexOf(b.rank)||b.market-a.market||a.name.localeCompare(b.name,"ja"));
+}
+function parseList(text){
+  const rows=[];
+  text.split(/\r?\n/).forEach(line=>{
+    const s=line.trim();
+    if(!s||/^[【■※]/.test(s)||/^(コミット|たね)/.test(s))return;
+    const m=s.match(/^(.*?)\s*(?:…|\.{3}|[xX×✕])\s*(\d+)\s*枚?/);
+    if(!m)return;
+    let name=m[1].trim().replace(/^([SABCD])\s+/,"");
+    const count=+m[2];
+    if(name&&count>0)rows.push({name,count});
+  });
+  return rows;
+}
+function renderVerifyOut(rows,seed,commit,packs){
+  const out=$("#vfOut");
+  if(!rows.length)return out.innerHTML=`<div class="note bad">封入表が読み取れませんでした。「カード名 x 枚数」の形で1行ずつ書いてください。</div>`;
+  const n=rows.reduce((s,r)=>s+r.count,0);
+  if(!/^[0-9a-f]{8,}$/i.test(seed||""))return out.innerHTML=`<div class="note bad">たね(seed)を入れてください(16進の文字列)。</div>`;
+  if(n>20000)return out.innerHTML=`<div class="note bad">口数が多すぎます(${n})。</div>`;
+  const flat=[];rows.forEach(r=>{for(let i=0;i<r.count;i++)flat.push(r.name);});
+  const res=shuffleBySeed(flat,seed);
+  const cm=sha256hex(seed);
+  let head="";
+  if(commit)head+=cm===commit.trim().toLowerCase()
+    ?`<div class="note ok"><b>コミット一致</b> — 販売前に公開されたハッシュと、いま渡されたたねは同じものです。</div>`
+    :`<div class="note bad"><b>コミット不一致</b> — このたねは、先に公開されたハッシュのものではありません。<br>計算値 ${cm}</div>`;
+  else head+=`<div class="note info">このたねの指紋(SHA-256)<br><span class="mono-out"><b>${cm}</b></span><br>販売前に公開されていた値と見くらべてください。</div>`;
+  if(packs){
+    const mism=[];
+    for(let i=0;i<Math.min(res.length,packs.length);i++){
+      const c=card(packs[i].cardId);
+      if(!c||c.name!==res[i])mism.push(i+1);
+    }
+    head+=(res.length===packs.length&&!mism.length)
+      ?`<div class="note ok"><b>${res.length}口すべて一致</b> — 実際に配った中身は、この計算どおりです。</div>`
+      :`<div class="note bad"><b>食い違いがあります</b>(${mism.length?"番号 "+mism.slice(0,12).join(", ")+(mism.length>12?" ほか":""):"口数が違います"})</div>`;
+  }
+  const lim=Math.min(res.length,300);
+  out.innerHTML=head+`
+    <div class="hint" style="margin:8px 0">全${res.length}口。${lim<res.length?`はじめの${lim}口を表示しています。`:""}</div>
+    <div class="scrollx" style="max-height:340px;overflow-y:auto"><table><tbody>
+      ${res.slice(0,lim).map((nm,i)=>`<tr><td class="r" style="width:56px;color:var(--hai-2)">${i+1}</td><td>${esc(nm)}</td></tr>`).join("")}
+    </tbody></table></div>
+    <button class="btn sm" id="vf-dl" style="margin-top:8px">全部をCSVで書き出す</button>`;
+  $("#vf-dl").onclick=()=>dl("verify-"+seed.slice(0,8)+".csv",csv([["口番号","中身"],...res.map((nm,i)=>[i+1,nm])]));
+}
+function verifyMine(){
+  const L=DB.oripas.filter(o=>o.commit);
+  if(!L.length)return toast("販売を始めたオリパがまだありません");
+  openModal(`<h2>読み込むオリパ</h2>
+    <div id="vm-list">${L.slice().reverse().map(o=>`
+      <div class="item" data-vm="${o.id}" style="cursor:pointer">
+        <div class="nm"><b>${esc(o.name||"オリパ")}</b>
+          <small>${o.status==="selling"?"販売中":"終了"} ／ ${o.revealed?"たね公開ずみ":"たね未公開"}</small></div>
+        <div class="qt"><b>${o.packs.length}</b>口</div></div>`).join("")}</div>
+    <button class="btn ghost wide" data-close style="margin-top:10px">閉じる</button>`);
+  $("#vm-list").onclick=e=>{
+    const it=e.target.closest("[data-vm]");if(!it)return;
+    const o=oripa(it.dataset.vm);
+    $("#vfList").value=canonicalRows(o).map(r=>`${r.name} x ${r.count}`).join("\n");
+    $("#vfSeed").value=o.seed;$("#vfCommit").value=o.commit;
+    closeModal();
+    renderVerifyOut(canonicalRows(o).map(r=>({name:r.name,count:r.count})),o.seed,o.commit,o.packs);
+    if(!o.revealed)toast("お店の控えで検算しました(たねはまだ非公開です)");
+  };
+}
+
+/* ==============================================================
+   10. 開店前チェック
+   ============================================================== */
+const CHECKS=[
+ ["kobutsu","古物商許可を取った(または、自分が新品を仕入れて売るだけだと確認した)","中古カードの売買には許可が要ります。ネット販売ならURLの届出も。"],
+ ["tokusho","特定商取引法に基づく表記を用意した","氏名・住所・電話・代金・送料・引渡時期・返品の可否。通信販売なら省略できません。"],
+ ["prob","排出確率と封入枚数、口数を商品ページに載せた","この帳場の「確率表をコピー」がそのまま使えます。"],
+ ["commit","販売開始前に、たねの指紋(コミット)を公開した","あとから中身を入れ替えていない、と示せる唯一の手立てです。"],
+ ["nokazu","残り口数と残りの中身を、その場の数字で出している","「残り1枚!」が嘘になると有利誤認です。"],
+ ["kaitori","店として買い戻し(換金)はしないと決めた","現物を必ず送る物販であることが生命線です。買取と結びつけない。"],
+ ["age","年齢確認と、1回・1日の上限額を決めた","未成年の高額購入はトラブルの筆頭です。"],
+ ["ship","発送の期日と方法、追跡の有無を決めた","高額カードは追跡と補償のある方法で。"],
+ ["hasson","破損・紛失・状態相違のときの対応を決めた","スリーブ+ローダー+防水。返品条件を先に書く。"],
+ ["saiken","決済の方法を決め、代行業者に業態を正直に伝えた","オリパは審査で断られることがあります。後出しは契約解除の元。"],
+ ["photo","使う画像は自分で撮ったもので、公式ロゴを使っていない","権利者の許諾がない転載は避ける。"],
+ ["backup","台帳を書き出してバックアップした","ブラウザの履歴消去で全部消えます。週1で書き出し。"],
+];
+function renderChecks(){
+  const done=CHECKS.filter(c=>DB.checks[c[0]]).length;
+  $("#ckCount").textContent=`${done} / ${CHECKS.length}`;
+  $("#ckList").innerHTML=CHECKS.map(([k,t,s])=>`
+    <label class="check ${DB.checks[k]?"done":""}">
+      <input type="checkbox" data-ck="${k}" ${DB.checks[k]?"checked":""}>
+      <span><b>${t}</b><small>${s}</small></span></label>`).join("")+
+    `<p class="hint" style="margin-top:10px">これは論点の一覧で、法律の助言ではありません。開業前に警察署(古物)・弁護士・行政書士に確認してください。</p>`;
+  $("#ckList").onchange=e=>{
+    const c=e.target.closest("[data-ck]");if(!c)return;
+    DB.checks[c.dataset.ck]=c.checked;save();renderChecks();
+  };
+}
+
+/* ==============================================================
+   11. 設定・共通
+   ============================================================== */
+function settingForm(){
+  openModal(`<h2>設定</h2>
+    <div class="field"><label>店名</label><input id="s-name" value="${esc(DB.shop.name)}"></div>
+    <div class="field"><label>特商法表記の控え(自分用のメモ)</label><textarea id="s-tok" rows="4">${esc(DB.shop.tokushoho||"")}</textarea></div>
+    <div class="row"><button class="btn primary col" id="s-ok">保存</button><button class="btn ghost" data-close>閉じる</button></div>
+    <div class="sep"></div>
+    <button class="btn danger wide" id="s-reset">台帳をすべて消す</button>
+    <p class="hint" style="margin-top:8px">消す前に、在庫 → 入出力 から書き出しておいてください。</p>`);
+  $("#s-ok").onclick=()=>{
+    DB.shop.name=$("#s-name").value.trim();DB.shop.tokushoho=$("#s-tok").value;
+    save();closeModal();renderAll();toast("保存しました");
+  };
+  $("#s-reset").onclick=()=>{
+    if(!confirm("在庫・オリパ・注文・帳簿をすべて消します。よろしいですか?"))return;
+    if(!confirm("本当に消しますか? 元に戻せません。"))return;
+    DB=blank();seedDemo();save();closeModal();renderAll();toast("最初の状態に戻しました");
+  };
+}
+function openModal(html){
+  $("#modalBox").innerHTML=html;$("#modal").classList.add("on");
+}
+function closeModal(){$("#modal").classList.remove("on");}
+$("#modal").addEventListener("click",e=>{
+  if(e.target.id==="modal"||e.target.closest("[data-close]"))closeModal();
+});
+function scrollTop(){window.scrollTo({top:0,behavior:"smooth"});}
+let VIEW="shop";
+function go(v){
+  VIEW=v;
+  $$("#tabs button").forEach(b=>b.classList.toggle("on",b.dataset.v===v));
+  $$("section.view").forEach(s=>s.classList.toggle("on",s.id==="v-"+v));
+  $("#fab").classList.toggle("on",v==="stock"||(v==="design"&&!UI.edit));
+  renderAll();
+}
+function renderAll(){
+  $("#shopName").textContent=DB.shop.name||"店名は設定から";
+  if(VIEW==="shop")renderShop();
+  else if(VIEW==="design")renderDesign();
+  else if(VIEW==="stock")renderStock();
+  else if(VIEW==="order")renderOrder();
+  else if(VIEW==="book")renderBook();
+  else if(VIEW==="guide")renderChecks();
+  const n=DB.orders.filter(o=>o.status==="待").length;
+  const bd=$("#tabOrderBadge");bd.hidden=!n;bd.textContent=n;
+}
+/* ---- 起動 ---- */
+(function init(){
+  const first=!load();
+  $("#tabs").onclick=e=>{const b=e.target.closest("button[data-v]");if(!b)return;UI.edit=null;go(b.dataset.v);};
+  $("#btnSetting").onclick=settingForm;
+  $("#btnAddCard").onclick=()=>cardForm(null);
+  $("#btnStockIO").onclick=stockIO;
+  $("#btnNewOripa").onclick=newOripa;
+  $("#btnAddLedger").onclick=ledgerForm;
+  $("#btnVerify").onclick=()=>renderVerifyOut(parseList($("#vfList").value),$("#vfSeed").value.trim(),$("#vfCommit").value.trim(),null);
+  $("#btnVerifyMine").onclick=verifyMine;
+  $("#fab").onclick=()=>{if(VIEW==="stock")cardForm(null);else newOripa();};
+  $("#stockFilter").onclick=e=>{const b=e.target.closest("[data-rank]");if(!b)return;DB.ui.stockRank=b.dataset.rank;save();renderStock();};
+  $("#stockList").onclick=e=>{const it=e.target.closest("[data-card]");if(!it)return;cardForm(it.dataset.card);};
+  document.addEventListener("keydown",e=>{
+    if(e.key==="Escape"){closeModal();$("#gLayer").classList.remove("on");}
+  });
+  go("shop");
+  if(first)setTimeout(()=>openModal(`<h2>オリパ帳場へようこそ</h2>
+    <p class="hint">見本の在庫を入れてあります。まず <b>設計 → 新しく作る</b> でオリパを組み、
+    「販売を始める」を押してから <b>売り場</b> で引いてみてください。<br><br>
+    実際の決済はしません。代金を受け取ったあとに「引く」を押す、という使いかたです。
+    法律まわりの論点は <b>手引き</b> にまとめてあります。</p>
+    <button class="btn primary wide" data-close>はじめる</button>`),400);
+})();
+</script>
+</body>
+</html>
