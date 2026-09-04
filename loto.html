@@ -264,6 +264,93 @@ tr.top td{color:var(--kin)}
 .fine{font-size:11px;color:var(--hai-2);line-height:1.75}
 .fine b{color:var(--hai)}
 hr.sep{border:none;border-top:1px solid rgba(37,64,92,.55);margin:12px 0}
+
+/* ---- 実績: ヒートマップ ---- */
+.grid.heat .n{cursor:pointer}
+.grid.heat .n .c{
+  position:absolute;bottom:2px;left:0;right:0;text-align:center;
+  font-size:9px;color:inherit;opacity:.62;line-height:1;
+}
+.grid.heat .n{color:var(--kinari)}
+.grid.heat .n.dark{color:#0b1420;font-weight:700;border-color:transparent}
+.legend{display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--hai-2);margin-top:8px}
+.legend i{display:block;width:34px;height:8px;border-radius:2px;
+  background:linear-gradient(90deg,rgba(217,180,81,.06),rgba(217,180,81,.85))}
+
+/* ---- 取り込みプレビュー ---- */
+.pv{max-height:210px;overflow:auto;border:1px solid var(--sen);border-radius:8px;background:var(--ai)}
+.pv table{font-size:11.5px}
+.pv td,.pv th{padding:5px 7px}
+.pv td.d{font-family:var(--num)}
+
+/* ---- バックテスト ---- */
+.bt{display:grid;grid-template-columns:1.3fr 1fr 1fr;gap:0}
+.bt > div{padding:7px 6px;border-bottom:1px solid rgba(37,64,92,.55);font-size:12.5px}
+.bt > div.h{font-size:10.5px;color:var(--hai-2);letter-spacing:.04em}
+.bt > div.v{text-align:right;font-family:var(--num)}
+.bt > div.me{color:var(--kin)}
+
+/* ---- 読み上げモード ---- */
+.reader{
+  position:fixed;inset:0;z-index:70;background:var(--ai);
+  display:none;flex-direction:column;padding:calc(18px + env(safe-area-inset-top)) 18px calc(18px + env(safe-area-inset-bottom));
+}
+.reader.on{display:flex}
+.reader .rtop{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--hai-2)}
+.reader .rtop .x{margin-left:auto;font-size:22px;color:var(--hai);padding:0 6px;line-height:1}
+.reader .rbody{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px}
+.reader .rnum{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:10px;width:100%;max-width:420px;
+}
+.reader .rnum b{
+  font-family:var(--num);font-size:clamp(26px,9vw,44px);font-weight:700;
+  background:var(--ai-2);border-radius:12px;padding:14px 0;text-align:center;
+  border:2px solid var(--sen);
+}
+.reader .rnum b.b0{color:var(--tei);border-color:rgba(90,160,224,.45)}
+.reader .rnum b.b1{color:var(--chu);border-color:rgba(217,180,81,.45)}
+.reader .rnum b.b2{color:var(--kou);border-color:rgba(224,112,90,.45)}
+.reader .rprog{font-family:var(--num);font-size:13px;color:var(--hai)}
+.reader .rbar{width:100%;max-width:420px;height:5px;background:var(--sen);border-radius:3px;overflow:hidden}
+.reader .rbar i{display:block;height:100%;background:var(--kin);transition:.25s var(--ease)}
+.reader .rac{display:flex;gap:10px}
+.reader .rac .btn{padding:16px 26px;font-size:16px}
+
+/* ---- マークシート ---- */
+.sheet{border:1px solid var(--sen);border-radius:10px;padding:11px;margin-bottom:10px;background:var(--ai)}
+.sheet .sh{display:flex;align-items:baseline;gap:8px;margin-bottom:9px}
+.sheet .sh b{font-size:13px}
+.sheet .sh span{font-family:var(--num);font-size:12px;color:var(--kin);letter-spacing:.06em}
+.mcols{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+.mcol{display:flex;flex-direction:column;gap:4px}
+.mcell{
+  display:flex;align-items:center;gap:5px;font-family:var(--num);font-size:11px;
+  color:var(--hai-2);
+}
+.mcell .o{
+  width:15px;height:15px;border-radius:50%;border:1.5px solid var(--sen);flex:none;
+}
+.mcell.on{color:var(--kinari);font-weight:700}
+.mcell.on .o{background:var(--kin);border-color:var(--kin)}
+.mcell.pad{visibility:hidden}
+
+/* ---- 印刷 ---- */
+@media print{
+  header,.dock,#toast,.mask,nav,.btn,.lead,.fine{display:none!important}
+  body{background:#fff;color:#000}
+  .wrap{padding:0;max-width:none}
+  section{display:none}
+  section#mark{display:block!important}
+  #markSheetCard{border:none;background:#fff;padding:0}
+  .card{background:#fff;border:none;padding:0;margin:0 0 6mm}
+  .card > h2{color:#000}
+  .sheet{background:#fff;border:1px solid #999;break-inside:avoid;page-break-inside:avoid}
+  .sheet .sh span{color:#000}
+  .mcell{color:#666}
+  .mcell.on{color:#000}
+  .mcell .o{border-color:#666}
+  .mcell.on .o{background:#000;border-color:#000}
+}
 </style>
 </head>
 <body>
@@ -276,9 +363,10 @@ hr.sep{border:none;border-top:1px solid rgba(37,64,92,.55);margin:12px 0}
     </div>
     <nav>
       <button data-tab="make" class="on">組む</button>
-      <button data-tab="list">控え帳</button>
+      <button data-tab="mark">記入</button>
+      <button data-tab="list">控え</button>
       <button data-tab="check">照合</button>
-      <button data-tab="data">帯データ</button>
+      <button data-tab="stat">実績</button>
     </nav>
   </div>
 </header>
@@ -368,6 +456,7 @@ hr.sep{border:none;border-top:1px solid rgba(37,64,92,.55);margin:12px 0}
       <button class="btn sm" id="csvTk">CSVで保存</button>
       <button class="btn sm gho" id="reroll">作り直す</button>
     </div>
+    <button class="btn wide sm" id="toMark" style="margin-top:8px">記入モードで開く（読み上げ・マークシート）</button>
     <hr class="sep">
     <label class="f">控え帳に保存する回号</label>
     <div class="row tight">
@@ -408,12 +497,62 @@ hr.sep{border:none;border-top:1px solid rgba(37,64,92,.55);margin:12px 0}
       <button class="btn sm danger" id="wipe">全消去</button>
     </div>
   </div>
+
+  <div class="card">
+    <h2>データの持ち出し</h2>
+    <p class="lead">端末を変えるとき用。控えと取り込んだ過去データをまとめてJSONで出し入れします。</p>
+    <div class="row tight">
+      <button class="btn sm" id="expJson">書き出し</button>
+      <button class="btn sm" id="impJson">読み込み</button>
+      <input type="file" id="fileIn" accept="application/json" style="display:none">
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>知っておくこと</h2>
+    <p class="fine">
+      <b>・還元率は約45%。</b>売上のおよそ半分が当せん金に回ります。
+      長く買えば買うほど、収支は購入額の約マイナス55%に近づきます。これは買い方では変えられません。<br><br>
+      <b>・1等の確率は 1/10,295,472。</b>1口300円で全通り買うと約31億円かかります。<br><br>
+      <b>・帯構成・連番・末尾などの条件は、確率を上げません。</b>
+      効くのは「他人と同じ買い目を避ける＝当たったとき山分けになりにくい」という一点だけです。
+      「実績」画面のバックテストで、完全ランダムと並べて確かめられます。<br><br>
+      <b>・このアプリは購入しません。</b>ログイン情報も扱わず、通信も一切しません。
+      入力したデータはこの端末のブラウザ内にだけ保存されます。<br><br>
+      <b>・上限を決めて、余剰資金の範囲で。</b>上の月上限を必ず設定してください。
+    </p>
+  </div>
 </section>
 
 <!-- ============ 照合 ============ -->
 <section id="check">
   <div class="card">
-    <h2>当選番号で照合</h2>
+    <h2>当せん番号の取り込み</h2>
+    <p class="lead">
+      過去の当せん番号をまとめて読み込みます。CSVファイルでも、サイトの表をコピーして貼り付けでもOK。
+      <b>読み取った内容を確認してから保存</b>します。
+    </p>
+    <div class="row tight">
+      <button class="btn sm" id="impCsv">CSVファイルを選ぶ</button>
+      <input type="file" id="csvIn" accept=".csv,.txt,text/csv,text/plain" style="display:none">
+      <span class="fine" id="histCount">取り込み済 0回分</span>
+    </div>
+    <label class="f" style="margin-top:12px">または、貼り付ける</label>
+    <textarea id="pasteBox" rows="4" placeholder="第692回 2026年8月29日 07 09 15 18 20 28 31 (12) (26)
+第691回 ..."></textarea>
+    <button class="btn wide sm" id="doParse" style="margin-top:8px">読み取る</button>
+    <div id="importPreview" style="margin-top:12px"></div>
+  </div>
+
+  <div class="card">
+    <h2>控えを一括照合</h2>
+    <p class="lead">取り込んだ当せん番号と、控えの回号を突き合わせて、未照合のものをまとめて判定します。</p>
+    <button class="btn pri wide" id="autoCheck">未照合の控えをまとめて照合</button>
+    <div id="autoCheckResult" style="margin-top:12px"></div>
+  </div>
+
+  <div class="card">
+    <h2>1件ずつ照合</h2>
     <p class="lead">控えに保存した買い目を、まとめて自動判定します。手で見比べる必要はありません。</p>
     <label class="f">照合する控え</label>
     <select id="checkTarget"></select>
@@ -444,44 +583,77 @@ hr.sep{border:none;border-top:1px solid rgba(37,64,92,.55);margin:12px 0}
   </div>
 </section>
 
-<!-- ============ 帯データ ============ -->
-<section id="data">
+<!-- ============ 実績 ============ -->
+<section id="stat">
   <div class="card">
-    <h2>帯構成の出やすさ</h2>
-    <p class="lead">
-      37個から7個を選ぶ全<b id="totalComb">—</b>通りのうち、その帯構成が何％を占めるか。
-      実際の抽せん結果ではなく、<b>組合せの数から計算した理論値</b>です。
-    </p>
+    <h2>取り込んだデータ</h2>
+    <div id="histSummary"></div>
+  </div>
+
+  <div class="card">
+    <h2>数字別の出現回数</h2>
+    <p class="lead">取り込んだ全回の実績。色が濃いほど多く出ています。タップで候補に入ります。</p>
+    <div id="freqGrid"></div>
+    <div id="freqTop" style="margin-top:12px"></div>
+  </div>
+
+  <div class="card">
+    <h2>帯構成 — 実績と理論</h2>
+    <p class="lead">実際の抽せん結果が、理論値どおりに散らばっているかを見ます。</p>
     <table id="compTable"></table>
     <p class="fine" style="margin-top:12px">
-      2-3-2 は上位の型ですが、<b>1位ではありません</b>。
-      そして最も大事な点として、<b>どの構成を選んでも1口あたりの当選確率は変わりません</b>。
+      2-3-2 は上位の型ですが<b>1位ではありません</b>。そして
+      <b>どの構成を選んでも1口あたりの当選確率は変わりません</b>。
       帯構成は「当たりやすさ」ではなく「偏った買い方を避ける」ための道具です。
+      実績と理論のズレは、回数が少ないうちは単なるばらつきです。
     </p>
   </div>
 
   <div class="card">
-    <h2>知っておくこと</h2>
-    <p class="fine">
-      <b>・還元率は約45%。</b>売上のおよそ半分が当せん金に回ります。
-      長く買えば買うほど、収支は購入額の約マイナス55%に近づきます。これは買い方では変えられません。<br><br>
-      <b>・1等の確率は 1/10,295,472。</b>1口300円で全通り買うと約31億円かかります。<br><br>
-      <b>・帯構成・連番・末尾などの条件は、確率を上げません。</b>
-      効果があるのは「他人と同じ買い目を避ける＝当たったとき山分けになりにくい」という一点だけです。<br><br>
-      <b>・このアプリは購入しません。</b>ログイン情報も扱わず、通信も一切しません。
-      入力したデータはこの端末のブラウザ内にだけ保存されます。<br><br>
-      <b>・上限を決めて、余剰資金の範囲で。</b>控え帳の月上限を必ず設定してください。
-    </p>
+    <h2>そのほかの実績</h2>
+    <p class="lead">「しぼり込み」の設定を決めるときの材料に。</p>
+    <table id="miscTable"></table>
   </div>
 
   <div class="card">
-    <h2>データの持ち出し</h2>
-    <p class="lead">端末を変えるとき用。JSONで書き出し／読み込みできます。</p>
-    <div class="row tight">
-      <button class="btn sm" id="expJson">書き出し</button>
-      <button class="btn sm" id="impJson">読み込み</button>
-      <input type="file" id="fileIn" accept="application/json" style="display:none">
+    <h2>バックテスト</h2>
+    <p class="lead">
+      いまの設定（帯構成・候補・しぼり込み・口数）で過去の回を買っていたら、どうなっていたか。
+      <b>完全ランダムと並べて</b>表示します。
+    </p>
+    <div class="row tight" style="margin-bottom:10px">
+      <div style="flex:1"><label class="f">直近何回ぶん</label><input type="number" id="btRounds" value="100" min="1" max="2000" inputmode="numeric"></div>
+      <div style="flex:1"><label class="f">1回あたりの口数</label><input type="number" id="btCount" value="5" min="1" max="50" inputmode="numeric"></div>
     </div>
+    <button class="btn pri wide" id="runBt">走らせる</button>
+    <div id="btResult" style="margin-top:14px"></div>
+  </div>
+</section>
+
+<!-- ============ 記入 ============ -->
+<section id="mark">
+  <div class="card">
+    <h2>買う数字</h2>
+    <label class="f">どれを表示するか</label>
+    <select id="markTarget"></select>
+    <div class="row tight" style="margin-top:12px">
+      <button class="btn sm" id="markRead">読み上げモード</button>
+      <button class="btn sm gho" id="markPrint">印刷する</button>
+      <button class="btn sm gho" id="markCopy">コピー</button>
+    </div>
+    <p class="fine" style="margin-top:10px">
+      読み上げモードは、1口ずつ大きく出して「✓」で送ります。
+      ネット購入の入力でも、マークシートの記入でも、目を離さずに写せます。
+    </p>
+  </div>
+
+  <div class="card" id="markSheetCard">
+    <h2>マークシート記入表</h2>
+    <p class="lead">
+      01〜37を縦4列に並べた記入チェック用。塗った印と見比べてください。
+      <b>実際のカードと並びが違う場合は、数字そのものを追って確認を。</b>
+    </p>
+    <div id="markSheets"></div>
   </div>
 </section>
 
@@ -501,6 +673,19 @@ hr.sep{border:none;border-top:1px solid rgba(37,64,92,.55);margin:12px 0}
     <div class="ac">
       <button class="btn gho sm" id="mNo">やめる</button>
       <button class="btn pri sm" id="mYes">実行する</button>
+    </div>
+  </div>
+</div>
+
+<div class="reader" id="reader">
+  <div class="rtop"><span id="rTitle"></span><button class="x" id="rClose">×</button></div>
+  <div class="rbody">
+    <div class="rprog" id="rProg"></div>
+    <div class="rnum" id="rNum"></div>
+    <div class="rbar"><i id="rBar" style="width:0"></i></div>
+    <div class="rac">
+      <button class="btn gho" id="rPrev">前へ</button>
+      <button class="btn pri" id="rNext">✓ 次へ</button>
     </div>
   </div>
 </div>
@@ -536,7 +721,8 @@ var S = {
   unit:300,
   count:5,
   budget:3000,
-  records:[]
+  records:[],
+  history:[]
 };
 var tickets = [];
 var genNotes = [];
@@ -555,6 +741,7 @@ function load(){
       if(d.count) S.count = Number(d.count);
       if(d.budget != null) S.budget = Number(d.budget);
       if(Array.isArray(d.records)) S.records = d.records;
+      if(Array.isArray(d.history)) S.history = d.history;
     }
   }catch(e){ /* 壊れていても初期値で動かす */ }
 }
@@ -740,6 +927,174 @@ function grade(t, main, bonus){
   return 0;
 }
 
+/* ================= 過去データの取り込み ================= */
+function decodeBuf(buf){
+  var u=new Uint8Array(buf);
+  try{ return new TextDecoder("utf-8",{fatal:true}).decode(u); }catch(e){}
+  try{ return new TextDecoder("shift_jis").decode(u); }catch(e){}
+  try{ return new TextDecoder("euc-jp").decode(u); }catch(e){}
+  return new TextDecoder("utf-8").decode(u);
+}
+function toHalf(t){
+  return String(t||"").replace(/[０-９]/g, function(c){
+    return String.fromCharCode(c.charCodeAt(0)-0xFEE0);
+  });
+}
+function numTokens(t){
+  return String(t||"").split(/[^0-9A-Za-z]+/)
+    .filter(function(x){ return /^[0-9]+$/.test(x); })
+    .map(Number);
+}
+function grabDate(line){
+  var m=/(\d{4})\s*[\/\-.年]\s*(\d{1,2})\s*[\/\-.月]\s*(\d{1,2})/.exec(line);
+  return m ? m[1]+"-"+pad(Number(m[2]))+"-"+pad(Number(m[3])) : "";
+}
+function stripDates(t){
+  return t
+    .replace(/\d{4}\s*[\/\-.年]\s*\d{1,2}\s*[\/\-.月]\s*\d{1,2}\s*日?/g," ")
+    .replace(/[HRShrs令平]\s*\d{1,2}\s*[\/\-.年]\s*\d{1,2}\s*[\/\-.月]\s*\d{1,2}\s*日?/g," ");
+}
+function pickSeven(toks){
+  var ns=[], seen={};
+  for(var i=0;i<toks.length && ns.length<9;i++){
+    var v=toks[i];
+    if(v>=1 && v<=37 && !seen[v]){ seen[v]=1; ns.push(v); }
+  }
+  if(ns.length<7) return null;
+  return {
+    main: ns.slice(0,7).sort(function(a,b){return a-b;}),
+    bonus: ns.slice(7,9).sort(function(a,b){return a-b;})
+  };
+}
+function parseLineRow(line){
+  var round=null, t=line;
+  var m=/第\s*(\d{1,4})\s*回/.exec(line);
+  if(m){ round=Number(m[1]); t=t.replace(m[0]," "); }
+  var date=grabDate(line);
+  t=stripDates(t);
+  var toks=numTokens(t);
+  if(round===null && toks.length && (toks[0]>37 || toks.length>=10)) round=toks.shift();
+  var got=pickSeven(toks);
+  if(!got) return null;
+  return {round:round, date:date, main:got.main, bonus:got.bonus};
+}
+function parseTransposed(lines){
+  function pick(re){ for(var i=0;i<lines.length;i++) if(re.test(lines[i])) return lines[i]; return ""; }
+  var lr=pick(/^\s*回別/), lm=pick(/^\s*本数字/), lb=pick(/^\s*ボーナス数字/), ld=pick(/^\s*抽せん日|^\s*抽選日/);
+  if(!lr || !lm) return [];
+  var rounds=(lr.match(/第?\s*\d{1,4}\s*回/g)||[]).map(function(x){ return Number(x.replace(/[^0-9]/g,"")); });
+  var mains=numTokens(stripDates(lm)).filter(function(v){ return v>=1&&v<=37; });
+  var bons=numTokens(stripDates(lb)).filter(function(v){ return v>=1&&v<=37; });
+  var dates=(ld.match(/\d{4}\s*[\/\-.年]\s*\d{1,2}\s*[\/\-.月]\s*\d{1,2}/g)||[]).map(function(x){ return grabDate(x); });
+  var k=rounds.length;
+  if(!k || mains.length !== k*7) return [];
+  var out=[];
+  for(var i=0;i<k;i++){
+    var mm=mains.slice(i*7,i*7+7).sort(function(a,b){return a-b;});
+    if(new Set(mm).size!==7) return [];
+    var bb=(bons.length===k*2) ? bons.slice(i*2,i*2+2).sort(function(a,b){return a-b;}) : [];
+    out.push({round:rounds[i], date:dates[i]||"", main:mm, bonus:bb});
+  }
+  return out;
+}
+function parseHistory(text){
+  var lines=String(text||"").split(/\r\n|\r|\n/)
+    .map(function(l){ return toHalf(l).replace(/　/g," ").trim(); })
+    .filter(function(l){ return l.length>0; });
+  if(!lines.length) return {rows:[], err:"中身が空です。"};
+  var a=[];
+  try{ a=parseTransposed(lines); }catch(e){ a=[]; }
+  var b=[];
+  lines.forEach(function(l){
+    if(/^\s*(回別|抽せん日|抽選日|本数字|ボーナス数字)/.test(l)) return;
+    var r=parseLineRow(l);
+    if(r) b.push(r);
+  });
+  var rows = (a.length >= b.length) ? a : b;
+  if(!rows.length) return {rows:[], err:"当せん番号を読み取れませんでした。1行に1回ぶん、本数字7個（あればボーナス2個）が並ぶ形にしてください。"};
+  return {rows:rows, err:null};
+}
+function histKey(r){ return (r.round!=null) ? "r"+r.round : "n"+r.main.join(","); }
+function mergeHistory(rows){
+  var map={};
+  S.history.forEach(function(r){ map[histKey(r)]=r; });
+  var add=0, upd=0;
+  rows.forEach(function(r){
+    var k=histKey(r);
+    if(map[k]) upd++; else add++;
+    map[k]=r;
+  });
+  S.history = Object.keys(map).map(function(k){ return map[k]; })
+    .sort(function(x,y){ return (y.round||0)-(x.round||0); });
+  return {add:add, upd:upd};
+}
+function findWin(roundNo){
+  for(var i=0;i<S.history.length;i++) if(S.history[i].round===roundNo) return S.history[i];
+  return null;
+}
+function roundOf(str){
+  var m=/(\d{1,4})/.exec(String(str||""));
+  return m ? Number(m[1]) : null;
+}
+
+/* ================= 実績の集計 ================= */
+function stats(){
+  var h=S.history;
+  var freq=[], i;
+  for(i=0;i<=37;i++) freq[i]=0;
+  var comp={}, sumTotal=0, seq2=0, seq3=0, tail2=0, tail3=0, ovSum=0, ovN=0;
+  h.forEach(function(r,idx){
+    var t=r.main;
+    t.forEach(function(n){ freq[n]++; });
+    var c=[0,0,0]; t.forEach(function(n){ c[band(n)]++; });
+    var key=c.join("-"); comp[key]=(comp[key]||0)+1;
+    var s=0; t.forEach(function(n){ s+=n; }); sumTotal+=s;
+    var run=1,mx=1;
+    for(var j=1;j<t.length;j++){ run=(t[j]===t[j-1]+1)?run+1:1; if(run>mx)mx=run; }
+    if(mx>=2) seq2++; if(mx>=3) seq3++;
+    var cc={},m2=0;
+    t.forEach(function(n){ var d=n%10; cc[d]=(cc[d]||0)+1; if(cc[d]>m2)m2=cc[d]; });
+    if(m2>=2) tail2++; if(m2>=3) tail3++;
+    var nx=h[idx+1];
+    if(nx && r.round!=null && nx.round===r.round-1){
+      ovSum += t.filter(function(n){ return nx.main.indexOf(n)>=0; }).length; ovN++;
+    }
+  });
+  return {n:h.length, freq:freq, comp:comp, avgSum:h.length?sumTotal/h.length:0,
+          seq2:seq2, seq3:seq3, tail2:tail2, tail3:tail3, avgOv:ovN?ovSum/ovN:null};
+}
+
+/* ================= バックテスト ================= */
+function randomTicket(){
+  var all=[]; for(var n=1;n<=37;n++) all.push(n);
+  return sample(all,7).sort(function(a,b){return a-b;});
+}
+function runBt(hist, count, pureRandom, trials){
+  var g={1:0,2:0,3:0,4:0,5:0,6:0}, hitTk=0, hitRounds=0;
+  for(var tr=0; tr<trials; tr++){
+    for(var i=0;i<hist.length;i++){
+      var r=hist[i], tks;
+      if(pureRandom){
+        tks=[]; for(var q=0;q<count;q++) tks.push(randomTicket());
+      } else {
+        tks=generate(count).tickets;
+      }
+      var hit=false;
+      for(var j=0;j<tks.length;j++){
+        var gr=grade(tks[j], r.main, r.bonus||[]);
+        if(gr){ g[gr]++; hitTk++; hit=true; }
+      }
+      if(hit) hitRounds++;
+    }
+  }
+  var res={grades:{}, trials:trials, raw:hitTk};
+  for(var k in g) res.grades[k]=g[k]/trials;
+  res.hitTk = hitTk/trials;
+  res.hitRounds = hitRounds/trials;
+  res.tickets = hist.length*count;
+  return res;
+}
+
 /* ================= 描画 ================= */
 function renderGrid(){
   var host = $("#numgrid"); host.innerHTML="";
@@ -837,6 +1192,7 @@ function renderTickets(){
   $("#sumBudget").textContent = S.budget>0
     ? "（今月の合計は " + yen(used) + " / 上限 " + yen(S.budget) + "）" : "";
   $("#sumBudget").style.color = (S.budget>0 && used>S.budget) ? "var(--ng)" : "var(--hai-2)";
+  renderMarkTarget(); renderMark();
 }
 function renderDock(){
   $("#dockInfo").innerHTML = "帯構成 <b>"+S.ratio.join("-")+"</b> ／ 候補 <b>"+S.cands.length+"</b> 個"
@@ -915,7 +1271,7 @@ function renderRecords(){
       ask("この控えを削除しますか", (r.round||"（回号なし）")+" の "+r.tickets.length+"口を消します。元に戻せません。", function(){
         var idx=S.records.indexOf(r);
         if(idx>=0) S.records.splice(idx,1);
-        save(); renderRecords(); renderMoney(); renderCheckTarget();
+        save(); renderRecords(); renderMoney(); renderCheckTarget(); renderMarkTarget(); renderMark();
         toast("削除しました");
       });
     };
@@ -940,36 +1296,192 @@ function renderCheckTarget(){
   });
   if(cur) sel.value=cur;
 }
-function renderComp(){
-  var tc = comb(37,7);
-  $("#totalComb").textContent = tc.toLocaleString("ja-JP");
+function renderStat(){
+  var st = stats(), tc = comb(37,7), h = S.history;
+
+  /* --- 取り込み状況 --- */
+  var sm=$("#histSummary");
+  if(!h.length){
+    sm.innerHTML='<div class="empty">まだ取り込んでいません。<br>「照合」画面の<b>当せん番号の取り込み</b>から、<br>CSVファイルか貼り付けで読み込めます。</div>';
+  } else {
+    var rs=h.map(function(r){ return r.round; }).filter(function(v){ return v!=null; });
+    var lo=rs.length?Math.min.apply(null,rs):null, hi=rs.length?Math.max.apply(null,rs):null;
+    var nb=h.filter(function(r){ return (r.bonus||[]).length===2; }).length;
+    sm.innerHTML='<div class="sum"><b>'+h.length+'</b><span>回分</span>'
+      + (lo!=null ? '<span>第'+lo+'回 〜 第'+hi+'回</span>' : '')
+      + '</div>'
+      + '<div class="fine">ボーナス数字あり '+nb+'回 ／ なし '+(h.length-nb)+'回'
+      + (nb<h.length ? '（ボーナスがない回は2等・6等の判定ができません）' : '')+'</div>';
+  }
+
+  /* --- 数字別の出現回数 --- */
+  var fg=$("#freqGrid"); fg.innerHTML="";
+  if(h.length){
+    var mx=Math.max.apply(null, st.freq.slice(1));
+    var mn=Math.min.apply(null, st.freq.slice(1));
+    for(var bi=0; bi<3; bi++){
+      var lab=document.createElement("div");
+      lab.className="bandlabel";
+      lab.innerHTML='<span class="dot" style="background:var(--'+["tei","chu","kou"][bi]+')"></span>'+BNAME[bi];
+      fg.appendChild(lab);
+      var g=document.createElement("div"); g.className="grid heat";
+      bandNums(bi).forEach(function(n){
+        var c=st.freq[n];
+        var a=(mx>mn) ? (c-mn)/(mx-mn) : 0.5;
+        var b=document.createElement("button");
+        var al=0.05+a*0.85;
+        b.className="n"+(al>0.55?" dark":"")+(S.cands.indexOf(n)>=0?" on b"+band(n):"");
+        if(S.cands.indexOf(n)<0) b.style.background="rgba(217,180,81,"+al.toFixed(3)+")";
+        b.innerHTML=pad(n)+'<span class="c">'+c+'</span>';
+        b.title=pad(n)+" は "+c+"回";
+        b.onclick=function(){
+          var k=S.cands.indexOf(n);
+          if(k>=0) S.cands.splice(k,1); else S.cands.push(n);
+          S.cands.sort(function(x,y){return x-y;});
+          save(); renderGrid(); renderDock(); renderStat();
+          toast(pad(n)+(k>=0?" を候補から外しました":" を候補に入れました"));
+        };
+        g.appendChild(b);
+      });
+      fg.appendChild(g);
+    }
+    fg.insertAdjacentHTML("beforeend",'<div class="legend"><span>少ない</span><i></i><span>多い</span>'
+      + '<span style="margin-left:auto">平均 '+(h.length*7/37).toFixed(1)+'回</span></div>');
+    var idx=[]; for(var n2=1;n2<=37;n2++) idx.push(n2);
+    var hot=idx.slice().sort(function(a2,b2){ return st.freq[b2]-st.freq[a2]; });
+    $("#freqTop").innerHTML='<table>'
+      + '<tr><th>よく出ている</th><th>あまり出ていない</th></tr><tr>'
+      + '<td style="font-family:var(--num)">'+hot.slice(0,7).map(function(n3){return pad(n3)+"("+st.freq[n3]+")";}).join(" ")+'</td>'
+      + '<td style="font-family:var(--num)">'+hot.slice(-7).reverse().map(function(n3){return pad(n3)+"("+st.freq[n3]+")";}).join(" ")+'</td>'
+      + '</tr></table>'
+      + '<p class="fine" style="margin-top:8px">回数が少ないうちの偏りは、ほぼ<b>ただのばらつき</b>です。'
+      + '抽せんに記憶はないので、多く出た数字も少ない数字も、次に出る確率は同じ 7/37 です。</p>';
+  } else {
+    fg.innerHTML='<div class="empty">当せん番号を取り込むと、ここに出現回数が出ます。</div>';
+    $("#freqTop").innerHTML="";
+  }
+
+  /* --- 帯構成: 実績と理論 --- */
   var rows=[];
-  for(var a=0;a<=7;a++) for(var b=0;a+b<=7;b++){
-    var c=7-a-b;
-    if(a>12||b>12||c>13) continue;
-    var n = comb(12,a)*comb(12,b)*comb(13,c);
-    if(n>0) rows.push({r:[a,b,c], n:n});
+  for(var a3=0;a3<=7;a3++) for(var b3=0;a3+b3<=7;b3++){
+    var c3=7-a3-b3;
+    if(a3>12||b3>12||c3>13) continue;
+    var num=comb(12,a3)*comb(12,b3)*comb(13,c3);
+    if(num>0) rows.push({r:[a3,b3,c3], n:num, hit:st.comp[[a3,b3,c3].join("-")]||0});
   }
   rows.sort(function(x,y){ return y.n-x.n; });
   var max=rows[0].n;
-  var html='<tr><th>順位</th><th>帯構成</th><th class="r">通り</th><th class="r">割合</th></tr>';
-  rows.slice(0,12).forEach(function(row,i){
-    var isCur = row.r.join("-")===S.ratio.join("-");
-    html += '<tr'+(isCur?' class="top"':'')+'>'
-      + '<td class="r">'+(i+1)+'</td>'
+  var html='<tr><th>帯構成</th><th class="r">理論</th>'
+    + (h.length?'<th class="r">実績</th>':'')+'</tr>';
+  rows.slice(0,12).forEach(function(row){
+    var isCur=row.r.join("-")===S.ratio.join("-");
+    html+='<tr'+(isCur?' class="top"':'')+'>'
       + '<td style="font-family:var(--num)">'+row.r.join("-")+(isCur?' ←今':'')+'</td>'
-      + '<td class="r">'+row.n.toLocaleString("ja-JP")+'</td>'
       + '<td class="r">'+(row.n/tc*100).toFixed(2)+'%'
-      + '<div class="bar"><i style="width:'+(row.n/max*100)+'%"></i></div></td></tr>';
+      + '<div class="bar"><i style="width:'+(row.n/max*100)+'%"></i></div></td>'
+      + (h.length ? '<td class="r">'+(row.hit/h.length*100).toFixed(1)+'%<br>'
+          + '<span style="color:var(--hai-2)">'+row.hit+'回</span></td>' : '')
+      + '</tr>';
   });
   $("#compTable").innerHTML=html;
+
+  /* --- そのほかの実績 --- */
+  var mt=$("#miscTable");
+  if(!h.length){ mt.innerHTML='<tr><td class="fine">当せん番号を取り込むと出ます。</td></tr>'; }
+  else{
+    function pc(x){ return (x/h.length*100).toFixed(1)+"%"; }
+    mt.innerHTML='<tr><th>項目</th><th class="r">実績</th><th class="r">目安</th></tr>'
+      + '<tr><td>7個の合計値（平均）</td><td class="r">'+st.avgSum.toFixed(1)+'</td><td class="r">133</td></tr>'
+      + '<tr><td>連番を2個以上ふくむ回</td><td class="r">'+pc(st.seq2)+'</td><td class="r">—</td></tr>'
+      + '<tr><td>連番を3個以上ふくむ回</td><td class="r">'+pc(st.seq3)+'</td><td class="r">—</td></tr>'
+      + '<tr><td>末尾かぶり2個以上の回</td><td class="r">'+pc(st.tail2)+'</td><td class="r">—</td></tr>'
+      + '<tr><td>末尾かぶり3個以上の回</td><td class="r">'+pc(st.tail3)+'</td><td class="r">—</td></tr>'
+      + (st.avgOv!=null ? '<tr><td>前回とのかぶり（平均）</td><td class="r">'+st.avgOv.toFixed(2)+'個</td><td class="r">1.32</td></tr>' : '');
+    mt.insertAdjacentHTML("afterend","");
+  }
 }
+
+/* ================= 記入 ================= */
+function markTickets(){
+  var v=$("#markTarget").value;
+  if(v==="__now") return {label:"いまの買い目", tickets:tickets};
+  for(var i=0;i<S.records.length;i++){
+    if(S.records[i].id===v) return {label:S.records[i].round, tickets:S.records[i].tickets};
+  }
+  return {label:"いまの買い目", tickets:tickets};
+}
+function renderMarkTarget(){
+  var sel=$("#markTarget"), cur=sel.value;
+  sel.innerHTML="";
+  var o=document.createElement("option");
+  o.value="__now"; o.textContent="いまの買い目（"+tickets.length+"口）";
+  sel.appendChild(o);
+  S.records.slice().reverse().forEach(function(r){
+    var op=document.createElement("option");
+    op.value=r.id; op.textContent=(r.round||"（回号なし）")+"（"+r.tickets.length+"口）";
+    sel.appendChild(op);
+  });
+  if(cur){ sel.value=cur; if(!sel.value) sel.value="__now"; }
+}
+function renderMark(){
+  var d=markTickets(), host=$("#markSheets");
+  host.innerHTML="";
+  if(!d.tickets.length){
+    host.innerHTML='<div class="empty">表示する買い目がありません。<br>「組む」でつくるか、控えを選んでください。</div>';
+    return;
+  }
+  d.tickets.forEach(function(t,i){
+    var el=document.createElement("div"); el.className="sheet";
+    var letter=String.fromCharCode(65+(i%5));
+    el.innerHTML='<div class="sh"><b>'+(i+1)+'口目'+(d.tickets.length<=5?'（'+letter+'枠）':'')
+      + '</b><span>'+tkText(t)+'</span></div>';
+    var cols=document.createElement("div"); cols.className="mcols";
+    for(var c=0;c<4;c++){
+      var col=document.createElement("div"); col.className="mcol";
+      for(var r=0;r<10;r++){
+        var n=c*10+r+1;
+        var cell=document.createElement("div");
+        if(n>37){ cell.className="mcell pad"; cell.innerHTML='<span class="o"></span>00'; }
+        else{
+          cell.className="mcell"+(t.indexOf(n)>=0?" on":"");
+          cell.innerHTML='<span class="o"></span>'+pad(n);
+        }
+        col.appendChild(cell);
+      }
+      cols.appendChild(col);
+    }
+    el.appendChild(cols);
+    host.appendChild(el);
+  });
+}
+
+/* ================= 読み上げモード ================= */
+var RD={list:[], i:0, label:""};
+function readerShow(){
+  var t=RD.list[RD.i];
+  $("#rTitle").textContent=RD.label;
+  $("#rProg").textContent=(RD.i+1)+" / "+RD.list.length+" 口目";
+  $("#rBar").style.width=((RD.i+1)/RD.list.length*100)+"%";
+  $("#rNum").innerHTML=t.map(function(n){ return '<b class="b'+band(n)+'">'+pad(n)+'</b>'; }).join("");
+  $("#rPrev").disabled = (RD.i===0);
+  $("#rNext").textContent = (RD.i===RD.list.length-1) ? "✓ 終わる" : "✓ 次へ";
+}
+function readerOpen(){
+  var d=markTickets();
+  if(!d.tickets.length){ toast("表示する買い目がありません"); return; }
+  RD.list=d.tickets; RD.i=0; RD.label=d.label;
+  readerShow();
+  $("#reader").classList.add("on");
+}
+function readerClose(){ $("#reader").classList.remove("on"); }
 function renderAll(){
   renderPreset(); renderRatio(); renderGrid(); renderFilters();
   renderTickets(); renderDock(); renderMoney(); renderRecords();
-  renderCheckTarget(); renderComp();
+  renderCheckTarget(); renderStat(); renderMarkTarget(); renderMark();
   $("#count").value=S.count; $("#unit").value=S.unit;
   $("#prevWin").value=S.prevWin.map(pad).join(" ");
+  $("#btCount").value=S.count;
+  renderHistCount();
 }
 
 /* ================= 操作 ================= */
@@ -1102,7 +1614,7 @@ $("#save").onclick=function(){
       unit:S.unit, cost:cost,
       checked:false, prize:0, grades:null, tgrades:null
     });
-    save(); renderRecords(); renderMoney(); renderCheckTarget();
+    save(); renderRecords(); renderMoney(); renderCheckTarget(); renderMarkTarget();
     toast("控えに保存しました");
     goTab("list");
   });
@@ -1162,9 +1674,11 @@ $("#csvAll").onclick=function(){
 };
 $("#wipe").onclick=function(){
   ask("すべての控えを消去しますか",
-      "控え "+S.records.length+"件と収支の記録をすべて削除します。<b>元に戻せません。</b><br><br>先に「全件をCSVで保存」で控えを残しておくことをおすすめします。",
+      "控え "+S.records.length+"件と収支の記録をすべて削除します。<b>元に戻せません。</b><br>"
+      + "取り込んだ当せん番号("+S.history.length+"回分)は残ります。<br><br>"
+      + "先に「全件をCSVで保存」で控えを残しておくことをおすすめします。",
       function(){
-        S.records=[]; save(); renderRecords(); renderMoney(); renderCheckTarget();
+        S.records=[]; save(); renderRecords(); renderMoney(); renderCheckTarget(); renderMarkTarget(); renderMark();
         toast("すべて消去しました");
       });
 };
@@ -1190,12 +1704,188 @@ $("#fileIn").onchange=function(e){
           if(Array.isArray(d.cands)) S.cands=d.cands.map(Number);
           if(Array.isArray(d.prevWin)) S.prevWin=d.prevWin.map(Number);
           if(d.budget!=null) S.budget=Number(d.budget);
+          if(Array.isArray(d.history)) S.history=d.history;
           save(); renderAll(); toast("読み込みました");
         });
   };
   fr.readAsText(f);
   e.target.value="";
 };
+
+/* ---- 取り込み ---- */
+var pending = null;
+function showPreview(rows, err){
+  var host=$("#importPreview");
+  if(err){ host.innerHTML='<div class="note warn">'+err+'</div>'; pending=null; return; }
+  var rs=rows.map(function(r){ return r.round; }).filter(function(v){ return v!=null; });
+  var noRound = rows.length - rs.length;
+  var html='<div class="note ok"><b>'+rows.length+'件</b> 読み取りました。'
+    + (rs.length ? '第'+Math.min.apply(null,rs)+'回 〜 第'+Math.max.apply(null,rs)+'回。' : '')
+    + (noRound ? '<br>うち '+noRound+'件は回号を読み取れませんでした（統計には使えますが、一括照合はできません）。' : '')
+    + '<br>下の内容が合っているか確かめてから保存してください。</div>';
+  html+='<div class="pv"><table><tr><th>回</th><th>抽せん日</th><th>本数字</th><th>ボ</th></tr>';
+  rows.slice(0,12).forEach(function(r){
+    html+='<tr><td class="d">'+(r.round!=null?r.round:"—")+'</td><td class="d">'+(r.date||"—")+'</td>'
+      + '<td class="d">'+r.main.map(pad).join(" ")+'</td>'
+      + '<td class="d">'+((r.bonus||[]).length?r.bonus.map(pad).join(" "):"—")+'</td></tr>';
+  });
+  html+='</table></div>';
+  if(rows.length>12) html+='<p class="fine" style="margin-top:6px">ほか '+(rows.length-12)+'件</p>';
+  html+='<button class="btn pri wide sm" id="doImport" style="margin-top:10px">この内容で取り込む</button>';
+  host.innerHTML=html;
+  pending=rows;
+  $("#doImport").onclick=function(){
+    if(!pending) return;
+    var r=mergeHistory(pending);
+    save(); renderStat(); renderHistCount();
+    host.innerHTML='<div class="note ok">取り込みました。新規 '+r.add+'件 / 上書き '+r.upd+'件。'
+      + '合計 '+S.history.length+'回分になりました。</div>';
+    pending=null;
+    toast("取り込みました（"+S.history.length+"回分）");
+  };
+}
+function renderHistCount(){
+  $("#histCount").textContent="取り込み済 "+S.history.length+"回分";
+}
+$("#impCsv").onclick=function(){ $("#csvIn").click(); };
+$("#csvIn").onchange=function(e){
+  var f=e.target.files && e.target.files[0];
+  if(!f){ return; }
+  if(f.size > 8*1024*1024){ toast("ファイルが大きすぎます（8MBまで）"); e.target.value=""; return; }
+  var fr=new FileReader();
+  fr.onload=function(){
+    var text;
+    try{ text=decodeBuf(fr.result); }
+    catch(err){ showPreview([], "ファイルを読めませんでした。"); return; }
+    var res=parseHistory(text);
+    showPreview(res.rows, res.err);
+    goTab("check");
+  };
+  fr.onerror=function(){ showPreview([], "ファイルを読めませんでした。"); };
+  fr.readAsArrayBuffer(f);
+  e.target.value="";
+};
+$("#doParse").onclick=function(){
+  var res=parseHistory($("#pasteBox").value);
+  showPreview(res.rows, res.err);
+};
+
+/* ---- 一括照合 ---- */
+$("#autoCheck").onclick=function(){
+  var host=$("#autoCheckResult");
+  if(!S.history.length){ host.innerHTML='<div class="note warn">先に当せん番号を取り込んでください。</div>'; return; }
+  if(!S.records.length){ host.innerHTML='<div class="note warn">控えがありません。</div>'; return; }
+  var done=0, miss=[], lines=[];
+  S.records.forEach(function(rec){
+    if(rec.checked) return;
+    var no=roundOf(rec.round);
+    var w=(no!=null) ? findWin(no) : null;
+    if(!w){ miss.push(rec.round||"（回号なし）"); return; }
+    var grades={}, tg=[];
+    rec.tickets.forEach(function(t){
+      var g=grade(t, w.main, w.bonus||[]);
+      tg.push(g); if(g) grades[g]=(grades[g]||0)+1;
+    });
+    rec.checked=true; rec.grades=grades; rec.tgrades=tg;
+    rec.win={main:w.main, bonus:w.bonus||[]};
+    done++;
+    var ks=Object.keys(grades).sort();
+    lines.push('<tr><td>'+rec.round+'</td><td class="r">'
+      + (ks.length ? ks.map(function(g){ return g+"等×"+grades[g]; }).join(" ") : "はずれ")+'</td></tr>');
+  });
+  if(done){ save(); renderRecords(); renderMoney(); renderCheckTarget(); }
+  var html='';
+  html += done
+    ? '<div class="note ok"><b>'+done+'件</b>を照合しました。</div><table><tr><th>回号</th><th class="r">結果</th></tr>'+lines.join("")+'</table>'
+    : '<div class="note">照合できる未照合の控えはありませんでした。</div>';
+  if(miss.length) html+='<div class="note warn" style="margin-top:8px">当せん番号が見つからず飛ばしました：'+miss.join("、")+'</div>';
+  html+='<p class="fine" style="margin-top:8px">当せん金は控え画面で入力すると収支に反映されます。</p>';
+  host.innerHTML=html;
+};
+
+/* ---- バックテスト ---- */
+$("#runBt").onclick=function(){
+  var host=$("#btResult");
+  if(!S.history.length){ host.innerHTML='<div class="note warn">先に「照合」画面で当せん番号を取り込んでください。</div>'; return; }
+  if(S.ratio[0]+S.ratio[1]+S.ratio[2]!==7){ host.innerHTML='<div class="note warn">帯構成の合計を7個にしてください。</div>'; return; }
+  var nR=Math.max(1,Math.min(2000,Number($("#btRounds").value)||100));
+  var nC=Math.max(1,Math.min(50,Number($("#btCount").value)||5));
+  $("#btRounds").value=nR; $("#btCount").value=nC;
+  var hist=S.history.slice()
+    .sort(function(a,b){ return (b.round||0)-(a.round||0); })
+    .slice(0,nR)
+    .filter(function(r){ return r.main && r.main.length===7; });
+  if(!hist.length){ host.innerHTML='<div class="note warn">対象の回がありません。</div>'; return; }
+  var trials=Math.max(1, Math.min(60, Math.floor(20000/(hist.length*nC))));
+  host.innerHTML='<div class="note">計算しています…（'+hist.length+'回 × '+nC+'口 × 試行'+trials+'回）</div>';
+  setTimeout(function(){
+    var t0=Date.now();
+    var A=runBt(hist,nC,false,trials);
+    var B=runBt(hist,nC,true,trials);
+    var ms=Date.now()-t0;
+    var cost=hist.length*nC*S.unit;
+    var noB=hist.filter(function(r){ return !(r.bonus||[]).length; }).length;
+    function row(l,a,b,cls){
+      return '<div class="'+(cls||"")+'">'+l+'</div><div class="v '+(cls||"")+' me">'+a+'</div><div class="v '+(cls||"")+'">'+b+'</div>';
+    }
+    function f1(x){ return x.toFixed(1); }
+    var html='<div class="bt">'
+      + '<div class="h">項目</div><div class="h v">いまの設定</div><div class="h v">完全ランダム</div>'
+      + row("対象の回", hist.length+"回", hist.length+"回")
+      + row("総口数", A.tickets.toLocaleString("ja-JP")+"口", B.tickets.toLocaleString("ja-JP")+"口")
+      + row("投資額", yen(cost), yen(cost))
+      + row("1等", f1(A.grades[1]), f1(B.grades[1]))
+      + row("2等", f1(A.grades[2]), f1(B.grades[2]))
+      + row("3等", f1(A.grades[3]), f1(B.grades[3]))
+      + row("4等", f1(A.grades[4]), f1(B.grades[4]))
+      + row("5等", f1(A.grades[5]), f1(B.grades[5]))
+      + row("6等", f1(A.grades[6]), f1(B.grades[6]))
+      + row("当たった口数", f1(A.hitTk), f1(B.hitTk))
+      + row("当たった回の割合", (A.hitRounds/hist.length*100).toFixed(1)+"%", (B.hitRounds/hist.length*100).toFixed(1)+"%")
+      + '</div>';
+    var raw=Math.min(A.raw,B.raw);
+    var se=raw>0 ? 100/Math.sqrt(raw) : null;
+    var diff=B.hitTk>0 ? (A.hitTk-B.hitTk)/B.hitTk*100 : 0;
+    html+='<div class="note">'
+      + '2列の差は <b>'+(diff>=0?"+":"")+diff.toFixed(1)+'%</b>。'
+      + (se!=null ? 'この計算のばらつきは <b>±'+se.toFixed(1)+'%</b> 程度なので、'
+          + (Math.abs(diff)<=se*2 ? 'これは<b>誤差の範囲</b>です。' : 'もう少し回数か試行を増やして確かめてください。') : '')
+      + '</div>';
+    html+='<p class="fine" style="margin-top:10px">'
+      + '試行'+trials+'回の平均（'+ms+'ms）。等級の数字は「何口当たったか」です。<br>'
+      + '<b>回数と試行を増やすほど、2つの列は近づきます。</b>'
+      + '帯構成やしぼり込みは当選確率を変えないので、これが当然の結果です。'
+      + '少ない試行で差が出たときは、腕ではなく<b>ばらつき</b>を見ています。<br>'
+      + '当せん金は回ごとに大きく変わるため、金額の回収シミュレーションはあえて出していません。'
+      + '過去に当てはめた成績は、将来の成績を予測しません。'
+      + (noB ? '<br>ボーナス数字のない回が '+noB+'回あり、その回は2等・6等が出ません。' : '')
+      + '</p>';
+    host.innerHTML=html;
+  }, 30);
+};
+
+/* ---- 記入 ---- */
+$("#markTarget").onchange=function(){ renderMark(); };
+$("#markRead").onclick=readerOpen;
+$("#markCopy").onclick=function(){ copyText(markTickets().tickets.map(tkText).join("\n")); };
+$("#markPrint").onclick=function(){ window.print(); };
+$("#toMark").onclick=function(){
+  goTab("mark");
+  $("#markTarget").value="__now";
+  renderMark();
+};
+$("#rClose").onclick=readerClose;
+$("#rPrev").onclick=function(){ if(RD.i>0){ RD.i--; readerShow(); } };
+$("#rNext").onclick=function(){
+  if(RD.i < RD.list.length-1){ RD.i++; readerShow(); }
+  else { readerClose(); toast("ぜんぶ写しました"); }
+};
+document.addEventListener("keydown", function(e){
+  if(!$("#reader").classList.contains("on")) return;
+  if(e.key==="Escape") readerClose();
+  if(e.key==="ArrowRight"||e.key===" "||e.key==="Enter") $("#rNext").click();
+  if(e.key==="ArrowLeft") $("#rPrev").click();
+});
 
 $("#mask").onclick=function(e){ if(e.target===this) this.classList.remove("on"); };
 
