@@ -1,0 +1,1102 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0d1117">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>値付け帳 — トレカの売値と買取額を決める</title>
+<style>
+/* ================================================================
+   値付け帳(ねづけちょう)
+   売れた価格を貼る → 相場を数字にする → 売値と買取額を出す →
+   実績で自分の読みを補正する。までを1画面でやる単一HTML。
+   通信ゼロ・保存はこの端末のブラウザ内だけ。
+   ※ 相場の自動取得はしません(ブラウザからは技術的に不可能であり、
+     こちらが記憶から価格を埋めると嘘の値付けになるため)。
+   ================================================================ */
+:root{
+  --sumi:#0d1117;
+  --sumi-2:#151b24;
+  --sumi-3:#1d2531;
+  --sumi-4:#27313f;
+  --sen:#2e3a4a;
+  --kinari:#eef2f6;
+  --hai:#93a1b2;
+  --hai-2:#66768a;
+  --kin:#d9b451;
+  --kin-awai:rgba(217,180,81,.16);
+  --aka:#e0705a;
+  --aka-awai:rgba(224,112,90,.14);
+  --ao:#5aa0e0;
+  --ao-awai:rgba(90,160,224,.14);
+  --midori:#68b98a;
+  --midori-awai:rgba(104,185,138,.14);
+  --gothic:"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic",YuGothic,"Noto Sans JP","Noto Sans CJK JP",sans-serif;
+  --num:"SF Mono",Menlo,Consolas,"Courier New",monospace;
+  --ease:cubic-bezier(.19,1,.22,1);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{
+  background:var(--sumi);color:var(--kinari);
+  font-family:var(--gothic);font-size:15px;line-height:1.7;
+  -webkit-tap-highlight-color:transparent;overscroll-behavior-y:none;
+  font-feature-settings:"palt";
+}
+button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
+button{cursor:pointer;border:none;background:none}
+input,select,textarea{
+  background:var(--sumi);border:1px solid var(--sen);border-radius:8px;
+  padding:8px 10px;color:var(--kinari);width:100%;
+}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--kin)}
+input[type=number]{font-family:var(--num)}
+textarea{resize:vertical;line-height:1.6}
+h2{font-size:17px;letter-spacing:.04em}
+h3{font-size:15px;letter-spacing:.03em}
+small{font-size:12px;color:var(--hai)}
+.num{font-family:var(--num)}
+[hidden]{display:none!important}
+
+/* ---- 骨格 ---- */
+main.page{max-width:760px;margin:0 auto;padding:0 14px 140px}
+header{position:sticky;top:0;z-index:30;background:rgba(13,17,23,.95);
+  backdrop-filter:blur(10px);border-bottom:1px solid var(--sen);padding-top:env(safe-area-inset-top)}
+.hd{max-width:760px;margin:0 auto;padding:10px 14px 0;display:flex;align-items:baseline;gap:10px}
+.hd h1{font-size:16px;letter-spacing:.14em;color:var(--kin)}
+.hd .sub{font-size:12px;color:var(--hai-2);flex:1;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+nav.tabs{max-width:760px;margin:0 auto;display:flex;gap:2px;overflow-x:auto;padding:8px 8px 0;scrollbar-width:none}
+nav.tabs::-webkit-scrollbar{display:none}
+nav.tabs button{flex:none;padding:8px 13px 9px;font-size:13px;color:var(--hai-2);
+  border-bottom:2px solid transparent;white-space:nowrap;letter-spacing:.06em}
+nav.tabs button.on{color:var(--kin);border-bottom-color:var(--kin)}
+nav.tabs .badge{display:inline-block;min-width:16px;margin-left:5px;padding:0 4px;background:var(--ao);
+  color:#0b1016;border-radius:8px;font-size:10px;line-height:16px;font-family:var(--num);vertical-align:1px}
+section.view{display:none;padding-top:16px;animation:fade .24s var(--ease)}
+section.view.on{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+
+/* ---- 部品 ---- */
+.panel{background:var(--sumi-2);border:1px solid var(--sen);border-radius:12px;padding:14px;margin-bottom:12px}
+.ttl{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.ttl h2,.ttl h3{flex:1}
+.hint{font-size:12px;color:var(--hai-2);line-height:1.7}
+.row{display:flex;gap:8px;align-items:center}
+.row.wr{flex-wrap:wrap}
+.col{flex:1;min-width:0}
+.field{margin-bottom:10px}
+.field label{display:block;font-size:12px;color:var(--hai);margin-bottom:4px;letter-spacing:.04em}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.g3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+@media (max-width:430px){.g3{grid-template-columns:1fr 1fr}}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:9px 14px;
+  border-radius:9px;border:1px solid var(--sen);background:var(--sumi-3);font-size:14px;
+  letter-spacing:.04em;transition:transform .12s var(--ease),background .16s}
+.btn:active{transform:scale(.97)}
+.btn.primary{background:var(--kin);color:#211806;border-color:var(--kin);font-weight:700}
+.btn.danger{color:var(--aka);border-color:rgba(224,112,90,.5)}
+.btn.ghost{background:none;color:var(--hai)}
+.btn.wide{width:100%}
+.btn.sm{padding:6px 10px;font-size:12.5px;border-radius:8px}
+.btn:disabled{opacity:.38;cursor:not-allowed}
+.chip{display:inline-flex;align-items:center;gap:4px;padding:4px 10px;border-radius:999px;
+  background:var(--sumi-3);border:1px solid var(--sen);font-size:12px;color:var(--hai)}
+.chip.on{background:var(--kin-awai);border-color:var(--kin);color:var(--kin)}
+.note{border-radius:10px;padding:10px 12px;font-size:12.5px;line-height:1.75;margin-bottom:10px}
+.note.bad{background:var(--aka-awai);border:1px solid rgba(224,112,90,.45);color:#f0b3a6}
+.note.ok{background:var(--midori-awai);border:1px solid rgba(104,185,138,.4);color:#a7dcbe}
+.note.info{background:var(--sumi-3);border:1px solid var(--sen);color:var(--hai)}
+.note.warn{background:var(--kin-awai);border:1px solid rgba(217,180,81,.42);color:#e8d49a}
+.empty{text-align:center;color:var(--hai-2);font-size:13px;padding:26px 10px;line-height:1.9}
+.sep{height:1px;background:var(--sen);margin:12px 0}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:7px 6px;border-bottom:1px solid var(--sumi-4);text-align:left;vertical-align:middle}
+th{color:var(--hai-2);font-size:11.5px;font-weight:400;letter-spacing:.05em}
+td.r,th.r{text-align:right;font-family:var(--num)}
+.scrollx{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.kpi{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0}
+.kpi.k2{grid-template-columns:repeat(2,1fr)}
+.kpi.k4{grid-template-columns:repeat(4,1fr)}
+@media (max-width:380px){.kpi.k4{grid-template-columns:repeat(2,1fr)}}
+.kpi div{background:var(--sumi-3);border:1px solid var(--sen);border-radius:10px;padding:8px 10px}
+.kpi span{display:block;font-size:11px;color:var(--hai-2);letter-spacing:.04em}
+.kpi b{display:block;font-family:var(--num);font-size:17px;line-height:1.45}
+.kpi b.g{color:var(--midori)}.kpi b.r{color:var(--aka)}.kpi b.y{color:var(--kin)}.kpi b.b{color:var(--ao)}
+
+/* ---- 相場サンプル ---- */
+.samples{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+.smp{padding:4px 9px;border-radius:7px;border:1px solid var(--sen);background:var(--sumi-3);
+  font-family:var(--num);font-size:12.5px;color:var(--kinari)}
+.smp.off{opacity:.4;text-decoration:line-through;border-style:dashed}
+.smp.out{border-color:var(--aka);color:#f0b3a6}
+.hist{display:flex;align-items:flex-end;gap:3px;height:74px;margin:10px 0 4px}
+.hist i{flex:1;background:linear-gradient(to top,var(--sumi-4),var(--ao));border-radius:3px 3px 0 0;
+  min-height:2px;position:relative;opacity:.85}
+.hist i.mid{background:linear-gradient(to top,var(--sumi-4),var(--kin))}
+.axis{display:flex;justify-content:space-between;font-family:var(--num);font-size:10.5px;color:var(--hai-2)}
+
+/* ---- 値付け案 ---- */
+.plans{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:10px 0}
+.plan{display:block;border:1px solid var(--sen);border-radius:11px;padding:10px 6px;text-align:center;background:var(--sumi-3);
+  transition:border-color .16s,background .16s}
+.plan.on{border-color:var(--kin);background:var(--kin-awai)}
+.plan .lb{display:block;font-size:11px;color:var(--hai-2);letter-spacing:.04em}
+.plan .pv{display:block;font-family:var(--num);font-size:18px;font-weight:700;margin:3px 0 2px;letter-spacing:-.03em}
+.plan .nt{display:block;font-size:10.5px;color:var(--hai-2);line-height:1.5}
+.plan.on .lb,.plan.on .nt{color:#e8d49a}
+.calc{font-family:var(--num);font-size:12px;line-height:1.95;color:var(--hai)}
+.calc b{color:var(--kinari)}
+.calc .m{color:var(--aka)}
+.calc .p{color:var(--midori)}
+.big{font-family:var(--num);font-size:26px;font-weight:700;letter-spacing:-.02em}
+.big.g{color:var(--midori)}.big.r{color:var(--aka)}.big.y{color:var(--kin)}
+
+/* ---- 一覧の行 ---- */
+.item{display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--sumi-4)}
+.item:last-child{border-bottom:none}
+.item .nm{flex:1;min-width:0}
+.item .nm b{display:block;font-size:13.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.item .nm small{display:block;font-size:11px;color:var(--hai-2)}
+.item .qt{font-family:var(--num);font-size:13px;color:var(--hai);text-align:right;flex:none}
+.item .qt b{display:block;color:var(--kinari);font-size:15px}
+.st{display:inline-block;padding:1px 7px;border-radius:5px;font-size:10.5px;letter-spacing:.04em;border:1px solid}
+.st.査定{color:var(--hai);border-color:var(--sen)}
+.st.在庫{color:var(--ao);border-color:rgba(90,160,224,.5)}
+.st.出品{color:var(--kin);border-color:rgba(217,180,81,.5)}
+.st.売却{color:var(--midori);border-color:rgba(104,185,138,.5)}
+
+/* ---- 手引き ---- */
+.doc h3{margin:16px 0 8px;color:var(--kin);font-size:14px;letter-spacing:.06em}
+.doc h3:first-child{margin-top:0}
+.doc p{font-size:13px;line-height:1.85;margin-bottom:8px}
+.doc ul,.doc ol{margin:0 0 10px 20px;font-size:13px;line-height:1.85}
+.doc li{margin-bottom:3px}
+.doc code{font-family:var(--num);font-size:12px;background:var(--sumi-3);padding:1px 5px;border-radius:4px;color:var(--kin)}
+.check{display:flex;gap:9px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--sumi-4);font-size:13px;line-height:1.65}
+.check:last-child{border-bottom:none}
+.check input{width:18px;height:18px;flex:none;margin-top:2px;accent-color:var(--kin)}
+.check b{display:block;font-weight:600}
+.check small{display:block;color:var(--hai-2);font-size:11.5px;line-height:1.6}
+.check.done b{color:var(--hai-2);text-decoration:line-through}
+
+/* ---- モーダル・トースト ---- */
+.modal{position:fixed;inset:0;z-index:70;background:rgba(8,10,14,.82);display:none;align-items:flex-end;justify-content:center}
+.modal.on{display:flex}
+.modal .box{width:100%;max-width:560px;max-height:88vh;overflow-y:auto;background:var(--sumi-2);
+  border:1px solid var(--sen);border-radius:14px 14px 0 0;
+  padding:16px 14px calc(20px + env(safe-area-inset-bottom));animation:up .26s var(--ease)}
+@keyframes up{from{transform:translateY(24px);opacity:0}to{transform:none;opacity:1}}
+#toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom));transform:translateX(-50%);
+  z-index:90;background:var(--sumi-3);border:1px solid var(--sen);border-radius:999px;padding:9px 18px;
+  font-size:13px;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s var(--ease);max-width:90vw;text-align:center}
+#toast.on{opacity:1;transform:translateX(-50%) translateY(-6px)}
+</style>
+</head>
+<body>
+<header>
+  <div class="hd">
+    <h1>値付け帳</h1>
+    <span class="sub" id="hdSub">売れた価格から、売値と買取額を決める</span>
+  </div>
+  <nav class="tabs" id="tabs">
+    <button data-v="ap" class="on">査定</button>
+    <button data-v="book">台帳<span class="badge" id="bBook" hidden>0</span></button>
+    <button data-v="sale">出品<span class="badge" id="bSale" hidden>0</span></button>
+    <button data-v="log">実績</button>
+    <button data-v="set">設定</button>
+    <button data-v="guide">手引き</button>
+  </nav>
+</header>
+
+<main class="page">
+
+<!-- ================= 査定 ================= -->
+<section class="view on" id="v-ap">
+  <div class="panel">
+    <div class="ttl"><h2>査定する</h2><button class="btn sm ghost" id="apReset">はじめから</button></div>
+    <div class="field"><label>カード名</label><input id="apName" placeholder="例: ミュウ RGB / 30th CELEBRATION"></div>
+    <div class="g3">
+      <div class="field"><label>手持ちの状態</label><select id="apCond"></select></div>
+      <div class="field"><label>サンプルの状態</label><select id="apBase"></select></div>
+      <div class="field"><label>値動き</label><select id="apRisk"></select></div>
+    </div>
+    <div id="apFactor"></div>
+  </div>
+
+  <div class="panel">
+    <div class="ttl"><h3>相場(売れた価格)</h3><small id="apN"></small></div>
+    <p class="hint">フリマの<b>売り切れ一覧</b>や買取表を、そのまま貼り付けてください。金額だけ拾います。<br>
+      <b>出品中の価格は相場ではありません。</b>「その値段では売れていない価格」だからです。</p>
+    <textarea id="apPaste" rows="3" placeholder="¥1,980 送料込み&#10;SOLD ¥2,300&#10;2,480円 …" style="margin:8px 0"></textarea>
+    <div class="row wr">
+      <button class="btn sm primary" id="apTake">貼り付けから取り込む</button>
+      <button class="btn sm" id="apAdd">1件ずつ足す</button>
+      <button class="btn sm ghost" id="apWipe">全部消す</button>
+    </div>
+    <div id="apSmp"></div>
+  </div>
+
+  <div class="panel" id="apNetPanel">
+    <div class="ttl"><h3>どこで売るか</h3></div>
+    <div class="g2">
+      <div class="field"><label>送り方</label><select id="apShip"></select></div>
+      <div class="field"><label>梱包費(1件)</label><input id="apPack" type="number" min="0"></div>
+    </div>
+    <div id="apNet"></div>
+  </div>
+
+  <div class="panel">
+    <div class="ttl"><h3>売値の案</h3></div>
+    <div id="apPlans"></div>
+    <div id="apCalc"></div>
+  </div>
+
+  <div class="panel">
+    <div class="ttl"><h3>買取ならいくらまで</h3></div>
+    <div id="apBuy"></div>
+  </div>
+
+  <div class="panel">
+    <div class="ttl"><h3>仕入れの判定</h3></div>
+    <div class="field"><label>仕入れ値(この金額で買うとしたら)</label><input id="apCost" type="number" min="0" placeholder="0"></div>
+    <div id="apJudge"></div>
+    <div class="sep"></div>
+    <div class="row wr">
+      <button class="btn primary col" id="apSave">台帳に保存</button>
+      <button class="btn" id="apCopy">値付けをコピー</button>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 台帳 ================= -->
+<section class="view" id="v-book">
+  <div class="panel">
+    <div class="ttl"><h2>台帳</h2><button class="btn sm" id="bkIO">入出力</button></div>
+    <div class="kpi k4" id="bkKpi"></div>
+    <div class="row wr" id="bkFilter"></div>
+  </div>
+  <div id="bkList"></div>
+</section>
+
+<!-- ================= 出品 ================= -->
+<section class="view" id="v-sale">
+  <div class="panel">
+    <div class="ttl"><h2>出品中</h2></div>
+    <p class="hint">出してから何日たったかで、値下げの目安を出します。<b>売れない値段で置き続けるのが、いちばん損です。</b></p>
+  </div>
+  <div id="slList"></div>
+</section>
+
+<!-- ================= 実績 ================= -->
+<section class="view" id="v-log">
+  <div class="panel">
+    <div class="ttl"><h2>実績</h2></div>
+    <div id="lgKpi"></div>
+  </div>
+  <div class="panel"><h3>読みのズレ</h3><div id="lgGap"></div></div>
+  <div class="panel"><h3>売れたもの</h3><div id="lgList"></div></div>
+</section>
+
+<!-- ================= 設定 ================= -->
+<section class="view" id="v-set">
+  <div class="panel">
+    <div class="ttl"><h3>値付けの決まり</h3></div>
+    <div class="g2">
+      <div class="field"><label>目標の利益率(手取りに対して)</label><input id="stMargin" type="number" min="0" max="90"></div>
+      <div class="field"><label>売値の端数</label><select id="stRound"></select></div>
+    </div>
+    <div id="stRule"></div>
+  </div>
+  <div class="panel">
+    <div class="ttl"><h3>販路と手数料</h3><button class="btn sm" id="stAddCh">足す</button></div>
+    <p class="hint">手数料は変わります。<b>実際の率は自分で確かめて入れてください。</b>下は目安の初期値です。</p>
+    <div id="stCh"></div>
+  </div>
+  <div class="panel">
+    <div class="ttl"><h3>送り方と送料</h3><button class="btn sm" id="stAddSh">足す</button></div>
+    <p class="hint">送料も改定されます。いまの料金に直してから使ってください。</p>
+    <div id="stSh"></div>
+  </div>
+  <div class="panel">
+    <div class="ttl"><h3>台帳</h3></div>
+    <div class="row wr">
+      <button class="btn" id="stExport">書き出す(JSON)</button>
+      <button class="btn" id="stCsv">CSVで書き出す</button>
+      <button class="btn danger" id="stReset">全部消す</button>
+    </div>
+  </div>
+</section>
+
+<!-- ================= 手引き ================= -->
+<section class="view" id="v-guide">
+  <div class="panel">
+    <div class="ttl"><h2>値付け前チェック</h2><small id="ckN"></small></div>
+    <div id="ckList"></div>
+  </div>
+
+  <div class="panel doc">
+    <h3>この道具がやること・やらないこと</h3>
+    <p><b>やる</b> — 売れた価格の山から相場を数字にする。手数料と送料を引いて<b>手取り</b>を出す。
+    売値の案を3つ出す。買取でいくらまで出せるかを逆算する。実績と読みのズレを測る。</p>
+    <p><b>やらない</b> — 相場の自動取得。ブラウザから他サイトの価格表を読むことは仕組み上できませんし、
+    こちらが記憶から価格を埋めれば<b>それは嘘の値付け</b>になります。価格はあなたが見たものを入れてください。
+    貼り付けなら5秒で済むように作ってあります。</p>
+
+    <h3>相場の集めかた(ここが精度のすべて)</h3>
+    <ul>
+      <li><b>売れた価格だけを使う</b>。出品中の価格は「その値段では売れていない価格」です</li>
+      <li>直近<b>2週間以内</b>を目安に。新弾は<b>3日</b>で景色が変わります</li>
+      <li><b>同じ状態のものを揃える</b>。美品と傷ありを混ぜると中央値が意味を失います</li>
+      <li>最低<b>5件</b>、できれば10件。3件以下のときは、この道具も「参考値」と表示します</li>
+      <li>まとめ売り・おまけ付きの価格は外す(1枚あたりの値段ではないため)</li>
+      <li>店舗の<b>買取価格</b>は、売値ではなく「売値の6〜7割」の数字です。混ぜない</li>
+    </ul>
+
+    <h3>手取りの計算(この道具の中身)</h3>
+    <p><code>手取り = 売値 − 売値×手数料率 − 固定手数料 − 送料 − 梱包費</code><br>
+    <code>利益 = 手取り − 仕入れ値</code>　<code>利益率 = 利益 ÷ 手取り</code></p>
+    <p>1,000円のカードを送料210円・手数料10%で売ると、手元に残るのは<b>640円</b>(梱包50円込み)です。
+    仕入れが700円なら<b>赤字</b>。安いカードほど、この引き算で消えます。</p>
+
+    <h3>買取額の決めかた</h3>
+    <p><code>買取の上限 = 想定売値の手取り</code>(ここで利益ゼロ)<br>
+    <code>提示額 = 手取り × (1 − 目標利益率) × 値動きの係数</code></p>
+    <p>値動きの係数は、<b>新弾や急落中は低めに</b>しています。買った翌週に相場が3割落ちるのは普通に起きるためです。
+    上昇中でも欲張らないこと。<b>読み違えたときに死なない額</b>を出すのが値付けです。</p>
+
+    <h3>売れないときの下げかた</h3>
+    <p>出品から<b>7日</b>で5%、<b>14日</b>で10%、<b>21日</b>で15%が目安です(出品タブが日数を数えます)。
+    それでも動かないものは、<b>買取店に持っていくほうが速い</b>。
+    在庫は置いておくだけで、相場の下落ぶんだけ毎日損をしています。</p>
+
+    <h3>気をつけること</h3>
+    <ul>
+      <li><b>古物商許可</b> — 買い取って売るなら必要です。継続的に仕入れて売るなら、まず警察署へ</li>
+      <li><b>確定申告</b> — 売買を繰り返す規模なら雑所得・事業所得になります。この台帳のCSVをそのまま渡せるようにしてあります</li>
+      <li><b>フリマの規約</b> — 手数料率・禁止行為は各社の規約が最新です。この道具の初期値は目安にすぎません</li>
+      <li><b>相場の断言をしない</b> — 買取の場で「これは必ず上がる」と言わないこと。相場が外れたときに信用を失います</li>
+      <li><b>価格表の転載</b> — 他サイトの価格表をそのままコピーして公開するのは避けてください。自分が見た数字を自分の台帳に持つこと</li>
+    </ul>
+
+    <h3>データの置き場所</h3>
+    <p>入力したものはこの端末のブラウザ内(localStorage)にだけ保存され、外へは一切送りません。
+    <b>設定 → 書き出す</b> でJSON・CSVに出せます。ブラウザの履歴消去で消えるので、週に一度は書き出してください。</p>
+  </div>
+</section>
+
+</main>
+<div class="modal" id="modal"><div class="box" id="modalBox"></div></div>
+<div id="toast"></div>
+<script>
+"use strict";
+/* ==============================================================
+   0. 道具箱
+   ============================================================== */
+const $=(s,r=document)=>r.querySelector(s);
+const $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const yen=n=>(n<0?"-¥":"¥")+Math.round(Math.abs(n||0)).toLocaleString("ja-JP");
+const pct=(n,d=1)=>(isFinite(n)?n.toFixed(d):"—")+"%";
+const today=()=>new Date().toISOString().slice(0,10);
+const days=(from,to)=>Math.max(0,Math.round((new Date(to||today())-new Date(from))/86400000));
+const clamp=(n,a,b)=>Math.min(b,Math.max(a,n));
+function toast(m){const t=$("#toast");t.textContent=m;t.classList.add("on");clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove("on"),2000);}
+
+const COND=[["A","完美品・鑑定品",1.00],["B","美品",0.90],["C","並・プレイ用",0.72],["D","傷あり",0.50]];
+const RISK=[["down","新弾・急落中",-15],["flat","落ち着いている",0],["up","上がっている",5]];
+const ROUNDS=[["none","そのまま"],["10","10円単位"],["100","100円単位"],["80","末尾80円"],["980","末尾980円"]];
+const condK=k=>(COND.find(c=>c[0]===k)||COND[1])[2];
+const condN=k=>(COND.find(c=>c[0]===k)||COND[1])[1];
+const riskK=k=>(RISK.find(r=>r[0]===k)||RISK[1])[2];
+const riskN=k=>(RISK.find(r=>r[0]===k)||RISK[1])[1];
+
+/* ==============================================================
+   1. 台帳(localStorage)
+   ============================================================== */
+const KEY="nezuke-cho-v1";
+let DB=null;
+const newDraft=()=>({name:"",cond:"B",base:"B",risk:"flat",samples:[],chId:"mercari",shId:"s2",cost:"",plan:"mid"});
+const blank=()=>({v:1,
+  ch:[{id:"mercari",name:"メルカリ",fee:10,fixed:0,on:true},
+      {id:"rakuma",name:"ラクマ",fee:4.5,fixed:0,on:true},
+      {id:"yahoo",name:"ヤフオク",fee:10,fixed:0,on:true},
+      {id:"store",name:"自店・店頭",fee:0,fixed:0,on:true}],
+  sh:[{id:"s0",name:"手渡し・店頭",cost:0},
+      {id:"s1",name:"ゆうパケットポストmini",cost:160},
+      {id:"s2",name:"ネコポス",cost:210},
+      {id:"s3",name:"クリックポスト",cost:185},
+      {id:"s4",name:"宅急便コンパクト",cost:450}],
+  pack:50,
+  rule:{margin:30,round:"80"},
+  items:[],draft:newDraft(),checks:{},ui:{bkFilter:""}});
+function save(){try{localStorage.setItem(KEY,JSON.stringify(DB));}catch(e){toast("保存できませんでした(容量不足かも)");}}
+function load(){
+  try{const s=localStorage.getItem(KEY);
+    if(s){DB=Object.assign(blank(),JSON.parse(s));DB.draft=Object.assign(newDraft(),DB.draft||{});return true;}}catch(e){}
+  DB=blank();save();return false;
+}
+const chOf=id=>DB.ch.find(c=>c.id===id)||DB.ch[0];
+const shOf=id=>DB.sh.find(s=>s.id===id)||DB.sh[0];
+const item=id=>DB.items.find(i=>i.id===id);
+
+/* ==============================================================
+   2. 相場の数字(貼り付け解析・統計)
+   ============================================================== */
+function parsePrices(text){
+  const t=String(text||"").replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0))
+                          .replace(/[，、]/g,",");
+  const out=[],re=/(¥|￥)?\s*(\d{1,3}(?:,\d{3})+|\d+)\s*(円)?/g;
+  let m;
+  while((m=re.exec(t))){
+    const before=t[m.index-1]||"",after=t[m.index+m[0].length]||"";
+    if(/[\/:\-.%％年月日時分]/.test(after))continue;           // 日付・率・時刻は拾わない
+    if(/[\/:\-.]/.test(before)&&!m[1])continue;
+    const marked=!!(m[1]||m[3]||m[2].includes(","));
+    const v=+m[2].replace(/,/g,"");
+    if(!isFinite(v))continue;
+    if(!marked&&(v<300||v>999999))continue;                     // 印のない裸の数字は控えめに
+    if(v<50||v>3000000)continue;
+    out.push(v);
+    if(out.length>=60)break;
+  }
+  return out;
+}
+function q(sorted,p){
+  if(!sorted.length)return 0;
+  const i=(sorted.length-1)*p,lo=Math.floor(i),hi=Math.ceil(i);
+  return lo===hi?sorted[lo]:sorted[lo]+(sorted[hi]-sorted[lo])*(i-lo);
+}
+function stats(samples){
+  const v=samples.filter(s=>!s.off).map(s=>s.v).sort((a,b)=>a-b);
+  const n=v.length;
+  if(!n)return {n:0};
+  const q1=q(v,.25),med=q(v,.5),q3=q(v,.75);
+  return {n,min:v[0],max:v[n-1],q1,med,q3,iqr:q3-q1,
+          mean:v.reduce((s,x)=>s+x,0)/n,vals:v};
+}
+function markOutliers(samples){                                 // 四分位の外れ値に印(手で戻せます)
+  samples.forEach(s=>{if(s.auto){s.off=false;s.auto=false;}});
+  const st=stats(samples);
+  if(st.n<5)return samples;
+  const lo=st.q1-1.5*st.iqr,hi=st.q3+1.5*st.iqr;
+  samples.forEach(s=>{if(!s.off&&(s.v<lo||s.v>hi)){s.off=true;s.auto=true;}});
+  return samples;
+}
+
+/* ==============================================================
+   3. 値付けの計算
+   ============================================================== */
+function netOf(price,ch,shipCost,pack){
+  return price-price*(ch.fee||0)/100-(ch.fixed||0)-(shipCost||0)-(pack||0);
+}
+function priceForNet(net,ch,shipCost,pack){                     // 手取りから売値を逆算
+  const r=1-(ch.fee||0)/100;
+  return r<=0?Infinity:(net+(ch.fixed||0)+(shipCost||0)+(pack||0))/r;
+}
+function roundP(v,mode){
+  mode=mode||DB.rule.round;const x=Math.max(0,v);
+  if(mode==="none")return Math.round(x);
+  if(mode==="10")return Math.round(x/10)*10;
+  if(mode==="100")return Math.round(x/100)*100;
+  if(mode==="80"){const k=Math.round((x-80)/100);return Math.max(80,k*100+80);}
+  if(mode==="980"){const k=Math.round((x-980)/1000);return Math.max(980,k*1000+980);}
+  return Math.round(x);
+}
+function planList(st,factor){
+  if(!st.n)return [];
+  const lo=st.n>=4?st.q1:st.med*0.92, mid=st.med, hi=st.n>=4?st.q3:st.med*1.10;
+  return [["fast","早く売る",lo,"最安値帯。すぐ動かしたいとき"],
+          ["mid","相場どおり",mid,"いちばん売れている価格帯"],
+          ["high","高く売る",hi,"高値帯。時間がかかります"]]
+    .map(([k,l,v,nt])=>({k,l,nt,raw:v*factor,price:roundP(v*factor)}));
+}
+function apCalc(){                                              // 査定画面ぜんぶの計算をひとまとめに
+  const d=DB.draft,st=stats(d.samples),ch=chOf(d.chId),sh=shOf(d.shId);
+  const factor=condK(d.cond)/condK(d.base);
+  const plans=planList(st,factor);
+  const cur=plans.find(p=>p.k===d.plan)||plans[1]||plans[0];
+  const net=cur?netOf(cur.price,ch,sh.cost,DB.pack):0;
+  const cap=Math.max(0,net);
+  const offer=Math.max(0,Math.floor(net*(1-DB.rule.margin/100)*(1+riskK(d.risk)/100)/100)*100);
+  const cost=+d.cost||0;
+  const profit=net-cost,margin=net?profit/net*100:0;
+  return {st,ch,sh,factor,plans,cur,net,cap,offer,cost,profit,margin};
+}
+
+/* ==============================================================
+   4. 査定の画面
+   ============================================================== */
+function fillSelects(){
+  $("#apCond").innerHTML=COND.map(([k,l])=>`<option value="${k}">${l}</option>`).join("");
+  $("#apBase").innerHTML=COND.map(([k,l])=>`<option value="${k}">${l}</option>`).join("");
+  $("#apRisk").innerHTML=RISK.map(([k,l,v])=>`<option value="${k}">${l}${v?` (${v>0?"+":""}${v}%)`:""}</option>`).join("");
+  $("#stRound").innerHTML=ROUNDS.map(([k,l])=>`<option value="${k}">${l}</option>`).join("");
+}
+function fillShip(){
+  $("#apShip").innerHTML=DB.sh.map(s=>`<option value="${s.id}">${esc(s.name)} ${s.cost?`(${yen(s.cost)})`:"(0円)"}</option>`).join("");
+}
+function histHTML(st){
+  if(st.n<3)return "";
+  const B=7,lo=st.min,hi=st.max,span=(hi-lo)||1;
+  const bins=new Array(B).fill(0);
+  st.vals.forEach(v=>bins[clamp(Math.floor((v-lo)/span*B),0,B-1)]++);
+  const mx=Math.max(...bins),mid=clamp(Math.floor((st.med-lo)/span*B),0,B-1);
+  return `<div class="hist">${bins.map((b,i)=>
+      `<i class="${i===mid?"mid":""}" style="height:${Math.max(3,b/mx*100)}%" title="${b}件"></i>`).join("")}</div>
+    <div class="axis"><span>${yen(lo)}</span><span>${yen(hi)}</span></div>`;
+}
+function renderAp(){
+  const d=DB.draft,c=apCalc(),st=c.st;
+  /* 状態の補正 */
+  $("#apFactor").innerHTML=c.factor===1?
+    `<p class="hint">サンプルと同じ状態として計算します。</p>`:
+    `<div class="note info">相場サンプルは<b>${condN(d.base)}</b>、手持ちは<b>${condN(d.cond)}</b>。
+      相場を <b>×${c.factor.toFixed(2)}</b> して値付けします。</div>`;
+  /* サンプル */
+  $("#apN").textContent=st.n?`${st.n}件つかう`:"まだありません";
+  $("#apSmp").innerHTML=d.samples.length?`
+    <div class="samples">${d.samples.map((s,i)=>
+      `<button class="smp ${s.off?"off":""} ${s.auto?"out":""}" data-smp="${i}">${yen(s.v)}</button>`).join("")}</div>
+    <p class="hint">${d.samples.some(s=>s.auto)?"赤い印は<b>外れ値</b>として自動で外しました。":"タップで1件ずつ入/切できます。"}
+      長押しではなく<b>タップで切り替え</b>、二度押しで戻ります。</p>
+    ${st.n?`
+      <div class="kpi k4" style="margin-top:6px">
+        <div><span>中央値</span><b class="y" style="font-size:16px">${yen(st.med)}</b></div>
+        <div><span>安値帯(25%)</span><b style="font-size:15px">${yen(st.q1)}</b></div>
+        <div><span>高値帯(75%)</span><b style="font-size:15px">${yen(st.q3)}</b></div>
+        <div><span>幅</span><b style="font-size:15px">${yen(st.min)}〜${yen(st.max)}</b></div>
+      </div>
+      ${histHTML(st)}
+      ${st.n<5?`<div class="note warn">サンプルが<b>${st.n}件</b>しかありません。これは<b>参考値</b>です。5件以上で使ってください。</div>`:""}
+      ${st.n>=5&&st.iqr/st.med>0.45?`<div class="note warn">値のばらつきが大きいです(幅が中央値の${pct(st.iqr/st.med*100,0)})。
+        状態ちがい・別カード・まとめ売りが混ざっていないか見てください。</div>`:""}`:""}`
+    :`<div class="empty">売れた価格を貼り付けるか、「1件ずつ足す」で入れてください。</div>`;
+  /* 販路くらべ */
+  const on=DB.ch.filter(x=>x.on);
+  $("#apNet").innerHTML=c.cur?`
+    <div class="scrollx"><table><thead><tr><th>売るところ</th><th class="r">手数料</th><th class="r">手取り</th></tr></thead><tbody>
+    ${on.map(x=>{const n=netOf(c.cur.price,x,c.sh.cost,DB.pack);
+      return `<tr data-ch="${x.id}" style="cursor:pointer;${x.id===d.chId?"background:var(--kin-awai)":""}">
+        <td>${x.id===d.chId?"● ":"○ "}${esc(x.name)}</td>
+        <td class="r">${x.fee}%${x.fixed?` +${yen(x.fixed)}`:""}</td>
+        <td class="r" style="color:${n<=0?"var(--aka)":"var(--midori)"}">${yen(n)}</td></tr>`;}).join("")}
+    </tbody></table></div>
+    <p class="hint" style="margin-top:6px">売値 ${yen(c.cur.price)} のときの比べ。行をタップで選べます。</p>`
+    :`<p class="hint">相場を入れると、売るところごとの手取りを比べます。</p>`;
+  /* 値付け案 */
+  $("#apPlans").innerHTML=c.plans.length?`
+    <div class="plans">${c.plans.map(p=>`
+      <button class="plan ${p.k===d.plan?"on":""}" data-plan="${p.k}">
+        <span class="lb">${p.l}</span>
+        <span class="pv">${yen(p.price)}</span>
+        <span class="nt">${p.nt}</span></button>`).join("")}</div>`
+    :`<div class="empty">相場を入れると、3つの案を出します。</div>`;
+  $("#apCalc").innerHTML=c.cur?`
+    <div class="calc">
+      売値　　<b>${yen(c.cur.price)}</b><br>
+      手数料　<span class="m">− ${yen(c.cur.price*c.ch.fee/100+(c.ch.fixed||0))}</span>(${esc(c.ch.name)} ${c.ch.fee}%)<br>
+      送料　　<span class="m">− ${yen(c.sh.cost)}</span>(${esc(c.sh.name)})<br>
+      梱包　　<span class="m">− ${yen(DB.pack)}</span><br>
+      <span style="color:var(--sen)">────────────</span><br>
+      手取り　<b class="p" style="font-size:16px">${yen(c.net)}</b>
+      ${c.net<=0?'<br><span class="m">この売値では手元に残りません。</span>':""}
+    </div>`:"";
+  /* 買取 */
+  $("#apBuy").innerHTML=c.cur?`
+    <div class="row" style="align-items:flex-end;gap:12px;margin-bottom:8px">
+      <div class="col"><small>提示していい額(目標利益 ${DB.rule.margin}% を残す)</small>
+        <div class="big ${c.offer<=0?"r":"y"}">${yen(c.offer)}</div></div>
+      <div style="text-align:right"><small>売値に対して</small>
+        <div class="num" style="font-size:17px">${c.cur.price?pct(c.offer/c.cur.price*100,0):"—"}</div></div>
+    </div>
+    <div class="calc">
+      手取り <b>${yen(c.net)}</b> − 目標利益 ${DB.rule.margin}% → ${yen(c.net*(1-DB.rule.margin/100))}<br>
+      値動き <b>${riskN(d.risk)}</b> ${riskK(d.risk)?`(${riskK(d.risk)>0?"+":""}${riskK(d.risk)}%)`:""} → <b>${yen(c.offer)}</b>(100円単位で切り捨て)
+    </div>
+    <div class="note info" style="margin-top:8px">ここを超えると赤字 → <b>${yen(c.cap)}</b>(利益ゼロの上限)。
+      ${d.risk==="down"?"<br><b>新弾は翌週に3割落ちることがあります。</b>強気の買取は事故のもとです。":""}</div>`
+    :`<p class="hint">相場を入れると、買取でいくらまで出せるかを逆算します。</p>`;
+  /* 仕入れ判定 */
+  const cost=+d.cost||0;
+  $("#apJudge").innerHTML=!c.cur?`<p class="hint">相場を入れてから使ってください。</p>`
+    :!cost?`<p class="hint">仕入れ値を入れると、利益と損益分岐をその場で出します。</p>`
+    :`<div class="note ${c.profit<=0?"bad":c.margin<DB.rule.margin*0.6?"warn":"ok"}">
+        <b style="font-size:15px">${c.profit<=0?"見送り":c.margin<DB.rule.margin*0.6?"薄い":"買っていい"}</b> —
+        利益 <b>${yen(c.profit)}</b>(手取りの ${pct(c.margin,0)})<br>
+        ${yen(cost)} で仕入れて ${yen(c.cur.price)} で売ると、手元に残るのは ${yen(c.net)} です。
+      </div>
+      <div class="calc">損益分岐の売値 <b>${yen(priceForNet(cost,c.ch,c.sh.cost,DB.pack))}</b>
+        ／ 目標利益を取るなら <b>${yen(priceForNet(cost/(1-DB.rule.margin/100),c.ch,c.sh.cost,DB.pack))}</b> 以上</div>`;
+}
+function apText(){
+  const d=DB.draft,c=apCalc();
+  if(!c.cur)return "";
+  return [`${d.name||"(名前なし)"} / ${condN(d.cond)}`,
+    `相場 中央値 ${yen(c.st.med)}(${c.st.n}件 ${yen(c.st.min)}〜${yen(c.st.max)})`,
+    `売値 ${yen(c.cur.price)}(${c.cur.l}) → 手取り ${yen(c.net)} @${c.ch.name}・${c.sh.name}`,
+    `買取の提示 ${yen(c.offer)}(上限 ${yen(c.cap)})`,
+    c.cost?`仕入 ${yen(c.cost)} → 利益 ${yen(c.profit)}(${pct(c.margin,0)})`:"",
+    `${today()} 時点の手集計`].filter(Boolean).join("\n");
+}
+function copyText(t){
+  const done=()=>toast("コピーしました");
+  if(navigator.clipboard&&window.isSecureContext)navigator.clipboard.writeText(t).then(done,fb);else fb();
+  function fb(){const ta=document.createElement("textarea");ta.value=t;ta.style.position="fixed";ta.style.opacity="0";
+    document.body.appendChild(ta);ta.select();try{document.execCommand("copy");done();}catch(e){toast("コピーできませんでした");}ta.remove();}
+}
+function bindAp(){
+  const d=()=>DB.draft;
+  $("#apName").addEventListener("input",e=>{d().name=e.target.value;save();});
+  ["apCond","apBase","apRisk"].forEach(id=>$("#"+id).addEventListener("change",e=>{
+    d()[id==="apCond"?"cond":id==="apBase"?"base":"risk"]=e.target.value;save();renderAp();}));
+  $("#apShip").addEventListener("change",e=>{d().shId=e.target.value;save();renderAp();});
+  $("#apPack").addEventListener("input",e=>{DB.pack=Math.max(0,+e.target.value||0);save();renderAp();});
+  $("#apCost").addEventListener("input",e=>{d().cost=e.target.value;save();renderAp();});
+  $("#apTake").onclick=()=>{
+    const got=parsePrices($("#apPaste").value);
+    if(!got.length)return toast("金額が見つかりませんでした");
+    got.forEach(v=>d().samples.push({v,off:false,auto:false}));
+    markOutliers(d().samples);$("#apPaste").value="";save();renderAp();
+    toast(`${got.length}件 取り込みました`);
+  };
+  $("#apAdd").onclick=()=>{
+    openModal(`<h2>売れた価格を足す</h2>
+      <div class="field"><label>金額(円)</label><input id="ad-v" type="number" min="0" inputmode="numeric"></div>
+      <div class="row"><button class="btn primary col" id="ad-ok">足す</button><button class="btn ghost" data-close>閉じる</button></div>`);
+    const go=()=>{const v=+$("#ad-v").value||0;if(v<50)return toast("金額を入れてください");
+      d().samples.push({v,off:false,auto:false});markOutliers(d().samples);save();renderAp();
+      $("#ad-v").value="";$("#ad-v").focus();toast(`${yen(v)} を足しました`);};
+    $("#ad-ok").onclick=go;
+    $("#ad-v").addEventListener("keydown",e=>{if(e.key==="Enter")go();});
+    $("#ad-v").focus();
+  };
+  $("#apWipe").onclick=()=>{if(!d().samples.length)return;
+    if(!confirm("相場サンプルを全部消しますか?"))return;d().samples=[];save();renderAp();};
+  $("#apSmp").addEventListener("click",e=>{
+    const b=e.target.closest("[data-smp]");if(!b)return;
+    const s=d().samples[+b.dataset.smp];s.off=!s.off;s.auto=false;save();renderAp();
+  });
+  $("#apPlans").addEventListener("click",e=>{
+    const b=e.target.closest("[data-plan]");if(!b)return;d().plan=b.dataset.plan;save();renderAp();
+  });
+  $("#apNet").addEventListener("click",e=>{
+    const tr=e.target.closest("[data-ch]");if(!tr)return;d().chId=tr.dataset.ch;save();renderAp();
+  });
+  $("#apReset").onclick=()=>{
+    if(!confirm("入力をすべて捨てて、はじめからにしますか?"))return;
+    DB.draft=newDraft();save();syncAp();renderAp();
+  };
+  $("#apCopy").onclick=()=>{const t=apText();if(!t)return toast("相場を入れてください");copyText(t);};
+  $("#apSave").onclick=saveDraft;
+}
+function syncAp(){                                   /* 下書きを入力欄に流し込む */
+  const d=DB.draft;
+  $("#apName").value=d.name;$("#apCond").value=d.cond;$("#apBase").value=d.base;
+  $("#apRisk").value=d.risk;$("#apPack").value=DB.pack;$("#apCost").value=d.cost;
+  fillShip();$("#apShip").value=d.shId;
+}
+function saveDraft(){
+  const d=DB.draft,c=apCalc();
+  if(!c.cur)return toast("相場を入れてください");
+  if(!d.name.trim())return toast("カード名を入れてください");
+  const it={id:uid(),name:d.name.trim(),cond:d.cond,base:d.base,risk:d.risk,
+    samples:d.samples.map(s=>({...s})),st:{n:c.st.n,med:c.st.med,q1:c.st.q1,q3:c.st.q3,min:c.st.min,max:c.st.max},
+    chId:d.chId,shId:d.shId,pack:DB.pack,plan:d.plan,price:c.cur.price,net:c.net,offer:c.offer,
+    cost:+d.cost||0,status:"査定",at:today(),hist:[]};
+  DB.items.push(it);DB.draft=newDraft();save();syncAp();renderAll();go("book");
+  toast("台帳に保存しました");
+}
+
+/* ==============================================================
+   5. 台帳
+   ============================================================== */
+const netOfItem=(it,price)=>netOf(price??(it.listPrice||it.price),chOf(it.chId),shOf(it.shId).cost,it.pack??DB.pack);
+function renderBook(){
+  const f=DB.ui.bkFilter||"";
+  const stock=DB.items.filter(i=>i.status==="在庫"||i.status==="出品");
+  const sold=DB.items.filter(i=>i.status==="売却");
+  $("#bkKpi").innerHTML=`
+    <div><span>台帳</span><b>${DB.items.length}</b></div>
+    <div><span>手元(在庫+出品)</span><b class="b">${stock.length}</b></div>
+    <div><span>仕入れ合計</span><b class="y" style="font-size:15px">${yen(stock.reduce((s,i)=>s+(i.cost||0),0))}</b></div>
+    <div><span>売れたら手取り</span><b class="g" style="font-size:15px">${yen(stock.reduce((s,i)=>s+netOfItem(i),0))}</b></div>`;
+  $("#bkFilter").innerHTML=[["","すべて"],["査定","査定"],["在庫","在庫"],["出品","出品"],["売却","売却"]]
+    .map(([v,l])=>{const n=v?DB.items.filter(i=>i.status===v).length:DB.items.length;
+      return `<button class="chip ${f===v?"on":""}" data-bk="${v}">${l} ${n}</button>`;}).join("");
+  const L=DB.items.filter(i=>!f||i.status===f).slice().reverse();
+  $("#bkList").innerHTML=L.length?`<div class="panel">${L.map(i=>{
+    const price=i.status==="売却"?i.soldPrice:(i.listPrice||i.price);
+    const net=netOfItem(i,price),prof=net-(i.cost||0);
+    return `<div class="item" data-it="${i.id}" style="cursor:pointer">
+      <div class="nm"><b>${esc(i.name)}</b>
+        <small><span class="st ${i.status}">${i.status}</span>
+          ${condN(i.cond)} ／ 相場 ${yen(i.st.med)}(${i.st.n}件) ／ ${i.at}</small></div>
+      <div class="qt"><b>${yen(price)}</b>
+        <span style="color:${prof<0?"var(--aka)":"var(--midori)"}">${i.cost?`利益 ${yen(prof)}`:`手取り ${yen(net)}`}</span></div>
+    </div>`;}).join("")}</div>`
+    :`<div class="empty">まだ何もありません。<br><b>査定</b>で値を出して「台帳に保存」してください。</div>`;
+  $("#bkFilter").onclick=e=>{const b=e.target.closest("[data-bk]");if(!b)return;DB.ui.bkFilter=b.dataset.bk;save();renderBook();};
+  $("#bkList").onclick=e=>{const it=e.target.closest("[data-it]");if(!it)return;itemModal(it.dataset.it);};
+  const n=DB.items.filter(i=>i.status==="在庫"||i.status==="査定").length;
+  $("#bBook").hidden=!n;$("#bBook").textContent=n;
+}
+function itemModal(id){
+  const i=item(id);if(!i)return;
+  const price=i.status==="売却"?i.soldPrice:(i.listPrice||i.price);
+  const net=netOfItem(i,price),prof=net-(i.cost||0);
+  openModal(`<h2>${esc(i.name)}</h2>
+    <div class="hint" style="margin-bottom:10px"><span class="st ${i.status}">${i.status}</span>
+      ${condN(i.cond)} ／ 査定 ${i.at}${i.listedAt?` ／ 出品 ${i.listedAt}`:""}${i.soldAt?` ／ 売却 ${i.soldAt}`:""}</div>
+    <div class="kpi k2">
+      <div><span>${i.status==="売却"?"実売":"売値"}</span><b class="y" style="font-size:16px">${yen(price)}</b></div>
+      <div><span>手取り</span><b class="g" style="font-size:16px">${yen(net)}</b></div>
+      <div><span>仕入れ</span><b style="font-size:16px">${i.cost?yen(i.cost):"—"}</b></div>
+      <div><span>利益</span><b class="${prof<0?"r":"g"}" style="font-size:16px">${i.cost?yen(prof):"—"}</b></div>
+    </div>
+    <div class="calc" style="margin:8px 0">
+      相場 中央値 <b>${yen(i.st.med)}</b>(${i.st.n}件 ${yen(i.st.min)}〜${yen(i.st.max)})<br>
+      ${esc(chOf(i.chId).name)} ${chOf(i.chId).fee}% ／ ${esc(shOf(i.shId).name)} ${yen(shOf(i.shId).cost)} ／ 梱包 ${yen(i.pack??DB.pack)}<br>
+      買取の目安 <b>${yen(i.offer)}</b>
+      ${i.hist&&i.hist.length?`<br>${i.hist.map(h=>`${h.d} ${esc(h.t)}`).join("<br>")}`:""}
+    </div>
+    <div class="field"><label>仕入れ値</label><input id="im-cost" type="number" min="0" value="${i.cost||""}"></div>
+    <div class="field"><label>覚え書き</label><input id="im-memo" value="${esc(i.memo||"")}" placeholder="仕入先・状態・保管場所など"></div>
+    <div class="row wr" style="margin-bottom:8px">
+      ${i.status!=="売却"?`<button class="btn sm primary" id="im-sold">売れた</button>`:""}
+      ${i.status==="査定"?`<button class="btn sm" id="im-stock">在庫にする</button>`:""}
+      ${i.status!=="出品"&&i.status!=="売却"?`<button class="btn sm" id="im-list">出品にする</button>`:""}
+      ${i.status==="出品"?`<button class="btn sm" id="im-unlist">出品をやめる</button>`:""}
+      <button class="btn sm" id="im-again">この内容で査定し直す</button>
+      <button class="btn sm danger" id="im-del">消す</button>
+    </div>
+    <button class="btn ghost wide" data-close>閉じる</button>`);
+  const upd=()=>{i.cost=+$("#im-cost").value||0;i.memo=$("#im-memo").value.trim();};
+  $("#im-cost").addEventListener("input",()=>{upd();save();});
+  $("#im-memo").addEventListener("input",()=>{upd();save();});
+  const B=id2=>$("#"+id2);
+  if(B("im-stock"))B("im-stock").onclick=()=>{upd();i.status="在庫";i.hist.push({d:today(),t:"在庫にした"});save();closeModal();renderAll();toast("在庫にしました");};
+  if(B("im-list"))B("im-list").onclick=()=>{upd();i.status="出品";i.listedAt=today();i.listPrice=i.listPrice||i.price;
+    i.hist.push({d:today(),t:`出品 ${yen(i.listPrice)}`});save();closeModal();renderAll();go("sale");toast("出品にしました");};
+  if(B("im-unlist"))B("im-unlist").onclick=()=>{upd();i.status="在庫";i.hist.push({d:today(),t:"出品をやめた"});save();closeModal();renderAll();};
+  if(B("im-sold"))B("im-sold").onclick=()=>{upd();save();soldModal(i.id);};
+  B("im-again").onclick=()=>{
+    DB.draft={name:i.name,cond:i.cond,base:i.base,risk:i.risk,samples:i.samples.map(s=>({...s})),
+      chId:i.chId,shId:i.shId,cost:i.cost||"",plan:i.plan};
+    save();closeModal();syncAp();renderAp();go("ap");toast("査定に読み込みました");
+  };
+  B("im-del").onclick=()=>{if(!confirm("この記録を消しますか?"))return;
+    DB.items=DB.items.filter(x=>x.id!==i.id);save();closeModal();renderAll();toast("消しました");};
+}
+function soldModal(id){
+  const i=item(id);
+  openModal(`<h2>売れた — ${esc(i.name)}</h2>
+    <div class="g2">
+      <div class="field"><label>実際に売れた金額</label><input id="sd-p" type="number" min="0" value="${i.listPrice||i.price}"></div>
+      <div class="field"><label>売れた日</label><input id="sd-d" type="date" value="${today()}"></div>
+    </div>
+    <div class="field"><label>売ったところ</label><select id="sd-ch">${DB.ch.map(c=>
+      `<option value="${c.id}" ${c.id===i.chId?"selected":""}>${esc(c.name)} ${c.fee}%</option>`).join("")}</select></div>
+    <div id="sd-prev" class="note info"></div>
+    <div class="row"><button class="btn primary col" id="sd-ok">記録する</button><button class="btn ghost" data-close>やめる</button></div>`);
+  const prev=()=>{
+    const p=+$("#sd-p").value||0,ch=chOf($("#sd-ch").value);
+    const net=netOf(p,ch,shOf(i.shId).cost,i.pack??DB.pack),pr=net-(i.cost||0);
+    $("#sd-prev").innerHTML=`手取り <b>${yen(net)}</b>${i.cost?` ／ 利益 <b style="color:${pr<0?"var(--aka)":"var(--midori)"}">${yen(pr)}</b>`:""}
+      ／ 想定 ${yen(i.price)} との差 <b>${p-i.price>=0?"+":""}${yen(p-i.price)}</b>`;
+  };
+  ["sd-p","sd-ch"].forEach(x=>$("#"+x).addEventListener("input",prev));
+  $("#sd-ch").addEventListener("change",prev);prev();
+  $("#sd-ok").onclick=()=>{
+    const p=+$("#sd-p").value||0;if(!p)return toast("金額を入れてください");
+    i.soldPrice=p;i.soldAt=$("#sd-d").value||today();i.chId=$("#sd-ch").value;i.status="売却";
+    i.hist.push({d:i.soldAt,t:`売れた ${yen(p)}`});save();closeModal();renderAll();go("log");toast("記録しました");
+  };
+}
+
+/* ==============================================================
+   6. 出品中(値下げの目安)
+   ============================================================== */
+function cutRate(d){return d>=21?15:d>=14?10:d>=7?5:0;}
+function renderSale(){
+  const L=DB.items.filter(i=>i.status==="出品")
+    .sort((a,b)=>(a.listedAt||"").localeCompare(b.listedAt||""));
+  $("#slList").innerHTML=L.length?L.map(i=>{
+    const d=days(i.listedAt||i.at),r=cutRate(d);
+    const cur=i.listPrice||i.price,sug=roundP(i.price*(1-r/100));
+    const can=r>0&&sug<cur;
+    const net=netOfItem(i,can?sug:cur),prof=net-(i.cost||0);
+    return `<div class="panel">
+      <div class="ttl"><h3>${esc(i.name)}</h3><span class="chip">${d}日め</span></div>
+      <div class="kpi k3" style="grid-template-columns:repeat(3,1fr)">
+        <div><span>いまの値段</span><b class="y" style="font-size:16px">${yen(cur)}</b></div>
+        <div><span>${can?"下げる案":"目安"}</span><b style="font-size:16px;color:${can?"var(--ao)":"var(--hai-2)"}">${can?yen(sug):"そのまま"}</b></div>
+        <div><span>下げた後の利益</span><b class="${prof<0?"r":"g"}" style="font-size:16px">${i.cost?yen(prof):yen(net)}</b></div>
+      </div>
+      <div class="note ${d>=21?"warn":"info"}" style="margin-bottom:8px">
+        ${d<7?`出してから ${d}日。<b>7日</b>までは様子を見ます。`
+         :d<14?`7日すぎ。<b>5%</b>下げると動きやすくなります。`
+         :d<21?`2週間すぎ。<b>10%</b>まで下げどきです。`
+         :`3週間すぎ。<b>15%</b>下げても動かないなら、<b>買取店に持っていくほうが速い</b>です。
+           置いておくだけで相場の下落ぶん損をします。`}
+      </div>
+      <div class="row wr">
+        ${can?`<button class="btn sm primary" data-cut="${i.id}">${yen(sug)} に下げる</button>`:""}
+        <button class="btn sm" data-sold="${i.id}">売れた</button>
+        <button class="btn sm ghost" data-open="${i.id}">くわしく</button>
+      </div></div>`;}).join("")
+    :`<div class="empty">出品中のものはありません。<br>台帳で「出品にする」を押すと、ここで日数を数えます。</div>`;
+  $("#slList").onclick=e=>{
+    const b=e.target.closest("button");if(!b)return;
+    if(b.dataset.cut){const i=item(b.dataset.cut);const d=days(i.listedAt||i.at);
+      const sug=roundP(i.price*(1-cutRate(d)/100));
+      i.listPrice=sug;i.hist.push({d:today(),t:`値下げ ${yen(sug)}`});save();renderAll();toast("下げました");}
+    else if(b.dataset.sold)soldModal(b.dataset.sold);
+    else if(b.dataset.open)itemModal(b.dataset.open);
+  };
+  const n=L.length;$("#bSale").hidden=!n;$("#bSale").textContent=n;
+}
+
+/* ==============================================================
+   7. 実績(読みのズレを測る)
+   ============================================================== */
+function renderLog(){
+  const L=DB.items.filter(i=>i.status==="売却").sort((a,b)=>(b.soldAt||"").localeCompare(a.soldAt||""));
+  const sales=L.reduce((s,i)=>s+i.soldPrice,0);
+  const net=L.reduce((s,i)=>s+netOfItem(i,i.soldPrice),0);
+  const cost=L.reduce((s,i)=>s+(i.cost||0),0);
+  const turns=L.filter(i=>i.listedAt&&i.soldAt).map(i=>days(i.listedAt,i.soldAt));
+  const avgT=turns.length?turns.reduce((s,x)=>s+x,0)/turns.length:null;
+  $("#lgKpi").innerHTML=`
+    <div class="kpi k2">
+      <div><span>売れた</span><b>${L.length}件</b></div>
+      <div><span>売上</span><b class="y" style="font-size:16px">${yen(sales)}</b></div>
+      <div><span>手取り</span><b class="b" style="font-size:16px">${yen(net)}</b></div>
+      <div><span>粗利(手取り−仕入)</span><b class="${net-cost<0?"r":"g"}" style="font-size:16px">${yen(net-cost)}</b></div>
+    </div>
+    <div class="kpi k2">
+      <div><span>仕入れ合計</span><b style="font-size:15px">${yen(cost)}</b></div>
+      <div><span>売れるまでの平均</span><b style="font-size:15px">${avgT===null?"—":avgT.toFixed(1)+"日"}</b></div>
+    </div>`;
+  const gaps=L.filter(i=>i.price>0).map(i=>i.soldPrice/i.price-1);
+  const avg=gaps.length?gaps.reduce((s,x)=>s+x,0)/gaps.length*100:null;
+  $("#lgGap").innerHTML=avg===null?`<div class="empty">売れた記録がたまると、想定と実売のズレを出します。</div>`:`
+    <div class="row" style="align-items:flex-end;gap:12px">
+      <div class="col"><small>想定した売値に対して、実際に売れた値段は</small>
+        <div class="big ${Math.abs(avg)<5?"g":"y"}">${avg>=0?"+":""}${avg.toFixed(1)}%</div></div>
+      <div style="text-align:right"><small>件数</small><div class="num" style="font-size:17px">${gaps.length}</div></div>
+    </div>
+    <div class="note ${Math.abs(avg)<5?"ok":"warn"}" style="margin-top:10px">
+      ${Math.abs(avg)<5?"読みは合っています。いまの決めかたを続けてください。"
+        :avg<0?`想定より<b>${Math.abs(avg).toFixed(0)}%安く</b>売れています。相場の読みが高いか、値下げが早いかです。
+               買取の提示は<b>いまより ${Math.min(20,Math.abs(avg)).toFixed(0)}% 低め</b>にすると事故りません
+               (目標の利益率を ${clamp(DB.rule.margin+Math.abs(avg),10,70).toFixed(0)}% にするのが手っ取り早いです)。`
+        :`想定より<b>${avg.toFixed(0)}%高く</b>売れています。強気に出しても売れる地合いです。
+          目標の利益率を ${clamp(DB.rule.margin-avg/2,10,70).toFixed(0)}% まで下げれば、買取で競り負けにくくなります。`}
+    </div>`;
+  $("#lgList").innerHTML=L.length?`<div class="scrollx"><table>
+    <thead><tr><th>売れた日</th><th>カード</th><th class="r">想定</th><th class="r">実売</th><th class="r">差</th><th class="r">利益</th></tr></thead>
+    <tbody>${L.map(i=>{const d=i.soldPrice-i.price,pr=netOfItem(i,i.soldPrice)-(i.cost||0);
+      return `<tr><td>${i.soldAt||"—"}</td><td>${esc(i.name)}</td>
+        <td class="r">${yen(i.price)}</td><td class="r">${yen(i.soldPrice)}</td>
+        <td class="r" style="color:${d<0?"var(--aka)":"var(--midori)"}">${d>=0?"+":""}${yen(d)}</td>
+        <td class="r" style="color:${pr<0?"var(--aka)":"var(--midori)"}">${i.cost?yen(pr):"—"}</td></tr>`;}).join("")}
+    </tbody></table></div>`:`<div class="empty">まだ売れた記録がありません。</div>`;
+}
+
+/* ==============================================================
+   8. 設定
+   ============================================================== */
+function renderSet(){
+  $("#stMargin").value=DB.rule.margin;$("#stRound").value=DB.rule.round;
+  const ex=[1180,2437,8600].map(v=>`${yen(v)} → <b>${yen(roundP(v))}</b>`).join(" ／ ");
+  $("#stRule").innerHTML=`<p class="hint">丸めの例: ${ex}<br>
+    目標の利益率は<b>手取りに対する割合</b>です(買取の提示額をここから逆算します)。
+    末尾980は1,000円きざみなので、安いカードでは大きく動きます。</p>`;
+  $("#stCh").innerHTML=DB.ch.map(c=>`
+    <div class="item">
+      <input type="checkbox" data-chon="${c.id}" ${c.on?"checked":""} style="width:18px;height:18px;flex:none;accent-color:var(--kin)">
+      <div class="nm"><b>${esc(c.name)}</b><small>手数料 ${c.fee}%${c.fixed?` + ${yen(c.fixed)}`:""}</small></div>
+      <input type="number" step="0.1" min="0" max="50" data-chfee="${c.id}" value="${c.fee}" style="width:72px;text-align:right;flex:none">
+      <button class="btn sm ghost" data-chdel="${c.id}" style="flex:none">×</button>
+    </div>`).join("");
+  $("#stSh").innerHTML=DB.sh.map(s=>`
+    <div class="item">
+      <div class="nm"><b>${esc(s.name)}</b></div>
+      <input type="number" min="0" data-shc="${s.id}" value="${s.cost}" style="width:86px;text-align:right;flex:none">
+      <button class="btn sm ghost" data-shdel="${s.id}" style="flex:none">×</button>
+    </div>`).join("")+
+    `<div class="field" style="margin-top:10px"><label>梱包費(1件あたり)</label>
+      <input id="stPack" type="number" min="0" value="${DB.pack}"></div>`;
+  $("#stPack").addEventListener("input",e=>{DB.pack=Math.max(0,+e.target.value||0);save();$("#apPack").value=DB.pack;});
+}
+function bindSet(){
+  $("#stMargin").addEventListener("input",e=>{DB.rule.margin=clamp(+e.target.value||0,0,90);save();});
+  $("#stRound").addEventListener("change",e=>{DB.rule.round=e.target.value;save();renderSet();});
+  $("#stCh").addEventListener("change",e=>{
+    const on=e.target.closest("[data-chon]");
+    if(on){chOf(on.dataset.chon).on=on.checked;save();renderSet();return;}
+  });
+  $("#stCh").addEventListener("input",e=>{
+    const f=e.target.closest("[data-chfee]");
+    if(f){chOf(f.dataset.chfee).fee=clamp(+f.value||0,0,50);save();}
+  });
+  $("#stCh").addEventListener("click",e=>{
+    const d=e.target.closest("[data-chdel]");if(!d)return;
+    if(DB.ch.length<=1)return toast("ひとつは残してください");
+    if(!confirm("この販路を消しますか?"))return;
+    DB.ch=DB.ch.filter(c=>c.id!==d.dataset.chdel);
+    if(!DB.ch.some(c=>c.id===DB.draft.chId))DB.draft.chId=DB.ch[0].id;
+    save();renderSet();renderAp();
+  });
+  $("#stSh").addEventListener("input",e=>{
+    const c=e.target.closest("[data-shc]");
+    if(c){shOf(c.dataset.shc).cost=Math.max(0,+c.value||0);save();fillShip();$("#apShip").value=DB.draft.shId;}
+  });
+  $("#stSh").addEventListener("click",e=>{
+    const d=e.target.closest("[data-shdel]");if(!d)return;
+    if(DB.sh.length<=1)return toast("ひとつは残してください");
+    if(!confirm("この送り方を消しますか?"))return;
+    DB.sh=DB.sh.filter(s=>s.id!==d.dataset.shdel);
+    if(!DB.sh.some(s=>s.id===DB.draft.shId))DB.draft.shId=DB.sh[0].id;
+    save();renderSet();fillShip();renderAp();
+  });
+  $("#stAddCh").onclick=()=>{
+    openModal(`<h2>販路を足す</h2>
+      <div class="field"><label>名前</label><input id="nc-n" placeholder="例: BASE / 店頭"></div>
+      <div class="g2"><div class="field"><label>手数料(%)</label><input id="nc-f" type="number" step="0.1" min="0" value="10"></div>
+        <div class="field"><label>固定手数料(円)</label><input id="nc-x" type="number" min="0" value="0"></div></div>
+      <div class="row"><button class="btn primary col" id="nc-ok">足す</button><button class="btn ghost" data-close>やめる</button></div>`);
+    $("#nc-ok").onclick=()=>{const n=$("#nc-n").value.trim();if(!n)return toast("名前を入れてください");
+      DB.ch.push({id:uid(),name:n,fee:clamp(+$("#nc-f").value||0,0,50),fixed:Math.max(0,+$("#nc-x").value||0),on:true});
+      save();closeModal();renderSet();renderAp();};
+  };
+  $("#stAddSh").onclick=()=>{
+    openModal(`<h2>送り方を足す</h2>
+      <div class="field"><label>名前</label><input id="ns-n" placeholder="例: ゆうパック60"></div>
+      <div class="field"><label>送料(円)</label><input id="ns-c" type="number" min="0" value="0"></div>
+      <div class="row"><button class="btn primary col" id="ns-ok">足す</button><button class="btn ghost" data-close>やめる</button></div>`);
+    $("#ns-ok").onclick=()=>{const n=$("#ns-n").value.trim();if(!n)return toast("名前を入れてください");
+      DB.sh.push({id:uid(),name:n,cost:Math.max(0,+$("#ns-c").value||0)});
+      save();closeModal();renderSet();fillShip();$("#apShip").value=DB.draft.shId;};
+  };
+  $("#stExport").onclick=()=>dl("nezuke-"+today()+".json",JSON.stringify(DB,null,1));
+  $("#stCsv").onclick=exportCsv;
+  $("#stReset").onclick=()=>{
+    if(!confirm("台帳と設定をすべて消します。よろしいですか?"))return;
+    if(!confirm("本当に消しますか? 元に戻せません。"))return;
+    DB=blank();save();syncAp();renderAll();toast("まっさらにしました");
+  };
+  $("#bkIO").onclick=()=>{
+    openModal(`<h2>入出力</h2>
+      <div class="row wr" style="margin-bottom:12px">
+        <button class="btn" id="io-j">JSONで書き出す</button>
+        <button class="btn" id="io-c">CSVで書き出す</button></div>
+      <p class="hint">JSONを貼り付けると<b>いまの台帳をすべて置き換えます</b>。先に書き出しておいてください。</p>
+      <textarea id="io-in" rows="4" style="margin:8px 0"></textarea>
+      <div class="row"><button class="btn danger col" id="io-l">置き換える</button>
+        <button class="btn ghost" data-close>閉じる</button></div>`);
+    $("#io-j").onclick=()=>dl("nezuke-"+today()+".json",JSON.stringify(DB,null,1));
+    $("#io-c").onclick=exportCsv;
+    $("#io-l").onclick=()=>{
+      let d;try{d=JSON.parse($("#io-in").value);}catch(e){return toast("JSONとして読めません");}
+      if(!d||!Array.isArray(d.items))return toast("この帳面のJSONではないようです");
+      if(!confirm("いまの台帳をすべて置き換えます。よろしいですか?"))return;
+      DB=Object.assign(blank(),d);DB.draft=Object.assign(newDraft(),DB.draft||{});
+      save();closeModal();syncAp();renderAll();toast("読み込みました");
+    };
+  };
+}
+function exportCsv(){
+  dl("nezuke-"+today()+".csv",csv([
+    ["査定日","カード名","状態","相場中央値","件数","相場最安","相場最高","売値","販路","送料","梱包","手取り","仕入","利益","状況","出品日","売却日","実売","覚え書き"],
+    ...DB.items.map(i=>{const p=i.status==="売却"?i.soldPrice:(i.listPrice||i.price);const n=netOfItem(i,p);
+      return [i.at,i.name,condN(i.cond),Math.round(i.st.med),i.st.n,Math.round(i.st.min),Math.round(i.st.max),
+        p,chOf(i.chId).name,shOf(i.shId).cost,i.pack??DB.pack,Math.round(n),i.cost||0,Math.round(n-(i.cost||0)),
+        i.status,i.listedAt||"",i.soldAt||"",i.soldPrice||"",i.memo||""];})]));
+}
+function csv(rows){return "﻿"+rows.map(r=>r.map(v=>`"${String(v??"").replace(/"/g,'""')}"`).join(",")).join("\r\n");}
+function dl(name,text){
+  const b=new Blob([text],{type:"text/plain;charset=utf-8"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=name;
+  document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},400);
+  toast("書き出しました");
+}
+
+/* ==============================================================
+   9. 値付け前チェック
+   ============================================================== */
+const CHECKS=[
+ ["sold","「売れた価格」だけを見た","出品中の価格は、その値段では売れていない価格です。"],
+ ["fresh","直近2週間以内のものを使った","新弾は3日で景色が変わります。"],
+ ["cond","同じ状態のものでそろえた","美品と傷ありを混ぜると中央値が意味を失います。"],
+ ["n5","5件以上あつめた","3件以下は参考値。この道具も警告を出します。"],
+ ["bulk","まとめ売り・おまけ付きを外した","1枚あたりの値段ではないため。"],
+ ["fee","販路の手数料率を自分で確かめた","規約は変わります。初期値は目安にすぎません。"],
+ ["ship","送料をいまの料金に直した","改定されます。古い値のままだと利益が消えます。"],
+ ["pack","梱包費を入れた","スリーブ・ローダー・封筒。1件50円でも積もります。"],
+ ["risk","値動きを見て買取を控えめにした","買った翌週に3割落ちることがあります。"],
+ ["kobutsu","古物商許可を確認した","買い取って売るなら必要です。まず警察署へ。"],
+ ["tax","確定申告用に記録を残している","この台帳のCSVをそのまま使えます。"],
+ ["say","相場を断言しなかった","「必ず上がる」は言わない。外したときに信用を失います。"],
+];
+function renderChecks(){
+  const done=CHECKS.filter(c=>DB.checks[c[0]]).length;
+  $("#ckN").textContent=`${done} / ${CHECKS.length}`;
+  $("#ckList").innerHTML=CHECKS.map(([k,t,s])=>`
+    <label class="check ${DB.checks[k]?"done":""}">
+      <input type="checkbox" data-ck="${k}" ${DB.checks[k]?"checked":""}>
+      <span><b>${t}</b><small>${s}</small></span></label>`).join("")+
+    `<p class="hint" style="margin-top:10px">これは論点の一覧で、法律・税務の助言ではありません。
+      継続して売買するなら、警察署(古物)と税務署・税理士に確認してください。</p>`;
+  $("#ckList").onchange=e=>{const c=e.target.closest("[data-ck]");if(!c)return;
+    DB.checks[c.dataset.ck]=c.checked;save();renderChecks();};
+}
+
+/* ==============================================================
+   10. 共通・起動
+   ============================================================== */
+function openModal(html){$("#modalBox").innerHTML=html;$("#modal").classList.add("on");}
+function closeModal(){$("#modal").classList.remove("on");}
+$("#modal").addEventListener("click",e=>{if(e.target.id==="modal"||e.target.closest("[data-close]"))closeModal();});
+let VIEW="ap";
+function go(v){
+  VIEW=v;
+  $$("#tabs button").forEach(b=>b.classList.toggle("on",b.dataset.v===v));
+  $$("section.view").forEach(s=>s.classList.toggle("on",s.id==="v-"+v));
+  window.scrollTo({top:0,behavior:"smooth"});
+  renderAll();
+}
+function renderAll(){
+  if(VIEW==="ap")renderAp();
+  else if(VIEW==="book")renderBook();
+  else if(VIEW==="sale")renderSale();
+  else if(VIEW==="log")renderLog();
+  else if(VIEW==="set")renderSet();
+  else if(VIEW==="guide")renderChecks();
+  const nb=DB.items.filter(i=>i.status==="在庫"||i.status==="査定").length;
+  $("#bBook").hidden=!nb;$("#bBook").textContent=nb;
+  const ns=DB.items.filter(i=>i.status==="出品").length;
+  $("#bSale").hidden=!ns;$("#bSale").textContent=ns;
+  const st=DB.items.filter(i=>i.status==="在庫"||i.status==="出品");
+  $("#hdSub").textContent=st.length?`手元 ${st.length}件 ・ 仕入 ${yen(st.reduce((s,i)=>s+(i.cost||0),0))}`
+                                   :"売れた価格から、売値と買取額を決める";
+}
+(function init(){
+  const first=!load();
+  fillSelects();syncAp();bindAp();bindSet();
+  $("#tabs").onclick=e=>{const b=e.target.closest("button[data-v]");if(!b)return;go(b.dataset.v);};
+  document.addEventListener("keydown",e=>{if(e.key==="Escape")closeModal();});
+  go("ap");
+  if(first)setTimeout(()=>openModal(`<h2>値付け帳へようこそ</h2>
+    <p class="hint">フリマの<b>売り切れ一覧</b>をコピーして、査定画面に貼ってください。
+    金額だけ拾って相場を出し、手数料と送料を引いた<b>手取り</b>、売値の案、
+    <b>買取でいくらまで出せるか</b>までを一度に出します。<br><br>
+    相場の自動取得はしません。あなたが見た数字だけを使います。
+    手数料と送料は<b>設定</b>でいまの料金に直してから使ってください。</p>
+    <button class="btn primary wide" data-close>はじめる</button>`),400);
+})();
+</script>
+</body>
+</html>
