@@ -130,6 +130,8 @@ td.r,th.r{text-align:right;font-family:var(--num)}
   font-family:var(--num);font-size:12.5px;color:var(--kinari)}
 .smp.off{opacity:.4;text-decoration:line-through;border-style:dashed}
 .smp.out{border-color:var(--aka);color:#f0b3a6}
+.smp.api{border-color:var(--ao);border-style:dashed}
+.smp.api::before{content:"店";font-size:9.5px;color:var(--ao);margin-right:3px;vertical-align:1px}
 .hist{display:flex;align-items:flex-end;gap:3px;height:74px;margin:10px 0 4px}
 .hist i{flex:1;background:linear-gradient(to top,var(--sumi-4),var(--ao));border-radius:3px 3px 0 0;
   min-height:2px;position:relative;opacity:.85}
@@ -231,6 +233,7 @@ td.r,th.r{text-align:right;font-family:var(--num)}
     <textarea id="apPaste" rows="3" placeholder="¥1,980 送料込み&#10;SOLD ¥2,300&#10;2,480円 …" style="margin:8px 0"></textarea>
     <div class="row wr">
       <button class="btn sm primary" id="apTake">貼り付けから取り込む</button>
+      <button class="btn sm" id="apFetch" hidden>ネットから取り込む</button>
       <button class="btn sm" id="apAdd">1件ずつ足す</button>
       <button class="btn sm ghost" id="apWipe">全部消す</button>
     </div>
@@ -319,6 +322,20 @@ td.r,th.r{text-align:right;font-family:var(--num)}
     <div id="stSh"></div>
   </div>
   <div class="panel">
+    <div class="ttl"><h3>相場の取り込み(任意)</h3></div>
+    <p class="hint">中継サーバ(<code>soba-worker.js</code>)を自分で置くと、カード名から
+      <b>ショップの販売価格</b>をまとめて取り込めます。<br>
+      <b>ここを設定したときだけ</b>、この道具はあなたの指定したURLと通信します(カード名を送ります)。
+      空にすれば通信ゼロに戻ります。<b>フリマの実売価格は取れません</b>(規約で禁じられています。手引きを見てください)。</p>
+    <div class="field"><label>中継サーバのURL</label>
+      <input id="stRelay" placeholder="https://soba-relay.xxxx.workers.dev"></div>
+    <div class="row wr">
+      <button class="btn sm" id="stRelayTest">つないでみる</button>
+      <button class="btn sm ghost" id="stRelayOff">使うのをやめる</button>
+    </div>
+    <div id="stRelayOut" style="margin-top:8px"></div>
+  </div>
+  <div class="panel">
     <div class="ttl"><h3>台帳</h3></div>
     <div class="row wr">
       <button class="btn" id="stExport">書き出す(JSON)</button>
@@ -351,6 +368,42 @@ td.r,th.r{text-align:right;font-family:var(--num)}
       <li>最低<b>5件</b>、できれば10件。3件以下のときは、この道具も「参考値」と表示します</li>
       <li>まとめ売り・おまけ付きの価格は外す(1枚あたりの値段ではないため)</li>
       <li>店舗の<b>買取価格</b>は、売値ではなく「売値の6〜7割」の数字です。混ぜない</li>
+    </ul>
+
+    <h3>相場を自動で取れるか</h3>
+    <p>結論から言うと、<b>欲しいもの(フリマで売れた価格)ほど自動では取れません</b>。3段階に分けて考えてください。</p>
+    <ol>
+      <li><b>フリマの実売価格 — 自動取得の正規手段はありません。</b>
+        メルカリの規約は「当社が提供するインターフェイスとは別の手法でサービスにアクセスすること」を
+        禁じています。スクレイピングはここに当たり、アカウント停止の対象です。
+        公式APIにも「売れた価格」は用意されていません。</li>
+      <li><b>ショップの販売価格 — 公式APIで取れます。</b>
+        Yahoo!ショッピング商品検索API(アプリケーションIDは無料)と楽天市場商品検索APIが使えます。
+        ただしブラウザから直に叩くことはできません(CORSで拒否され、APIキーも丸見えになります)。
+        <b>中継サーバが1枚要ります</b>。このリポジトリの <code>soba-worker.js</code> がそれで、
+        Cloudflare Workersに10分で置けます。置いたら 設定 →「相場の取り込み」にURLを入れてください。</li>
+      <li><b>海外の相場 — 英語版カードなら、もっと素直に取れます。</b>
+        pokemontcg.io(無料キー)はTCGplayerやCardmarketの価格つき、PriceChartingは有料APIで
+        <b>売れた価格</b>まで持っています。日本語版カードの相場としてはそのまま使えませんが、
+        値動きの方向を見るには役立ちます。</li>
+    </ol>
+    <p><b>取れるのは「売りに出している価格」であって「売れた価格」ではありません。</b>
+    ショップの店頭価格はフリマの実売より2〜3割高いのがふつうです。
+    この道具は取り込んだ価格に<b>「店」の印</b>をつけ、混ざっているあいだは警告を出し、
+    ワンタップで外せるようにしてあります。混ぜたまま値付けすると、買取で確実に高値づかみします。</p>
+
+    <h3>半自動 — いちばん現実的なやりかた</h3>
+    <p>自分が開いている「売り切れ一覧」のページから、金額だけを拾ってコピーするブックマークレットです。
+    <b>巡回もアクセスの自動化もしません</b>。あなたが目で見ているページを整えるだけです。
+    (それでも規約の判断はご自身で。心配なら、ページを全選択してコピーし、貼り付けから取り込んでください。結果は同じです。)</p>
+    <div id="bmOut"></div>
+
+    <h3>やってはいけないこと</h3>
+    <ul>
+      <li><b>フリマサイトの自動巡回</b> — 規約違反。アカウントが飛ぶと仕入れ経路ごと失います</li>
+      <li><b>APIキーをHTMLに書く</b> — GitHub Pagesに置いた瞬間、世界中から使えます。必ず中継サーバの秘密として持つこと</li>
+      <li><b>他サイトの価格表をそのまま転載</b> — 表の構成やデータには権利が及びます。参考にするのと写すのは別です</li>
+      <li><b>取った値をそのまま信じる</b> — 別カード・別言語・まとめ売りが混ざります。中央値と外れ値の印を必ず見ること</li>
     </ul>
 
     <h3>手取りの計算(この道具の中身)</h3>
@@ -430,11 +483,13 @@ const blank=()=>({v:1,
       {id:"s4",name:"宅急便コンパクト",cost:450}],
   pack:50,
   rule:{margin:30,round:"80"},
+  relay:{url:""},
   items:[],draft:newDraft(),checks:{},ui:{bkFilter:""}});
 function save(){try{localStorage.setItem(KEY,JSON.stringify(DB));}catch(e){toast("保存できませんでした(容量不足かも)");}}
 function load(){
   try{const s=localStorage.getItem(KEY);
-    if(s){DB=Object.assign(blank(),JSON.parse(s));DB.draft=Object.assign(newDraft(),DB.draft||{});return true;}}catch(e){}
+    if(s){DB=Object.assign(blank(),JSON.parse(s));DB.draft=Object.assign(newDraft(),DB.draft||{});
+      DB.relay=Object.assign({url:""},DB.relay||{});return true;}}catch(e){}
   DB=blank();save();return false;
 }
 const chOf=id=>DB.ch.find(c=>c.id===id)||DB.ch[0];
@@ -549,6 +604,7 @@ function histHTML(st){
 }
 function renderAp(){
   const d=DB.draft,c=apCalc(),st=c.st;
+  $("#apFetch").hidden=!(DB.relay&&DB.relay.url);
   /* 状態の補正 */
   $("#apFactor").innerHTML=c.factor===1?
     `<p class="hint">サンプルと同じ状態として計算します。</p>`:
@@ -558,7 +614,11 @@ function renderAp(){
   $("#apN").textContent=st.n?`${st.n}件つかう`:"まだありません";
   $("#apSmp").innerHTML=d.samples.length?`
     <div class="samples">${d.samples.map((s,i)=>
-      `<button class="smp ${s.off?"off":""} ${s.auto?"out":""}" data-smp="${i}">${yen(s.v)}</button>`).join("")}</div>
+      `<button class="smp ${s.off?"off":""} ${s.auto?"out":""} ${s.src==="api"?"api":""}" data-smp="${i}">${yen(s.v)}</button>`).join("")}</div>
+    ${d.samples.some(s=>!s.off&&s.src==="api")?`<div class="note warn">
+      「店」の印は<b>ショップの販売価格</b>です。フリマの実売はふつう<b>2〜3割安く</b>なるので、
+      混ぜたままだと売値も買取も高く出ます。
+      <button class="btn sm" id="apDropApi" style="margin-top:6px">ショップ価格を外す</button></div>`:""}
     <p class="hint">${d.samples.some(s=>s.auto)?"赤い印は<b>外れ値</b>として自動で外しました。":"タップで1件ずつ入/切できます。"}
       長押しではなく<b>タップで切り替え</b>、二度押しで戻ります。</p>
     ${st.n?`
@@ -630,6 +690,40 @@ function renderAp(){
       <div class="calc">損益分岐の売値 <b>${yen(priceForNet(cost,c.ch,c.sh.cost,DB.pack))}</b>
         ／ 目標利益を取るなら <b>${yen(priceForNet(cost/(1-DB.rule.margin/100),c.ch,c.sh.cost,DB.pack))}</b> 以上</div>`;
 }
+async function fetchSoba(){
+  const name=(DB.draft.name||"").trim();
+  if(!name)return toast("先にカード名を入れてください");
+  const base=(DB.relay.url||"").trim();
+  if(!base)return toast("設定で中継サーバのURLを入れてください");
+  const btn=$("#apFetch"),label=btn.textContent;
+  btn.disabled=true;btn.textContent="取り込み中…";
+  try{
+    const list=await askSoba(base,name);
+    list.forEach(v=>DB.draft.samples.push({v,off:false,auto:false,src:"api"}));
+    markOutliers(DB.draft.samples);save();renderAp();
+    toast(`${list.length}件 取り込みました(ショップ価格)`);
+  }catch(e){
+    openModal(`<h2>取り込めませんでした</h2>
+      <div class="note bad">${esc(e.message||String(e))}</div>
+      <p class="hint">よくある原因: URLの打ちまちがい / 中継サーバにAPIキーを登録していない /
+        検索語が細かすぎる(型番を外して短くしてみてください) / 一時的な通信エラー。<br>
+        取り込めなくても、<b>貼り付けはいつでも使えます</b>。</p>
+      <button class="btn wide" data-close>閉じる</button>`);
+  }finally{btn.disabled=false;btn.textContent=label;}
+}
+async function askSoba(base,q){
+  const u=base+(base.includes("?")?"&":"?")+"q="+encodeURIComponent(q);
+  const ctl=new AbortController(),timer=setTimeout(()=>ctl.abort(),12000);
+  let r;
+  try{r=await fetch(u,{signal:ctl.signal,headers:{accept:"application/json"}});}
+  catch(e){throw new Error(ctl.signal.aborted?"12秒たっても返事がありません":"つながりません(URLと通信を確かめてください)");}
+  finally{clearTimeout(timer);}
+  const j=await r.json().catch(()=>null);
+  if(!r.ok||!j)throw new Error((j&&j.error)||`中継サーバが ${r.status} を返しました`);
+  const list=(j.items||[]).map(i=>+i.price).filter(v=>isFinite(v)&&v>=50&&v<=3000000);
+  if(!list.length)throw new Error("その名前では見つかりませんでした");
+  return list.slice(0,60);
+}
 function apText(){
   const d=DB.draft,c=apCalc();
   if(!c.cur)return "";
@@ -657,7 +751,7 @@ function bindAp(){
   $("#apTake").onclick=()=>{
     const got=parsePrices($("#apPaste").value);
     if(!got.length)return toast("金額が見つかりませんでした");
-    got.forEach(v=>d().samples.push({v,off:false,auto:false}));
+    got.forEach(v=>d().samples.push({v,off:false,auto:false,src:"paste"}));
     markOutliers(d().samples);$("#apPaste").value="";save();renderAp();
     toast(`${got.length}件 取り込みました`);
   };
@@ -666,7 +760,7 @@ function bindAp(){
       <div class="field"><label>金額(円)</label><input id="ad-v" type="number" min="0" inputmode="numeric"></div>
       <div class="row"><button class="btn primary col" id="ad-ok">足す</button><button class="btn ghost" data-close>閉じる</button></div>`);
     const go=()=>{const v=+$("#ad-v").value||0;if(v<50)return toast("金額を入れてください");
-      d().samples.push({v,off:false,auto:false});markOutliers(d().samples);save();renderAp();
+      d().samples.push({v,off:false,auto:false,src:"manual"});markOutliers(d().samples);save();renderAp();
       $("#ad-v").value="";$("#ad-v").focus();toast(`${yen(v)} を足しました`);};
     $("#ad-ok").onclick=go;
     $("#ad-v").addEventListener("keydown",e=>{if(e.key==="Enter")go();});
@@ -675,6 +769,10 @@ function bindAp(){
   $("#apWipe").onclick=()=>{if(!d().samples.length)return;
     if(!confirm("相場サンプルを全部消しますか?"))return;d().samples=[];save();renderAp();};
   $("#apSmp").addEventListener("click",e=>{
+    if(e.target.closest("#apDropApi")){
+      d().samples.forEach(s=>{if(s.src==="api"){s.off=true;s.auto=false;}});save();renderAp();
+      return toast("ショップ価格を外しました");
+    }
     const b=e.target.closest("[data-smp]");if(!b)return;
     const s=d().samples[+b.dataset.smp];s.off=!s.off;s.auto=false;save();renderAp();
   });
@@ -688,6 +786,7 @@ function bindAp(){
     if(!confirm("入力をすべて捨てて、はじめからにしますか?"))return;
     DB.draft=newDraft();save();syncAp();renderAp();
   };
+  $("#apFetch").onclick=fetchSoba;
   $("#apCopy").onclick=()=>{const t=apText();if(!t)return toast("相場を入れてください");copyText(t);};
   $("#apSave").onclick=saveDraft;
 }
@@ -910,6 +1009,7 @@ function renderLog(){
    ============================================================== */
 function renderSet(){
   $("#stMargin").value=DB.rule.margin;$("#stRound").value=DB.rule.round;
+  $("#stRelay").value=DB.relay.url||"";
   const ex=[1180,2437,8600].map(v=>`${yen(v)} → <b>${yen(roundP(v))}</b>`).join(" ／ ");
   $("#stRule").innerHTML=`<p class="hint">丸めの例: ${ex}<br>
     目標の利益率は<b>手取りに対する割合</b>です(買取の提示額をここから逆算します)。
@@ -981,6 +1081,28 @@ function bindSet(){
       DB.sh.push({id:uid(),name:n,cost:Math.max(0,+$("#ns-c").value||0)});
       save();closeModal();renderSet();fillShip();$("#apShip").value=DB.draft.shId;};
   };
+  $("#stRelay").addEventListener("input",e=>{
+    DB.relay.url=e.target.value.trim();save();
+    $("#apFetch").hidden=!DB.relay.url;
+    $("#stRelayOut").innerHTML=DB.relay.url?
+      (/^https:\/\//.test(DB.relay.url)?`<div class="note info">査定画面に「ネットから取り込む」が出ます。</div>`
+        :`<div class="note bad">https:// で始まるURLを入れてください。</div>`):"";
+  });
+  $("#stRelayOff").onclick=()=>{
+    DB.relay.url="";save();$("#stRelay").value="";$("#apFetch").hidden=true;
+    $("#stRelayOut").innerHTML=`<div class="note ok">通信ゼロに戻しました。</div>`;
+  };
+  $("#stRelayTest").onclick=async()=>{
+    const base=(DB.relay.url||"").trim();
+    if(!base)return toast("URLを入れてください");
+    const out=$("#stRelayOut");out.innerHTML=`<div class="note info">つないでいます…</div>`;
+    try{
+      const list=await askSoba(base,"ポケモンカード");
+      const a2=list.slice().sort((x,y)=>x-y);
+      out.innerHTML=`<div class="note ok">つながりました。<b>${list.length}件</b>返ってきています
+        (${yen(a2[0])}〜${yen(a2[a2.length-1])})。<br>これは<b>ショップの販売価格</b>です。</div>`;
+    }catch(e){out.innerHTML=`<div class="note bad">${esc(e.message||String(e))}</div>`;}
+  };
   $("#stExport").onclick=()=>dl("nezuke-"+today()+".json",JSON.stringify(DB,null,1));
   $("#stCsv").onclick=exportCsv;
   $("#stReset").onclick=()=>{
@@ -1041,6 +1163,19 @@ const CHECKS=[
  ["tax","確定申告用に記録を残している","この台帳のCSVをそのまま使えます。"],
  ["say","相場を断言しなかった","「必ず上がる」は言わない。外したときに信用を失います。"],
 ];
+const BOOKMARKLET="javascript:(()=>{const m=(document.body.innerText.match(/[\u00a5\uffe5]\\s?\\d{1,3}(?:,\\d{3})*/g)||[]);if(!m.length)return alert('\u91d1\u984d\u304c\u898b\u3064\u304b\u308a\u307e\u305b\u3093\u3067\u3057\u305f');const s=m.join('\\n');navigator.clipboard.writeText(s).then(()=>alert(m.length+'\u4ef6\u30b3\u30d4\u30fc\u3057\u307e\u3057\u305f'),()=>prompt('\u30b3\u30d4\u30fc\u3057\u3066\u304f\u3060\u3055\u3044',s));})()";
+function renderBookmarklet(){
+  const el=$("#bmOut");if(!el)return;
+  el.innerHTML=`<div class="note info">
+    <b>使いかた</b>(パソコン)<br>
+    1. 下のボタンでコピー → ブラウザのブックマークを新規作成し、URL欄に貼る(名前は「金額を拾う」など)<br>
+    2. フリマの<b>売り切れ一覧</b>を開いて、そのブックマークを押す<br>
+    3. 値付け帳の査定画面に貼り付けて「貼り付けから取り込む」<br>
+    <button class="btn sm" id="bmCopy" style="margin-top:8px">ブックマークレットをコピー</button>
+    <span class="hint" style="display:block;margin-top:6px">スマホでは、ページを全選択してコピー → 貼り付けが確実です。</span>
+  </div>`;
+  $("#bmCopy").onclick=()=>copyText(BOOKMARKLET);
+}
 function renderChecks(){
   const done=CHECKS.filter(c=>DB.checks[c[0]]).length;
   $("#ckN").textContent=`${done} / ${CHECKS.length}`;
@@ -1074,7 +1209,7 @@ function renderAll(){
   else if(VIEW==="sale")renderSale();
   else if(VIEW==="log")renderLog();
   else if(VIEW==="set")renderSet();
-  else if(VIEW==="guide")renderChecks();
+  else if(VIEW==="guide"){renderChecks();renderBookmarklet();}
   const nb=DB.items.filter(i=>i.status==="在庫"||i.status==="査定").length;
   $("#bBook").hidden=!nb;$("#bBook").textContent=nb;
   const ns=DB.items.filter(i=>i.status==="出品").length;
