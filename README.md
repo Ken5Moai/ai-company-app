@@ -334,3 +334,4 @@ CSVファイル(文字コードはUTF-8 / Shift_JIS / EUC-JPを自動判別)か�
 ブレーキ(設定):1日に押印できる本数(初期1本)、健康・安全ジャンルは必ず人間確認、根拠のない数字の扱い。
 
 Claude Code で同じ流れを回すキットは [`affiliate-kit/`](affiliate-kit/README.md) にあります。
+「無料相談・無料登録」型のASP案件を、リサーチ→企画→執筆→検品の4人で回すキットは [`asp-kit/`](asp-kit/README.md) にあります。
