@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Read",
+      "Glob",
+      "Grep",
+      "Write(output/**)",
+      "Bash(node scripts/check.mjs:*)"
+    ],
+    "deny": [
+      "WebFetch",
+      "Write(inputs/**)",
+      "Edit(inputs/**)",
+      "Bash(curl:*)",
+      "Bash(wget:*)",
+      "Bash(rm:*)",
+      "Bash(git push:*)"
+    ]
+  }
+}

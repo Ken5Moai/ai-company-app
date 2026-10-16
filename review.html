@@ -1,0 +1,912 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#12100e">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>買う前ノート — 低評価レビューから記事をつくる台帳</title>
+<style>
+/* ================================================================
+   買う前ノート —「集める・まとめる・書く・落とす・押印する」
+   星2〜3のレビューを「買う前に知りたかったこと」記事に仕立てる台帳。
+   書く役と落とす役を分け、最後の押印だけを人がする。
+   墨 × 朱印 × 金(AIカンパニーと同じ世界観)。単一HTML・外部依存なし。
+   ================================================================ */
+:root{
+  --sumi:#12100e;--sumi-2:#1b1815;--sumi-3:#272220;--sumi-4:#37302b;
+  --kinari:#f2e9dc;--hai:#8d8377;--hai-2:#645c53;
+  --shu:#d8432f;--shu-fukai:#a52a1c;--kin:#c9a24b;--kin-awai:rgba(201,162,75,.3);
+  --ao:#6f93a8;--ok:#7fae7a;--keikoku:#e0a13a;
+  --mincho:"Hiragino Mincho ProN","Hiragino Mincho Pro","Yu Mincho",YuMincho,"Noto Serif JP","Noto Serif CJK JP",serif;
+  --gothic:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP","Yu Gothic",sans-serif;
+  --ease:cubic-bezier(.19,1,.22,1);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--sumi);color:var(--kinari);font-family:var(--gothic);font-size:15px;line-height:1.7;
+  -webkit-tap-highlight-color:transparent;font-feature-settings:"palt"}
+button,input,textarea,select{font-family:inherit;font-size:inherit;color:inherit}
+button{cursor:pointer;background:none;border:none}
+input,textarea,select{background:var(--sumi);border:1px solid var(--sumi-4);border-radius:6px;color:var(--kinari);padding:9px 11px;width:100%;font-size:16px}
+input[type=checkbox]{width:auto;accent-color:var(--shu)}
+input:focus,textarea:focus,select:focus{outline:none;border-color:var(--kin)}
+textarea{resize:vertical;line-height:1.6}
+a{color:var(--kin)}
+
+#app{display:flex;flex-direction:column;height:100dvh;padding-top:env(safe-area-inset-top)}
+header{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 16px 10px;border-bottom:1px solid var(--sumi-3);flex:none}
+.brand{font-family:var(--mincho);letter-spacing:.14em;font-size:17px;display:flex;align-items:baseline;gap:10px}
+.brand small{font-size:11px;letter-spacing:.1em;color:var(--hai);font-family:var(--gothic)}
+.hbtn{border:1px solid var(--sumi-4);border-radius:999px;padding:5px 13px;font-size:12px;color:var(--hai);letter-spacing:.08em;white-space:nowrap}
+.hbtn.on{border-color:var(--kin);color:var(--kin)}
+main{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:16px 14px 30px}
+.view{display:none;max-width:720px;margin:0 auto}
+.view.on{display:block}
+nav{display:flex;border-top:1px solid var(--sumi-3);flex:none;padding-bottom:env(safe-area-inset-bottom);background:var(--sumi)}
+nav button{flex:1;padding:11px 0 10px;font-size:12.5px;letter-spacing:.12em;color:var(--hai)}
+nav button.on{color:var(--kin)}
+
+h2.sec{font-family:var(--mincho);font-size:13px;letter-spacing:.2em;color:var(--kin);margin:22px 0 10px;display:flex;align-items:center;gap:9px}
+h2.sec::after{content:"";flex:1;height:1px;background:linear-gradient(90deg,var(--kin-awai),transparent)}
+h2.sec:first-child{margin-top:4px}
+.card{background:var(--sumi-2);border:1px solid var(--sumi-3);border-radius:10px;padding:14px;margin-bottom:12px}
+.card.kin{border-color:rgba(201,162,75,.36)}
+.card.lock{opacity:.45}
+.card h3{font-family:var(--mincho);font-size:15px;letter-spacing:.08em;margin-bottom:8px;font-weight:400;display:flex;align-items:center;gap:8px}
+.card h3 .no{display:inline-flex;width:22px;height:22px;border-radius:50%;border:1px solid var(--kin);color:var(--kin);font-size:12px;align-items:center;justify-content:center;font-family:var(--gothic)}
+.card h3 .no.done{background:var(--kin);color:var(--sumi)}
+.muted{color:var(--hai);font-size:12.5px;line-height:1.65}
+.mini{color:var(--hai-2);font-size:11.5px;line-height:1.6}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.row > *{flex:1;min-width:0}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+label.f{display:block;font-size:12px;color:var(--hai);margin:8px 0 4px;letter-spacing:.05em}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;border:1px solid var(--sumi-4);border-radius:8px;padding:11px 16px;font-size:14px;letter-spacing:.06em;color:var(--kinari);transition:.16s var(--ease)}
+.btn:active{transform:scale(.985)}
+.btn.pri{background:var(--shu-fukai);border-color:var(--shu);color:#fff}
+.btn.kin{border-color:var(--kin);color:var(--kin)}
+.btn.wide{width:100%}
+.btn.sm{padding:7px 11px;font-size:12.5px;border-radius:6px}
+.btn[disabled]{opacity:.4;pointer-events:none}
+.btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.btns .btn{flex:1;min-width:120px}
+.tag{display:inline-block;font-size:11px;border:1px solid var(--sumi-4);border-radius:999px;padding:1px 9px;color:var(--hai);white-space:nowrap}
+.tag.ok{border-color:var(--ok);color:var(--ok)}
+.tag.ng{border-color:var(--shu);color:var(--shu)}
+.tag.warn{border-color:var(--keikoku);color:var(--keikoku)}
+.tag.kin{border-color:var(--kin);color:var(--kin)}
+.out{min-height:140px;font-size:14px}
+.issues{list-style:none;margin-top:8px}
+.issues li{font-size:13px;padding:7px 0;border-top:1px dashed var(--sumi-4);line-height:1.6}
+.issues li b{font-weight:600}
+.issues .ng b{color:var(--shu)}
+.issues .warn b{color:var(--keikoku)}
+.verdict{font-family:var(--mincho);font-size:20px;letter-spacing:.2em;padding:10px 0 4px}
+.verdict.ok{color:var(--ok)}.verdict.ng{color:var(--shu)}.verdict.warn{color:var(--keikoku)}
+.chk{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-top:1px dashed var(--sumi-4);font-size:13.5px}
+.chk input{margin-top:5px}
+.prog{display:flex;gap:4px;margin-bottom:12px}
+.prog i{flex:1;height:3px;border-radius:2px;background:var(--sumi-4)}
+.prog i.on{background:var(--kin)}
+.log{font-size:12px;color:var(--hai);margin-top:8px;white-space:pre-wrap}
+.preview{background:var(--kinari);color:#2a2622;border-radius:8px;padding:16px;font-size:14.5px;line-height:1.85;max-height:60vh;overflow:auto}
+.preview h1{font-size:19px;margin:6px 0 10px}
+.preview h2{font-size:16px;margin:18px 0 6px;border-left:4px solid var(--shu);padding-left:8px}
+.preview h3{font-size:15px;margin:12px 0 4px}
+.preview ul{padding-left:1.3em;margin:6px 0}
+.preview p{margin:8px 0}
+.item{display:flex;gap:10px;align-items:center;padding:10px 0;border-top:1px solid var(--sumi-3);cursor:pointer}
+.item:first-child{border-top:none}
+.item .t{flex:1;min-width:0}
+.item .t b{display:block;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stat{display:flex;gap:8px}
+.stat div{flex:1;background:var(--sumi);border:1px solid var(--sumi-3);border-radius:8px;padding:10px;text-align:center}
+.stat b{display:block;font-family:var(--mincho);font-size:22px;color:var(--kin);font-weight:400}
+.stat span{font-size:11px;color:var(--hai)}
+#toast{position:fixed;left:50%;bottom:84px;transform:translateX(-50%) translateY(20px);background:var(--kinari);color:var(--sumi);padding:9px 16px;border-radius:999px;font-size:13px;opacity:0;pointer-events:none;transition:.25s var(--ease);z-index:100;max-width:90vw;text-align:center}
+#toast.on{opacity:1;transform:translateX(-50%)}
+.busy{position:relative;pointer-events:none;opacity:.6}
+.note{border-left:3px solid var(--keikoku);padding:6px 10px;font-size:12.5px;color:var(--kinari);background:rgba(224,161,58,.07);margin:8px 0;border-radius:0 6px 6px 0}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="brand">買う前ノート<small>レビュー整理の台帳</small></div>
+    <button class="hbtn" id="modeBtn">手動</button>
+  </header>
+
+  <main>
+    <!-- ======================= 書く ======================= -->
+    <section class="view on" id="v-write">
+      <div class="prog" id="prog"></div>
+
+      <div class="card" id="c1">
+        <h3><span class="no">1</span>商品を選ぶ</h3>
+        <p class="muted">レビュー300件以上・発売から1年ほどたって評価の落ち着いた商品が向いています。</p>
+        <label class="f">商品名</label>
+        <input id="pName" placeholder="例:〇〇 ロボット掃除機 X200">
+        <div class="grid2">
+          <div><label class="f">ジャンル</label><select id="pGenre"></select></div>
+          <div><label class="f">価格(円・任意)</label><input id="pPrice" inputmode="numeric" placeholder="39800"></div>
+          <div><label class="f">レビュー総数</label><input id="pCount" inputmode="numeric" placeholder="1240"></div>
+          <div><label class="f">平均評価</label><input id="pRating" inputmode="decimal" placeholder="4.1"></div>
+        </div>
+        <label class="f">アフィリエイトリンク(任意・あとで入れても可)</label>
+        <input id="pLink" placeholder="https://af.moshimo.com/…">
+        <label class="chk" style="border:none"><input type="checkbox" id="pUsed"><span>この商品を<b>自分で使ったことがある</b><br><span class="mini">オフのままなら「筆者は未使用」と記事に明記し、使ったように読める文は検品で落とします。</span></span></label>
+        <div id="genreNote"></div>
+      </div>
+
+      <div class="card" id="c2">
+        <h3><span class="no">2</span>星2〜3のレビューを貼る</h3>
+        <p class="muted">販売ページで「星2」「星3」に絞り、1件ずつ<b>空行で区切って</b>貼ります。目安は30件。投稿者名は消しておくと安心です。</p>
+        <textarea id="reviews" rows="8" placeholder="1件目のレビュー本文…&#10;&#10;2件目のレビュー本文…"></textarea>
+        <div class="row" style="margin-top:6px"><span class="mini" id="revCount">0件</span><button class="btn sm" id="sampleBtn" style="flex:none">見本を入れる</button></div>
+      </div>
+
+      <div class="card" id="c3">
+        <h3><span class="no">3</span>買う前に知りたかったこと 5つ <span class="tag">分析担当</span></h3>
+        <div class="btns"><button class="btn kin aiOnly" data-run="points">AIでまとめる</button><button class="btn manOnly" data-copy="points">依頼文をコピー</button></div>
+        <p class="mini manOnly" style="margin-top:6px">Claudeアプリに貼り、返事をそのまま下に貼り戻してください。</p>
+        <label class="f">結果(編集できます)</label>
+        <textarea id="points" class="out" rows="8"></textarea>
+      </div>
+
+      <div class="card" id="c4">
+        <h3><span class="no">4</span>記事の下書き <span class="tag">執筆担当</span></h3>
+        <div class="btns"><button class="btn kin aiOnly" data-run="write">AIで書く</button><button class="btn manOnly" data-copy="write">依頼文をコピー</button></div>
+        <label class="f">下書き(Markdown・編集できます)</label>
+        <textarea id="draft" class="out" rows="12"></textarea>
+        <div class="row" style="margin-top:6px"><span class="mini" id="draftLen">0字</span><button class="btn sm" id="previewBtn" style="flex:none">見た目で確認</button></div>
+        <div id="previewBox" style="display:none;margin-top:10px"></div>
+      </div>
+
+      <div class="card" id="c5">
+        <h3><span class="no">5</span>検品 <span class="tag">検品担当</span></h3>
+        <p class="muted">書いた役とは別の役が「落とす」ことだけをします。機械の規則チェックは常に自動で走ります。</p>
+        <div id="localBox"></div>
+        <div class="btns">
+          <button class="btn kin aiOnly" data-run="check">AIで検品</button>
+          <button class="btn pri aiOnly" data-run="loop">検品→修正を自動で回す</button>
+          <button class="btn manOnly" data-copy="check">検品の依頼文をコピー</button>
+          <button class="btn manOnly" data-copy="revise">修正の依頼文をコピー</button>
+        </div>
+        <div class="note manOnly">検品は<b>新しいチャット</b>で頼んでください。書いたチャットに採点させると「問題ないと思います」に倒れます。修正の返事は④の下書き欄に貼り戻します。</div>
+        <label class="f">検品結果(1行目が「判定: 公開可 / 要修正 / 人間確認」)</label>
+        <textarea id="checkAi" class="out" rows="7"></textarea>
+        <div id="verdictBox"></div>
+        <div class="log" id="loopLog"></div>
+      </div>
+
+      <div class="card kin" id="c6">
+        <h3><span class="no">6</span>押印(公開してよいかを人が決める)</h3>
+        <div id="approveBox"></div>
+      </div>
+
+      <div class="btns"><button class="btn" id="newBtn">新しい記事を始める</button></div>
+    </section>
+
+    <!-- ======================= 台帳 ======================= -->
+    <section class="view" id="v-ledger">
+      <h2 class="sec">今週</h2>
+      <div class="stat" id="stats"></div>
+      <h2 class="sec">記事の台帳</h2>
+      <div class="card" id="list"></div>
+
+      <h2 class="sec">収益の試算(自分の数字で)</h2>
+      <div class="card">
+        <p class="muted">「月8万」は前提しだいです。自分の数字を入れて、必要なクリック数を逆算してください。物販の紹介料率は数%程度が多く、ASPの管理画面で確認できます。</p>
+        <div class="grid2">
+          <div><label class="f">平均の商品価格(円)</label><input id="sPrice" inputmode="numeric" value="30000"></div>
+          <div><label class="f">紹介料率(%)</label><input id="sRate" inputmode="decimal" value="2"></div>
+          <div><label class="f">成約率(クリック→購入 %)</label><input id="sCvr" inputmode="decimal" value="1"></div>
+          <div><label class="f">目標(円/月)</label><input id="sGoal" inputmode="numeric" value="80000"></div>
+        </div>
+        <p id="simOut" style="margin-top:10px;font-size:14px"></p>
+      </div>
+
+      <h2 class="sec">控え</h2>
+      <div class="card">
+        <p class="muted">記録はこの端末のブラウザ内だけにあります。ときどき書き出して保管してください。</p>
+        <div class="btns"><button class="btn" id="expBtn">控えを書き出す</button><button class="btn" id="impBtn">控えを読み込む</button></div>
+        <input type="file" id="impFile" accept=".json,application/json" style="display:none">
+      </div>
+    </section>
+
+    <!-- ======================= 設定 ======================= -->
+    <section class="view" id="v-set">
+      <h2 class="sec">AIのつなぎ方</h2>
+      <div class="card">
+        <p class="muted"><b>手動</b>:APIキーなし。依頼文をコピーしてスマホのClaudeアプリに貼り、返事を貼り戻します(費用はClaudeの月額のみ)。<br><b>自動</b>:Anthropic APIキーで、ボタン1つで実行します(従量課金)。</p>
+        <label class="f">Anthropic APIキー(自動のときだけ)</label>
+        <input id="setKey" type="password" placeholder="sk-ant-…" autocomplete="off">
+        <label class="f">モデル</label>
+        <select id="setModel"></select>
+        <div class="btns"><button class="btn kin" id="saveKey">保存して接続を確かめる</button><button class="btn" id="clearKey">キーを消す</button></div>
+        <p class="mini" style="margin-top:8px">キーは<b>この端末のブラウザ内(localStorage)にのみ</b>保存され、送り先はAnthropic APIだけです。共有の端末では使わないでください。</p>
+        <p class="mini" id="usage"></p>
+      </div>
+
+      <h2 class="sec">ブレーキ(自分で決める線引き)</h2>
+      <div class="card">
+        <label class="f">1日に押印できる本数</label>
+        <input id="bDaily" inputmode="numeric">
+        <label class="chk"><input type="checkbox" id="bSensitive"><span>健康・安全に関わるジャンル(マットレス・電動歯ブラシ・ベビーカー・電動自転車)は、AIが「公開可」でも必ず人間確認にする</span></label>
+        <label class="chk"><input type="checkbox" id="bStrictNum"><span>レビューにも商品情報にもない数字は、警告ではなく<b>要修正</b>として扱う</span></label>
+      </div>
+
+      <h2 class="sec">片づけ</h2>
+      <div class="card">
+        <button class="btn wide" id="wipeBtn">この端末の記録をすべて消す</button>
+      </div>
+    </section>
+  </main>
+
+  <nav>
+    <button class="on" data-v="write">書く</button>
+    <button data-v="ledger">台帳</button>
+    <button data-v="set">設定</button>
+  </nav>
+</div>
+<div id="toast"></div>
+
+<script>
+"use strict";
+/* ================================================================
+   1. 記録(localStorage)
+   ================================================================ */
+var LS = { key:"kn.key", model:"kn.model", mode:"kn.mode", items:"kn.items", cur:"kn.cur", usage:"kn.usage", brake:"kn.brake" };
+function lsGet(k, def){ try{ var v = localStorage.getItem(k); return v==null ? def : JSON.parse(v); }catch(e){ return def; } }
+function lsSet(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch(e){ toast("この端末に保存できませんでした"); } }
+
+var S = {
+  key:   lsGet(LS.key, "") || "",
+  model: lsGet(LS.model, "claude-opus-5-5"),
+  mode:  lsGet(LS.mode, "manual"),
+  items: lsGet(LS.items, []),
+  cur:   lsGet(LS.cur, ""),
+  usage: lsGet(LS.usage, { in:0, out:0, yen:0 }),
+  brake: Object.assign({ daily:1, sensitive:true, strictNum:false }, lsGet(LS.brake, {}))
+};
+function saveItems(){ lsSet(LS.items, S.items); }
+
+var $ = function(id){ return document.getElementById(id); };
+function esc(s){ return String(s==null?"":s).replace(/[&<>"']/g, function(c){ return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]; }); }
+function ymd(d){ d = d || new Date(); return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0"); }
+var toastT;
+function toast(m){ var t = $("toast"); t.textContent = m; t.classList.add("on"); clearTimeout(toastT); toastT = setTimeout(function(){ t.classList.remove("on"); }, 2600); }
+function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+
+/* ================================================================
+   2. ジャンル(記事の型と相性がよい10種+その他)
+   ================================================================ */
+var GENRES = [
+  { n:"ロボット掃除機",         t:"失敗談が多い" },
+  { n:"電動自転車",             t:"失敗談が多い", s:true },
+  { n:"高圧洗浄機",             t:"失敗談が多い" },
+  { n:"食洗機(工事不要タイプ)", t:"失敗談が多い" },
+  { n:"ベビーカー",             t:"失敗談が多い", s:true },
+  { n:"ゲーミングチェア",       t:"好みが割れる" },
+  { n:"マットレス",             t:"好みが割れる", s:true },
+  { n:"電動歯ブラシ",           t:"好みが割れる", s:true },
+  { n:"コーヒーメーカー",       t:"好みが割れる" },
+  { n:"ワイヤレスイヤホン",     t:"好みが割れる" },
+  { n:"その他",                 t:"" }
+];
+function genreOf(n){ for(var i=0;i<GENRES.length;i++) if(GENRES[i].n === n) return GENRES[i]; return GENRES[GENRES.length-1]; }
+function isSensitive(it){ return S.brake.sensitive && !!genreOf(it.product.genre).s; }
+
+/* ================================================================
+   3. 記事1本ぶんの入れ物
+   ================================================================ */
+function blank(){
+  return { id:uid(), created:Date.now(), updated:Date.now(),
+    product:{ name:"", genre:GENRES[0].n, price:"", count:"", rating:"", link:"", used:false },
+    reviews:"", points:"", draft:"", checkAi:"", checkedDraft:"", loops:0,
+    status:"draft", approvedAt:"", publishedUrl:"", acks:{} };
+}
+function cur(){
+  var it = S.items.filter(function(x){ return x.id === S.cur; })[0];
+  if(!it){ it = blank(); S.items.unshift(it); S.cur = it.id; lsSet(LS.cur, S.cur); saveItems(); }
+  return it;
+}
+function touch(it){ it.updated = Date.now(); saveItems(); }
+
+function splitReviews(t){ return String(t||"").split(/\n\s*\n/).map(function(s){ return s.trim(); }).filter(function(s){ return s.length >= 8; }); }
+
+/* ================================================================
+   4. 依頼文(役ごとに別の指示。書く役に採点させない)
+   ================================================================ */
+function productBlock(it){
+  var p = it.product;
+  return "<product>\n商品名: " + (p.name||"(未入力)") +
+    "\nジャンル: " + p.genre +
+    "\n価格: " + (p.price ? p.price + "円(入力値。公式で要確認)" : "不明") +
+    "\nレビュー総数: " + (p.count || "不明") +
+    "\n平均評価: " + (p.rating || "不明") +
+    "\n筆者の使用: " + (p.used ? "使ったことがある" : "使っていない") +
+    "\n</product>";
+}
+function reviewsBlock(it){
+  var rs = splitReviews(it.reviews);
+  return "<reviews count=\"" + rs.length + "\">\n" + rs.map(function(r, i){ return "[" + (i+1) + "] " + r; }).join("\n\n") + "\n</reviews>";
+}
+
+var BANS_COMMON =
+  "・断定(絶対/必ず/誰でも/確実に/100%/間違いなく)\n" +
+  "・時事表現(最新/今月/今年/今なら/年号)\n" +
+  "・No.1/最安/日本一 などの最上級・他社との優劣の断言\n" +
+  "・健康や医療の効果(治る/改善する/効く/痩せる 等)\n" +
+  "・レビューにも商品情報にもない数字・仕様・価格\n" +
+  "・レビュー本文を20字を超えてそのまま写すこと、投稿者名\n";
+
+function promptFor(kind, it){
+  var rs = splitReviews(it.reviews), used = it.product.used;
+  if(kind === "points") return {
+    effort:"medium",
+    system:
+"あなたは購入者レビューの分析担当です。渡された星2〜3のレビューだけを根拠に、「このレビューを書いた人たちが、買う前に知っておきたかったこと」を5つにまとめます。\n\n" +
+"守ること:\n" +
+"・根拠は渡されたレビューだけ。仕様・価格・数値を自分の知識で補わない\n" +
+"・レビュー本文を20字を超えてそのまま写さない。要約して言い換える\n" +
+"・投稿者名など個人が分かる情報は書かない\n" +
+"・言及の多さは「" + rs.length + "件中◯件ほど」とおおよそで書く\n" +
+"・5つは重ならないようにし、言及の多い順に並べる\n" +
+"・記事の本文は書かない。商品の良し悪しの最終評価もしない\n\n" +
+"出力はMarkdownだけ(前置きなし):\n" +
+"## 買う前に知っておきたかったこと\n" +
+"### 1. 〈見出し案:「〜な人は要注意」の形〉\n- 何が起きたか:\n- 言及の目安:\n- 買う前に確かめること:\n- 気にならない人:\n" +
+"(5まで同じ形)\n" +
+"## レビューからは言えないこと\n- (件数の少なさや偏りなど、この5つの限界を2〜3行)",
+    user: productBlock(it) + "\n\n" + reviewsBlock(it) + "\n\n上のレビューを読み、5つにまとめてください。"
+  };
+
+  if(kind === "write") return {
+    effort:"medium",
+    system:
+"あなたはレビュー整理記事の執筆担当です。分析担当がまとめた「買う前に知っておきたかったこと」5つを、読者が買う前に判断できる記事にします。\n" +
+"筆者はこの商品を" + (used ? "使ったことがあります。" : "使っていません。使ったふりは一切しません。") + "\n\n" +
+"構成(この順):\n" +
+"1. 1行目は必ず「※この記事はアフィリエイト広告(PR)を含みます。」\n" +
+"2. # タイトル(「〜を買う前に」「〜な人には向きません」の型。煽らない)\n" +
+"3. 導入200〜300字:この記事の作り方を正直に書く(星2〜3のレビュー約" + rs.length + "件を読んで整理したこと" + (used ? "" : "、筆者自身は使っていないこと") + ")\n" +
+"4. ## 先に結論:こういう人には向きません(箇条書き5つ)\n" +
+"5. ## こういう人には合います(箇条書き3〜5つ。分析の「気にならない人」から)\n" +
+"6. 5つの論点をそれぞれ ## 見出し にし、何が起きたか/レビューから読める理由/買う前の確かめ方 を書く\n" +
+"7. ## 買う前のチェックリスト(「□ 」で始まる5〜8項目)\n" +
+"8. ## まとめ(最後の行に「価格や仕様は販売ページで確認してください → {{LINK}}」)\n\n" +
+"文体:です・ます。2,000〜3,000字。命令形は使わない。体温はあるが、不安で煽らない。\n" +
+"禁止:\n" + BANS_COMMON +
+(used ? "・体験の創作。自分の体験を足すべき箇所には【体験を追記】と書く(最大3か所)\n"
+      : "・使ったように読める表現(使ってみた/愛用/我が家では/実際に試した 等)と【体験を追記】\n") +
+"\n出力:記事のMarkdownだけ。自己評価・前置き・後書きは書かない。",
+    user: productBlock(it) + "\n\n<analysis>\n" + (it.points||"") + "\n</analysis>\n\nこの分析をもとに記事を1本書いてください。"
+  };
+
+  if(kind === "check") return {
+    effort:"high",
+    system:
+"あなたは品質とリスクの検品担当です。記事を「落とす」ことだけが仕事です。褒めない。記事を書き直さない(修正案の提示だけ)。\n" +
+"筆者はこの商品を" + (used ? "使ったことがある" : "使っていない") + "前提です。\n\n" +
+"チェック項目:\n" +
+"1. 冒頭のPR表記(「広告」「PR」等。ステルスマーケティング規制)\n" +
+"2. 体験の捏造(未使用なのに使ったように読める表現)\n" +
+"3. 断定表現(絶対/必ず/誰でも/確実 等)\n" +
+"4. 根拠のない数字・仕様・価格(<product>にも<reviews>にもないもの)\n" +
+"5. 時事表現(最新/今月/今年/年号 等)\n" +
+"6. 景品表示法(No.1・最安・他社比較の優良誤認)・薬機法(健康や医療の効果)\n" +
+"7. レビュー本文の長い転載(20字超の丸写し)、投稿者名などの個人情報\n" +
+"8. 不安をあおるだけで、読者の判断材料になっていない箇所\n\n" +
+"判定基準:\n・1〜7に1つでも当たれば「要修正」\n・健康・安全に関わる記述や、判断が分かれる表現があれば「人間確認」\n・迷ったら「公開可」にしない\n" +
+"・「概ね問題ありません」のような曖昧な返事をしない。要修正なら必ず修正案を出す\n\n" +
+"出力形式(厳守・前置きなし):\n" +
+"判定: 公開可 / 要修正 / 人間確認 のどれか1つ\n" +
+"## 指摘\n1. 該当箇所:「…」\n   理由:…\n   修正案:「…」\n(なければ「なし」)\n" +
+"## 人間が確認すること\n- …(なければ「なし」)",
+    user: productBlock(it) + "\n\n" + reviewsBlock(it) + "\n\n<article>\n" + (it.draft||"") + "\n</article>\n\nこの記事を検品してください。"
+  };
+
+  if(kind === "revise") return {
+    effort:"medium",
+    system:
+"あなたはレビュー整理記事の執筆担当です。検品担当の指摘に従って記事を直します。\n" +
+"・指摘された箇所だけを直し、それ以外は変えない\n・検品担当の判定に反論しない\n" +
+"・筆者はこの商品を" + (used ? "使ったことがある" : "使っていない。使ったように読める表現は入れない") + "\n" +
+"・1行目のPR表記と、まとめ最後の {{LINK}} は残す\n" +
+"禁止:\n" + BANS_COMMON +
+"\n出力:直した記事のMarkdown全文だけ。説明・前置き・変更点の一覧は書かない。",
+    user: productBlock(it) + "\n\n<article>\n" + (it.draft||"") + "\n</article>\n\n<review_notes>\n" + (it.checkAi||"") + localNotes(it) + "\n</review_notes>\n\n指摘に従って記事を直してください。"
+  };
+}
+function localNotes(it){
+  var ng = localCheck(it).filter(function(x){ return x.lv === "ng"; });
+  if(!ng.length) return "";
+  return "\n\n## 機械チェックの指摘\n" + ng.map(function(x){ return "- " + x.msg + (x.hit ? ":「" + x.hit + "」" : ""); }).join("\n");
+}
+function manualText(p){
+  return "以下の「役割」に従って「依頼」に答えてください。\n\n# 役割\n" + p.system + "\n\n# 依頼\n" + p.user;
+}
+
+/* ================================================================
+   5. 機械の規則チェック(AIの判定に関係なく毎回走る)
+   ================================================================ */
+var RULES = [
+  { re:/絶対|必ず|誰でも|確実に|100\s*[%％]|間違いなく|保証します/g, msg:"断定表現" },
+  { re:/最新|今月|今年|今なら|期間限定|20\d\d年/g, msg:"時事表現" },
+  { re:/No\.?\s*1|ナンバーワン|ナンバー1|業界一|日本一|最安|最高峰|一番売れ/gi, msg:"最上級・優良誤認のおそれ(景表法)" },
+  { re:/治る|治す|治療|効く|効きます|効果があ|痩せ|腰痛が(消|治|なく|改善)|肩こりが(消|治|なく|改善)|歯周病を|虫歯を防|医師も/g, msg:"健康・医療の効果(薬機法のおそれ)" }
+];
+var FAKE_EXP = /使ってみ(た|ました|ると)|(私|筆者|僕|わたし)(も|が|は)(使って(い(ます|る)|みた)|使いました|使っています|買いました|購入しました|試しました)|愛用|買ってみ|実際に試し(た|ました|てみ)|我が家では|【体験を追記】/g;
+var NUM_RE = /\d[\d,.]*\s*(%|％|時間|分|秒|ヶ月|か月|カ月|年|kg|g|W|dB|円|cm|mm|L|畳|回)/g;
+
+function norm(s){ return String(s||"").replace(/\s+/g, ""); }
+function localCheck(it){
+  var d = it.draft || "", out = [];
+  if(!d.trim()) return out;
+  if(!/広告|PR|プロモーション/.test(d.slice(0, 300))) out.push({ lv:"ng", msg:"冒頭にPR表記がありません(例:「※この記事はアフィリエイト広告(PR)を含みます。」)" });
+  RULES.forEach(function(r){
+    var m = d.match(r.re);
+    if(m) uniq(m).forEach(function(h){ out.push({ lv:"ng", msg:r.msg, hit:ctx(d, h) }); });
+  });
+  if(!it.product.used){
+    var f = d.match(FAKE_EXP);
+    if(f) uniq(f).forEach(function(h){ out.push({ lv:"ng", msg:"未使用なのに使ったように読める", hit:ctx(d, h) }); });
+  }
+  // レビューの丸写し(25字以上の一致)
+  var src = norm(it.reviews), dn = norm(d);
+  if(src.length >= 25){
+    var seen = {}, hits = [];
+    for(var i=0; i+25<=dn.length; i+=5){
+      var s = dn.substr(i, 25);
+      if(!seen[s] && src.indexOf(s) !== -1){ seen[s] = 1; hits.push(s); i += 20; }
+    }
+    if(hits.length) out.push({ lv:"ng", msg:"レビュー本文の丸写し(" + hits.length + "か所)", hit:hits[0] + "…" });
+  }
+  // 根拠のない数字
+  var basis = norm(it.reviews + " " + it.points + " " + JSON.stringify(it.product));
+  var nums = uniq(d.match(NUM_RE) || []).filter(function(n){ return basis.indexOf(norm(n)) === -1; });
+  if(nums.length) out.push({ lv: S.brake.strictNum ? "ng" : "warn", msg:"レビュー・商品情報に見当たらない数字", hit:nums.slice(0,6).join(" / ") });
+  if(/\{\{LINK\}\}/.test(d) && !it.product.link) out.push({ lv:"warn", msg:"アフィリエイトリンクが未設定です(①で入れると {{LINK}} に差し込みます)" });
+  var len = d.replace(/\s/g,"").length;
+  if(len < 1500) out.push({ lv:"warn", msg:"本文が短め(" + len + "字)。目安は2,000〜3,000字" });
+  return out;
+}
+function uniq(a){ var o = []; a.forEach(function(x){ if(o.indexOf(x) === -1) o.push(x); }); return o; }
+function ctx(d, h){ var i = d.indexOf(h); if(i < 0) return h; return d.slice(Math.max(0, i-12), i + h.length + 12).replace(/\n/g, " "); }
+
+function parseVerdict(t){
+  var m = String(t||"").match(/判定\s*[::]\s*\**\s*(公開可|要修正|人間確認)/);
+  return m ? m[1] : "";
+}
+/* 最終判定:機械 × AI × ブレーキ のいちばん厳しいもの */
+function finalVerdict(it){
+  if(!it.draft.trim()) return { v:"", why:[] };
+  var why = [], v = "公開可";
+  var ng = localCheck(it).filter(function(x){ return x.lv === "ng"; });
+  if(ng.length){ v = "要修正"; why.push("機械チェックで " + ng.length + " 件"); }
+  var ai = parseVerdict(it.checkAi);
+  var fresh = it.checkedDraft === it.draft;
+  if(!ai){ why.push("AIの検品がまだです"); if(v === "公開可") v = "未検品"; }
+  else if(!fresh){ why.push("検品のあとで下書きが変わっています"); if(v === "公開可") v = "未検品"; }
+  else{
+    why.push("AIの判定: " + ai);
+    if(ai === "要修正") v = "要修正";
+    else if(ai === "人間確認" && v !== "要修正") v = "人間確認";
+  }
+  if(v === "公開可" && isSensitive(it)){ v = "人間確認"; why.push("健康・安全ジャンルのブレーキ"); }
+  return { v:v, why:why };
+}
+
+/* ================================================================
+   6. Claude API(この端末 → Anthropic に直接)
+   ================================================================ */
+var MODELS = {
+  "claude-opus-5-5":   { label:"Claude Opus 5.5 — 品質優先(標準)", in:4,   out:20,  fb:true },
+  "claude-sonnet-5-5": { label:"Claude Sonnet 5.5 — 品質と費用の均衡", in:2, out:10, fb:true },
+  "claude-haiku-5-5":  { label:"Claude Haiku 5.5 — 速さと安さ",       in:0.1, out:0.5 }
+};
+var USDJPY = 155;
+function costYen(model, i, o){ var m = MODELS[model] || MODELS["claude-opus-5-5"]; return (i/1e6*m.in + o/1e6*m.out) * USDJPY; }
+
+async function send(body, extraHeaders){
+  var h = { "content-type":"application/json", "x-api-key":S.key, "anthropic-version":"2023-06-01",
+            "anthropic-dangerous-direct-browser-access":"true" };
+  Object.assign(h, extraHeaders || {});
+  var res;
+  try{ res = await fetch("https://api.anthropic.com/v1/messages", { method:"POST", headers:h, body:JSON.stringify(body) }); }
+  catch(e){ throw new Error("通信できませんでした。電波の良いところで、もう一度お試しください。"); }
+  if(!res.ok){
+    var txt = await res.text(), msg = "HTTP " + res.status;
+    try{ var j = JSON.parse(txt); if(j.error && j.error.message) msg = j.error.message; }catch(e){}
+    if(res.status === 401) throw new Error("APIキーが違うようです。設定を確かめてください。");
+    if(res.status === 429) throw new Error("短時間に送りすぎです。少し待ってから続けてください。");
+    if(res.status === 529) throw new Error("APIが混み合っています。少し待ってからお試しください。");
+    if(/credit balance|billing/i.test(msg)) throw new Error("Anthropic の残高が足りないようです。");
+    var e2 = new Error(msg); e2.status = res.status; throw e2;
+  }
+  return res.json();
+}
+async function askText(p){
+  if(!S.key) throw new Error("APIキーが未設定です。設定で登録するか、上の「手動」に切り替えてください。");
+  var body = { model:S.model, max_tokens:16000, system:p.system,
+    messages:[{ role:"user", content:p.user }],
+    thinking:{ type:"adaptive" }, output_config:{ effort:p.effort || "medium" } };
+  var hdr = {};
+  if((MODELS[S.model] || {}).fb){ body.fallbacks = "default"; hdr["anthropic-beta"] = "server-side-fallback-2026-07-01"; }
+  var j;
+  try{ j = await send(body, hdr); }
+  catch(e){
+    if(e.status !== 400) throw e;
+    // 仕様変更などで細かい指定が弾かれたときは、素の形で言い直す
+    j = await send({ model:S.model, max_tokens:16000, system:p.system, messages:[{ role:"user", content:p.user }] });
+  }
+  if(j.stop_reason === "refusal") throw new Error("この内容はAIの方針で扱えませんでした。");
+  var text = (j.content||[]).filter(function(b){ return b.type === "text"; }).map(function(b){ return b.text; }).join("").trim();
+  if(j.usage){
+    var i = (j.usage.input_tokens||0) + (j.usage.cache_read_input_tokens||0), o = j.usage.output_tokens||0;
+    S.usage.in += i; S.usage.out += o; S.usage.yen += costYen(j.model || S.model, i, o); lsSet(LS.usage, S.usage);
+  }
+  if(j.stop_reason === "max_tokens") toast("返事が途中で切れました。内容を確かめてください。");
+  if(!text) throw new Error("AIの返事が空でした。もう一度お試しください。");
+  return text;
+}
+
+/* ================================================================
+   7. 画面:書く
+   ================================================================ */
+function needs(kind, it){
+  if(!it.product.name.trim()) return "①の商品名を入れてください";
+  if(kind === "points"){ var n = splitReviews(it.reviews).length; if(n < 5) return "②にレビューを5件以上貼ってください(いま " + n + " 件)"; }
+  if(kind === "write" && !it.points.trim()) return "③の「5つ」を先に作ってください";
+  if((kind === "check" || kind === "loop") && !it.draft.trim()) return "④の下書きを先に作ってください";
+  if(kind === "revise" && !it.draft.trim()) return "④の下書きを先に作ってください";
+  if(kind === "revise" && !it.checkAi.trim() && !localNotes(it)) return "直す指摘がまだありません。先に検品してください";
+  return "";
+}
+
+function bindForm(){
+  var it = cur(), p = it.product;
+  $("pName").value = p.name; $("pGenre").value = p.genre; $("pPrice").value = p.price;
+  $("pCount").value = p.count; $("pRating").value = p.rating; $("pLink").value = p.link; $("pUsed").checked = !!p.used;
+  $("reviews").value = it.reviews; $("points").value = it.points; $("draft").value = it.draft; $("checkAi").value = it.checkAi;
+  $("loopLog").textContent = "";
+  $("previewBox").style.display = "none";
+  refresh();
+}
+function readForm(){
+  var it = cur(), p = it.product, before = it.draft, beforeLink = p.link;
+  p.name = $("pName").value.trim(); p.genre = $("pGenre").value; p.price = $("pPrice").value.trim();
+  p.count = $("pCount").value.trim(); p.rating = $("pRating").value.trim(); p.link = $("pLink").value.trim(); p.used = $("pUsed").checked;
+  it.reviews = $("reviews").value; it.points = $("points").value; it.draft = $("draft").value; it.checkAi = $("checkAi").value;
+  // 押印後に中身を変えたら押印は取り消し
+  if(it.status === "approved" && (before !== it.draft || beforeLink !== p.link)){ it.status = "draft"; it.approvedAt = ""; it.acks = {}; toast("下書きかリンクが変わったので押印を取り消しました"); }
+  touch(it);
+}
+
+function refresh(){
+  var it = cur(), p = it.product;
+  var g = genreOf(p.genre);
+  $("genreNote").innerHTML = (g.t ? '<span class="tag kin">' + esc(g.t) + '</span> ' : "") +
+    (isSensitive(it) ? '<span class="tag warn">健康・安全ジャンル:押印前に必ず人間確認</span>' : "");
+  var n = splitReviews(it.reviews).length;
+  $("revCount").textContent = n + "件" + (n && n < 15 ? "(少なめ。偏りに注意)" : n >= 30 ? "(十分)" : "");
+  $("draftLen").textContent = it.draft.replace(/\s/g,"").length + "字";
+
+  // 進み具合
+  var done = [!!p.name, n >= 5, !!it.points.trim(), !!it.draft.trim(), !!parseVerdict(it.checkAi) && it.checkedDraft === it.draft, it.status === "approved" || it.status === "published"];
+  $("prog").innerHTML = done.map(function(d){ return '<i class="' + (d ? "on" : "") + '"></i>'; }).join("");
+  ["c1","c2","c3","c4","c5","c6"].forEach(function(id, i){
+    var no = $(id).querySelector(".no"); no.classList.toggle("done", done[i]);
+  });
+
+  // 機械チェック
+  var lc = localCheck(it);
+  $("localBox").innerHTML = !it.draft.trim() ? '<p class="mini">下書きができると、ここに機械チェックの結果が出ます。</p>' :
+    (lc.length ? '<ul class="issues">' + lc.map(function(x){
+      return '<li class="' + x.lv + '"><b>' + (x.lv === "ng" ? "要修正" : "注意") + '</b> ' + esc(x.msg) + (x.hit ? '<br><span class="mini">「' + esc(x.hit) + '」</span>' : "") + '</li>';
+    }).join("") + '</ul>' : '<p class="muted"><span class="tag ok">機械チェック通過</span></p>');
+
+  // 判定
+  var fv = finalVerdict(it);
+  var cls = fv.v === "公開可" ? "ok" : fv.v === "要修正" ? "ng" : "warn";
+  $("verdictBox").innerHTML = fv.v ? '<div class="verdict ' + cls + '">' + esc(fv.v) + '</div><p class="mini">' + fv.why.map(esc).join(" / ") + (it.loops ? " / 自動修正 " + it.loops + " 回" : "") + '</p>' : "";
+
+  renderApprove(it, fv);
+}
+
+var ACKS = [
+  { k:"spec",  t:"価格・仕様・付属品を、メーカー公式か販売ページで自分の目で確かめた" },
+  { k:"exp",   t:"自分が使っていないのに、使ったように読める文がない" },
+  { k:"link",  t:"リンクは自分のIDのもので、リンク先の商品が記事と一致している" },
+  { k:"quote", t:"レビューの言い回しを長く写していない(要約になっている)" }
+];
+function todayApproved(){ var t = ymd(); return S.items.filter(function(x){ return x.approvedAt && x.approvedAt.slice(0,10) === t; }).length; }
+
+function renderApprove(it, fv){
+  var box = $("approveBox");
+  if(it.status === "approved" || it.status === "published"){
+    box.innerHTML =
+      '<p><span class="tag ok">' + (it.status === "published" ? "公開済" : "押印済") + '</span> <span class="mini">' + esc(it.approvedAt.replace("T"," ").slice(0,16)) + '</span></p>' +
+      '<p class="muted" style="margin-top:6px">投稿は自分の手で行ってください(このアプリは外へ送信しません)。</p>' +
+      '<div class="btns"><button class="btn pri" id="copyFinal">公開用にコピー</button><button class="btn" id="dlFinal">.mdで保存</button></div>' +
+      '<label class="f">公開したURL(台帳用)</label><input id="pubUrl" value="' + esc(it.publishedUrl) + '" placeholder="https://…">' +
+      '<div class="btns"><button class="btn sm" id="markPub">公開済にする</button><button class="btn sm" id="unApprove">押印を取り消す</button></div>';
+    $("copyFinal").onclick = function(){ copy(finalMd(it), "公開用の本文をコピーしました"); };
+    $("dlFinal").onclick = function(){ download(fileName(it), finalMd(it), "text/markdown"); };
+    $("markPub").onclick = function(){ it.publishedUrl = $("pubUrl").value.trim(); it.status = "published"; touch(it); refresh(); toast("台帳を公開済にしました"); };
+    $("unApprove").onclick = function(){ it.status = "draft"; it.approvedAt = ""; it.acks = {}; touch(it); refresh(); };
+    return;
+  }
+  if(!fv.v || fv.v === "未検品" || fv.v === "要修正"){
+    box.innerHTML = '<p class="muted">' + (fv.v === "要修正" ? "検品で「要修正」が出ています。直してから、もう一度検品してください。" : "検品が終わると、ここで押印できます。") + '</p>' +
+      (it.draft.trim() ? '<div class="btns"><button class="btn sm" id="copyDraft">下書きとしてコピー</button></div>' : "");
+    if($("copyDraft")) $("copyDraft").onclick = function(){ copy("【下書き・未検品】\n\n" + it.draft, "下書きをコピーしました(未検品)"); };
+    return;
+  }
+  var acks = ACKS.slice();
+  if(fv.v === "人間確認") acks.unshift({ k:"human", t:"検品の「人間が確認すること」を全部読み、公開してよいと自分で判断した" });
+  var left = S.brake.daily - todayApproved();
+  box.innerHTML = '<p class="muted">全部にチェックすると押印できます。</p>' +
+    acks.map(function(a){ return '<label class="chk"><input type="checkbox" data-ack="' + a.k + '"' + (it.acks[a.k] ? " checked" : "") + '><span>' + esc(a.t) + '</span></label>'; }).join("") +
+    '<p class="mini" style="margin-top:6px">今日あと ' + Math.max(0, left) + ' 本押印できます(設定のブレーキ)。</p>' +
+    '<div class="btns"><button class="btn pri" id="approveBtn">押印する</button></div>';
+  var btn = $("approveBtn");
+  function upd(){ btn.disabled = left <= 0 || !acks.every(function(a){ return it.acks[a.k]; }); }
+  box.querySelectorAll("[data-ack]").forEach(function(c){ c.onchange = function(){ it.acks[c.dataset.ack] = c.checked; touch(it); upd(); }; });
+  upd();
+  btn.onclick = function(){
+    readForm();
+    var f2 = finalVerdict(it);
+    if(f2.v !== "公開可" && f2.v !== "人間確認"){ refresh(); return toast("判定が変わりました。もう一度検品してください"); }
+    it.status = "approved"; it.approvedAt = new Date().toISOString(); touch(it); refresh(); toast("押印しました");
+  };
+}
+function finalMd(it){ return it.draft.replace(/\{\{LINK\}\}/g, it.product.link || "(リンク未設定)"); }
+function fileName(it){ return ymd(new Date(it.created)) + "_" + (it.product.name || "記事").replace(/[\\\/:*?"<>|\s]+/g, "-").slice(0, 40) + ".md"; }
+
+async function copy(text, msg){
+  try{ await navigator.clipboard.writeText(text); toast(msg || "コピーしました"); }
+  catch(e){
+    var ta = document.createElement("textarea"); ta.value = text; document.body.appendChild(ta); ta.select();
+    try{ document.execCommand("copy"); toast(msg || "コピーしました"); }catch(e2){ toast("コピーできませんでした"); }
+    ta.remove();
+  }
+}
+function download(name, text, type){
+  var a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([text], { type:type + ";charset=utf-8" }));
+  a.download = name; document.body.appendChild(a); a.click(); setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 500);
+}
+
+/* 実行 */
+async function run(kind, btn){
+  readForm();
+  var it = cur(), lack = needs(kind, it);
+  if(lack) return toast(lack);
+  if(it.status === "approved" && kind !== "check") return toast("押印済みです。直すときは先に押印を取り消してください");
+  var card = btn.closest(".card"); card.classList.add("busy");
+  var label = btn.textContent; btn.textContent = "考えています…";
+  try{
+    if(kind === "points"){ it.points = await askText(promptFor("points", it)); $("points").value = it.points; }
+    else if(kind === "write"){ it.draft = await askText(promptFor("write", it)); $("draft").value = it.draft; it.checkAi = ""; $("checkAi").value = ""; it.loops = 0; }
+    else if(kind === "check"){ await doCheck(it); }
+    else if(kind === "loop"){ await autoLoop(it); }
+    touch(it); refresh();
+  }catch(e){ toast(e.message); }
+  finally{ card.classList.remove("busy"); btn.textContent = label; }
+}
+async function doCheck(it){
+  var snap = it.draft;
+  it.checkAi = await askText(promptFor("check", it));
+  it.checkedDraft = snap;
+  $("checkAi").value = it.checkAi;
+  if(!parseVerdict(it.checkAi)) toast("検品の返事に判定行がありません。もう一度検品してください");
+}
+/* 書く→落とす→直す を最大2回。直らなければ人に返す */
+async function autoLoop(it){
+  var log = $("loopLog"); log.textContent = "";
+  function say(m){ log.textContent += m + "\n"; }
+  for(var round = 0; round <= 2; round++){
+    say("検品 " + (round+1) + " 回目…");
+    await doCheck(it); touch(it); refresh();
+    var fv = finalVerdict(it);
+    say(" → " + fv.v);
+    if(fv.v !== "要修正") { say(fv.v === "公開可" ? "検品を通りました。⑥で押印してください。" : "人の判断が要る箇所があります。⑥へ。"); return; }
+    if(round === 2) break;
+    say("指摘に沿って書き直し…");
+    it.draft = await askText(promptFor("revise", it)); $("draft").value = it.draft;
+    it.loops++; touch(it);
+  }
+  say("2回直しても通りませんでした。検品の指摘を読んで、直すか、この記事は見送ってください。");
+}
+
+/* ================================================================
+   8. 台帳
+   ================================================================ */
+var ST = { draft:["下書き",""], approved:["押印済","kin"], published:["公開済","ok"] };
+function weekStart(){ var d = new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate() - ((d.getDay()+6)%7)); return d.getTime(); }
+function renderLedger(){
+  var ws = weekStart();
+  var wk = S.items.filter(function(x){ return x.approvedAt && new Date(x.approvedAt).getTime() >= ws; }).length;
+  var pub = S.items.filter(function(x){ return x.status === "published"; }).length;
+  $("stats").innerHTML =
+    '<div><b>' + wk + ' / 3</b><span>今週の押印</span></div>' +
+    '<div><b>' + pub + '</b><span>公開済(累計)</span></div>' +
+    '<div><b>¥' + Math.round(S.usage.yen).toLocaleString() + '</b><span>AI利用料(累計)</span></div>';
+  var items = S.items.filter(function(x){ return x.product.name || x.draft; });
+  $("list").innerHTML = items.length ? items.map(function(x){
+    var st = ST[x.status] || ST.draft;
+    return '<div class="item" data-id="' + x.id + '"><div class="t"><b>' + esc(x.product.name || "(名前なし)") + '</b>' +
+      '<span class="mini">' + esc(x.product.genre) + ' ・ ' + ymd(new Date(x.updated)) + (x.publishedUrl ? ' ・ URLあり' : '') + '</span></div>' +
+      '<span class="tag ' + st[1] + '">' + st[0] + '</span><button class="btn sm" data-del="' + x.id + '" style="flex:none">消す</button></div>';
+  }).join("") : '<p class="muted">まだ記事がありません。「書く」から始めてください。</p>';
+  $("list").querySelectorAll(".item").forEach(function(el){
+    el.onclick = function(ev){
+      if(ev.target.dataset.del){
+        var x = S.items.filter(function(y){ return y.id === ev.target.dataset.del; })[0];
+        if(!confirm("「" + (x.product.name || "名前なし") + "」を台帳から消します。元に戻せません。よろしいですか?")) return;
+        S.items = S.items.filter(function(y){ return y.id !== x.id; }); saveItems();
+        if(S.cur === x.id){ S.cur = ""; lsSet(LS.cur, ""); }
+        renderLedger(); return;
+      }
+      S.cur = el.dataset.id; lsSet(LS.cur, S.cur); bindForm(); show("write");
+    };
+  });
+  sim();
+}
+function sim(){
+  var price = +$("sPrice").value || 0, rate = +$("sRate").value || 0, cvr = +$("sCvr").value || 0, goal = +$("sGoal").value || 0;
+  var per = price * rate / 100;
+  if(!per || !cvr){ $("simOut").textContent = "数字を入れてください。"; return; }
+  var sales = Math.ceil(goal / per), clicks = Math.ceil(sales / (cvr/100));
+  $("simOut").innerHTML = "1件あたり約 <b>" + Math.round(per).toLocaleString() + "円</b> → 目標まで月 <b>" + sales.toLocaleString() + "件</b> の購入、" +
+    "そのために販売ページへのクリックが月 <b>" + clicks.toLocaleString() + "回</b> 必要です。<br><span class='mini'>記事が12本(週3本×1か月)なら、1本あたり月 " +
+    Math.ceil(clicks / 12).toLocaleString() + " クリック。記事を読んだ人のうちリンクを押すのは一部なので、読まれる回数はさらに多く要ります。</span>";
+}
+
+/* ================================================================
+   9. 設定・ブレーキ・控え
+   ================================================================ */
+function renderSet(){
+  $("setKey").value = S.key;
+  $("setModel").innerHTML = Object.keys(MODELS).map(function(k){ return '<option value="' + k + '"' + (k === S.model ? " selected" : "") + '>' + MODELS[k].label + '</option>'; }).join("");
+  $("bDaily").value = S.brake.daily; $("bSensitive").checked = S.brake.sensitive; $("bStrictNum").checked = S.brake.strictNum;
+  var per = costYen(S.model, 9000, 9000);
+  $("usage").textContent = "1記事(5つ→下書き→検品2回)の目安:約" + Math.max(1, Math.round(per)) + "円。これまでの利用:約" + Math.round(S.usage.yen).toLocaleString() + "円。";
+}
+function saveBrake(){
+  S.brake.daily = Math.max(0, parseInt($("bDaily").value, 10) || 0);
+  S.brake.sensitive = $("bSensitive").checked; S.brake.strictNum = $("bStrictNum").checked;
+  lsSet(LS.brake, S.brake); refresh();
+}
+function setMode(m){
+  S.mode = m; lsSet(LS.mode, m);
+  $("modeBtn").textContent = m === "api" ? "自動" : "手動"; $("modeBtn").classList.toggle("on", m === "api");
+  document.querySelectorAll(".aiOnly").forEach(function(e){ e.style.display = m === "api" ? "" : "none"; });
+  document.querySelectorAll(".manOnly").forEach(function(e){ e.style.display = m === "api" ? "none" : ""; });
+}
+
+function show(v){
+  document.querySelectorAll(".view").forEach(function(e){ e.classList.toggle("on", e.id === "v-" + v); });
+  document.querySelectorAll("nav button").forEach(function(b){ b.classList.toggle("on", b.dataset.v === v); });
+  if(v === "ledger") renderLedger();
+  if(v === "set") renderSet();
+  document.querySelector("main").scrollTop = 0;
+}
+
+/* Markdown の簡易表示(見た目確認用) */
+function md(t){
+  var lines = esc(t).split("\n"), h = "", inList = false;
+  lines.forEach(function(l){
+    var m;
+    if(/^\s*[-*・]\s+/.test(l) || /^\s*□/.test(l)){ if(!inList){ h += "<ul>"; inList = true; } h += "<li>" + inline(l.replace(/^\s*[-*・]\s+/, "")) + "</li>"; return; }
+    if(inList){ h += "</ul>"; inList = false; }
+    if((m = l.match(/^(#{1,3})\s+(.*)/))){ h += "<h" + m[1].length + ">" + inline(m[2]) + "</h" + m[1].length + ">"; return; }
+    if(l.trim()) h += "<p>" + inline(l) + "</p>";
+  });
+  if(inList) h += "</ul>";
+  return h;
+}
+function inline(s){ return s.replace(/\*\*(.+?)\*\*/g, "<b>$1</b>"); }
+
+/* 見本(架空の商品・架空のレビュー。使い方を見るため) */
+var SAMPLE = {
+  name:"【見本】架空のロボット掃除機 RX-1", genre:"ロボット掃除機", count:"812", rating:"3.9",
+  reviews:[
+    "段差に弱い。リビングと廊下の間の2cmほどの段差で毎回止まってしまい、結局手で運んでいる。",
+    "音が思ったより大きい。在宅勤務中に動かすとオンライン会議に入ってしまうので、外出中にしか使えない。",
+    "アプリの初期設定でWi-Fiにつながらず1時間かかった。2.4GHzしか対応していないと後から知った。",
+    "ラグの房を巻き込んで止まる。房のあるラグを使っている家には向かないと思う。",
+    "ダストボックスが小さく、犬の毛が多い我が家では毎回捨てる必要がある。",
+    "マッピングは賢いが、椅子の脚が多いダイニングでは迷子になる。椅子を上げておく手間が増えた。",
+    "充電ドックに戻れないことがたまにある。ドックの周りに十分なスペースが必要。",
+    "消耗品のブラシが1年もたずに交換。替えのブラシ代が地味にかかる。",
+    "黒いラグを段差と認識して避けてしまい、そこだけ掃除されない。",
+    "吸引力は普通。フローリングは十分だが、厚手のカーペットの奥のゴミは残る。",
+    "ケーブル類を巻き込む。床に物を置かない習慣がない人にはストレスだと思う。",
+    "サポートへの問い合わせが混んでいて、返信まで数日かかった。"
+  ].join("\n\n")
+};
+
+/* ================================================================
+   10. 起動
+   ================================================================ */
+$("pGenre").innerHTML = GENRES.map(function(g){ return '<option>' + esc(g.n) + '</option>'; }).join("");
+document.querySelectorAll("nav button").forEach(function(b){ b.onclick = function(){ readForm(); show(b.dataset.v); }; });
+["pName","pGenre","pPrice","pCount","pRating","pLink","pUsed","reviews","points","draft","checkAi"].forEach(function(id){
+  $(id).addEventListener("input", function(){ readForm(); refresh(); });
+  $(id).addEventListener("change", function(){ readForm(); refresh(); });
+});
+// 手動モードで検品結果を貼ったら、その時点の下書きを検品済みとして記録
+$("checkAi").addEventListener("input", function(){ var it = cur(); it.checkedDraft = it.draft; touch(it); refresh(); });
+document.querySelectorAll("[data-run]").forEach(function(b){ b.onclick = function(){ run(b.dataset.run, b); }; });
+document.querySelectorAll("[data-copy]").forEach(function(b){
+  b.onclick = function(){
+    readForm(); var it = cur(), k = b.dataset.copy, lack = needs(k, it);
+    if(lack) return toast(lack);
+    copy(manualText(promptFor(k, it)), k === "check" ? "コピーしました。新しいチャットに貼ってください" : "依頼文をコピーしました");
+  };
+});
+$("modeBtn").onclick = function(){ setMode(S.mode === "api" ? "manual" : "api"); if(S.mode === "api" && !S.key) toast("設定でAPIキーを登録してください"); };
+$("sampleBtn").onclick = function(){
+  var it = cur();
+  if((it.reviews.trim() || it.product.name) && !confirm("いま入っている商品名とレビューを見本で置き換えます。よろしいですか?")) return;
+  it.product.name = SAMPLE.name; it.product.genre = SAMPLE.genre; it.product.count = SAMPLE.count; it.product.rating = SAMPLE.rating;
+  it.reviews = SAMPLE.reviews; touch(it); bindForm(); toast("見本を入れました(架空の商品です)");
+};
+$("previewBtn").onclick = function(){
+  var b = $("previewBox"), on = b.style.display === "none";
+  b.style.display = on ? "" : "none";
+  if(on) b.innerHTML = '<div class="preview">' + md(finalMd(cur())) + '</div>';
+};
+$("newBtn").onclick = function(){
+  readForm();
+  var c = cur();
+  if(!c.product.name && !c.reviews.trim() && !c.draft.trim()) return toast("いまの記事がまだ空です。①から始めてください");
+  var it = blank(); S.items.unshift(it); S.cur = it.id; lsSet(LS.cur, S.cur); saveItems(); bindForm();
+  document.querySelector("main").scrollTop = 0; toast("新しい記事を始めました");
+};
+["sPrice","sRate","sCvr","sGoal"].forEach(function(id){ $(id).addEventListener("input", sim); });
+["bDaily","bSensitive","bStrictNum"].forEach(function(id){ $(id).addEventListener("change", saveBrake); });
+
+$("saveKey").onclick = async function(){
+  S.key = $("setKey").value.trim(); S.model = $("setModel").value; lsSet(LS.key, S.key); lsSet(LS.model, S.model);
+  if(!S.key){ toast("キーが空です"); return; }
+  try{
+    await send({ model:S.model, max_tokens:16, messages:[{ role:"user", content:"ok" }] });
+    setMode("api"); toast("接続できました。自動モードにしました");
+  }catch(e){ toast(e.message); }
+  renderSet();
+};
+$("setModel").onchange = function(){ S.model = $("setModel").value; lsSet(LS.model, S.model); renderSet(); };
+$("clearKey").onclick = function(){ S.key = ""; lsSet(LS.key, ""); setMode("manual"); renderSet(); toast("キーを消しました"); };
+$("wipeBtn").onclick = function(){
+  if(!confirm("この端末の記事・設定・APIキーをすべて消します。元に戻せません。先に台帳の「控えを書き出す」をおすすめします。消しますか?")) return;
+  Object.keys(LS).forEach(function(k){ try{ localStorage.removeItem(LS[k]); }catch(e){} });
+  location.reload();
+};
+$("expBtn").onclick = function(){ readForm(); download("kaumae-note_" + ymd() + ".json", JSON.stringify({ v:1, items:S.items, brake:S.brake }, null, 2), "application/json"); };
+$("impBtn").onclick = function(){ $("impFile").click(); };
+$("impFile").onchange = function(){
+  var f = this.files[0]; if(!f) return;
+  var r = new FileReader();
+  r.onload = function(){
+    try{
+      var d = JSON.parse(r.result); if(!d || !Array.isArray(d.items)) throw 0;
+      var have = {}; S.items.forEach(function(x){ have[x.id] = 1; });
+      var add = d.items.filter(function(x){ return x && x.id && x.product && !have[x.id]; });
+      var dup = d.items.length - add.length;
+      if(!confirm(add.length + " 件を追加します" + (dup ? "(同じIDの " + dup + " 件は今の端末の内容を残します)" : "") + "。よろしいですか?")) return;
+      S.items = S.items.concat(add.map(function(x){ return Object.assign(blank(), x); })); saveItems(); renderLedger(); toast(add.length + " 件を読み込みました");
+    }catch(e){ toast("この控えは読み込めませんでした"); }
+  };
+  r.readAsText(f); this.value = "";
+};
+
+setMode(S.mode);
+bindForm();
+</script>
+</body>
+</html>
