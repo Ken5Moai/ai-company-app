@@ -644,10 +644,14 @@ function renderApprove(it, fv){
     box.innerHTML =
       '<p><span class="tag ok">' + (it.status === "published" ? "公開済" : "押印済") + '</span> <span class="mini">' + esc(it.approvedAt.replace("T"," ").slice(0,16)) + '</span></p>' +
       '<p class="muted" style="margin-top:6px">投稿は自分の手で行ってください(このアプリは外へ送信しません)。</p>' +
-      '<div class="btns"><button class="btn pri" id="copyFinal">公開用にコピー</button><button class="btn" id="dlFinal">.mdで保存</button></div>' +
+      '<p class="mini" style="margin-top:8px">noteに貼るとき:①タイトルをコピーしてタイトル欄へ ②本文をコピーして本文へ。見出しと箇条書きはそのまま付きます。</p>' +
+      '<div class="btns"><button class="btn pri" id="copyTitle">タイトルをコピー</button><button class="btn pri" id="copyNote">本文をコピー(note用)</button></div>' +
+      '<div class="btns"><button class="btn sm" id="copyFinal">Markdownでコピー</button><button class="btn sm" id="dlFinal">.mdで保存</button></div>' +
       '<label class="f">公開したURL(台帳用)</label><input id="pubUrl" value="' + esc(it.publishedUrl) + '" placeholder="https://…">' +
       '<div class="btns"><button class="btn sm" id="markPub">公開済にする</button><button class="btn sm" id="unApprove">押印を取り消す</button></div>';
-    $("copyFinal").onclick = function(){ copy(finalMd(it), "公開用の本文をコピーしました"); };
+    $("copyFinal").onclick = function(){ copy(finalMd(it), "Markdownをコピーしました"); };
+    $("copyTitle").onclick = function(){ var t = noteParts(it).title; if(!t) return toast("下書きに「# タイトル」の行がありません"); copy(t, "タイトルをコピーしました。noteのタイトル欄に貼ってください"); };
+    $("copyNote").onclick = function(){ var n = noteParts(it); copyRich(n.html, n.text, "本文をコピーしました。noteの本文に貼ってください"); };
     $("dlFinal").onclick = function(){ download(fileName(it), finalMd(it), "text/markdown"); };
     $("markPub").onclick = function(){ it.publishedUrl = $("pubUrl").value.trim(); it.status = "published"; touch(it); refresh(); toast("台帳を公開済にしました"); };
     $("unApprove").onclick = function(){ it.status = "draft"; it.approvedAt = ""; it.acks = {}; touch(it); refresh(); };
@@ -676,6 +680,33 @@ function renderApprove(it, fv){
     if(f2.v !== "公開可" && f2.v !== "人間確認"){ refresh(); return toast("判定が変わりました。もう一度検品してください"); }
     it.status = "approved"; it.approvedAt = new Date().toISOString(); touch(it); refresh(); toast("押印しました");
   };
+}
+/* note用:タイトルは別欄に貼るので本文から外す。見出しは大見出し(h2)/小見出し(h3)に、
+   リンクは単独の行に置く(noteは単独行のURLをカードにする) */
+function noteParts(it){
+  var lines = it.draft.replace(/\{\{LINK\}\}/g, "\n" + (it.product.link || "(リンク未設定)") + "\n").split("\n");
+  var title = "", body = [];
+  lines.forEach(function(l){
+    var m = l.match(/^#\s+(.*)/);
+    if(m && !title){ title = m[1].trim(); return; }
+    body.push(l.replace(/^#\s+/, "## "));
+  });
+  var b = body.join("\n").replace(/\n{3,}/g, "\n\n").trim();
+  var text = b.split("\n").map(function(l){ return l.replace(/^#{2,3}\s+/, "").replace(/^\s*[-*]\s+/, "・").replace(/\*\*(.+?)\*\*/g, "$1"); }).join("\n");
+  return { title:title, html:md(b), text:text };
+}
+/* 書式つきでコピー。できない環境では書式なしの文字だけをコピーする */
+function copyRich(html, text, msg){
+  try{
+    if(window.ClipboardItem && navigator.clipboard && navigator.clipboard.write){
+      navigator.clipboard.write([ new ClipboardItem({
+        "text/html": new Blob([html], { type:"text/html" }),
+        "text/plain": new Blob([text], { type:"text/plain" }) }) ])
+        .then(function(){ toast(msg); }, function(){ copy(text, msg + "(書式なし)"); });
+      return;
+    }
+  }catch(e){}
+  copy(text, msg + "(書式なし)");
 }
 function finalMd(it){ return it.draft.replace(/\{\{LINK\}\}/g, it.product.link || "(リンク未設定)"); }
 function fileName(it){ return ymd(new Date(it.created)) + "_" + (it.product.name || "記事").replace(/[\\\/:*?"<>|\s]+/g, "-").slice(0, 40) + ".md"; }
