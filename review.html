@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#12100e">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>買う前ノート — 低評価レビューから記事をつくる台帳</title>
+<title>買う前ノート</title>
 <style>
 /* ================================================================
    買う前ノート —「集める・まとめる・書く・落とす・押印する」
@@ -22,7 +22,9 @@
   --mincho:"Hiragino Mincho ProN","Hiragino Mincho Pro","Yu Mincho",YuMincho,"Noto Serif JP","Noto Serif CJK JP",serif;
   --gothic:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP","Yu Gothic",sans-serif;
   --ease:cubic-bezier(.19,1,.22,1);
+  color-scheme:dark;
 }
+[hidden]{display:none!important}
 *{margin:0;padding:0;box-sizing:border-box}
 html,body{height:100%}
 body{background:var(--sumi);color:var(--kinari);font-family:var(--gothic);font-size:15px;line-height:1.7;
@@ -108,6 +110,10 @@ label.f{display:block;font-size:12px;color:var(--hai);margin:8px 0 4px;letter-sp
 #toast{position:fixed;left:50%;bottom:84px;transform:translateX(-50%) translateY(20px);background:var(--kinari);color:var(--sumi);padding:9px 16px;border-radius:999px;font-size:13px;opacity:0;pointer-events:none;transition:.25s var(--ease);z-index:100;max-width:90vw;text-align:center}
 #toast.on{opacity:1;transform:translateX(-50%)}
 .busy{position:relative;pointer-events:none;opacity:.6}
+#modal{position:fixed;inset:0;z-index:120;background:rgba(0,0,0,.6);display:flex;align-items:flex-end;justify-content:center;padding:16px}
+#modal .mbox{background:var(--sumi-2);border:1px solid var(--kin-awai);border-radius:12px;padding:16px;width:100%;max-width:560px;max-height:85%;overflow:auto}
+#modal p{font-size:14px;line-height:1.7;white-space:pre-wrap}
+#modal textarea{margin-top:10px;font-size:13px}
 .note{border-left:3px solid var(--keikoku);padding:6px 10px;font-size:12.5px;color:var(--kinari);background:rgba(224,161,58,.07);margin:8px 0;border-radius:0 6px 6px 0}
 </style>
 </head>
@@ -252,6 +258,11 @@ label.f{display:block;font-size:12px;color:var(--hai);margin:8px 0 4px;letter-sp
   </nav>
 </div>
 <div id="toast"></div>
+<div id="modal" hidden><div class="mbox" role="dialog" aria-modal="true">
+  <p id="mMsg"></p>
+  <textarea id="mText" rows="8" hidden></textarea>
+  <div class="btns"><button class="btn" id="mNo">やめる</button><button class="btn pri" id="mYes">OK</button></div>
+</div></div>
 
 <script>
 "use strict";
@@ -677,9 +688,30 @@ async function copy(text, msg){
     ta.remove();
   }
 }
+/* 画面内の確認窓(confirm() が使えない環境でも動くように)
+   opts: { msg, yes, no, text, edit, copy }  → Promise<{ ok, text }> */
+function dialog(opts){
+  return new Promise(function(res){
+    var m = $("modal"), t = $("mText");
+    $("mMsg").textContent = opts.msg || "";
+    t.hidden = opts.text == null && !opts.edit; t.value = opts.text || ""; t.readOnly = !opts.edit;
+    $("mYes").textContent = opts.yes || "OK"; $("mNo").textContent = opts.no || "やめる";
+    $("mNo").hidden = opts.no === false;
+    m.hidden = false;
+    function done(ok){ m.hidden = true; $("mYes").onclick = $("mNo").onclick = null; res({ ok:ok, text:t.value }); }
+    $("mYes").onclick = function(){ if(opts.copy) copy(t.value, opts.copied || "コピーしました"); done(true); };
+    $("mNo").onclick = function(){ done(false); };
+    (t.hidden ? $("mYes") : t).focus();
+  });
+}
+/* ファイル保存。保存できない環境(埋め込み表示など)もあるので、中身をコピーできる窓も出す */
 function download(name, text, type){
-  var a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([text], { type:type + ";charset=utf-8" }));
-  a.download = name; document.body.appendChild(a); a.click(); setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 500);
+  try{
+    var a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([text], { type:type + ";charset=utf-8" }));
+    a.download = name; document.body.appendChild(a); a.click(); setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); }, 500);
+  }catch(e){}
+  dialog({ msg:"「" + name + "」の保存を試みました。保存されない場合は、下の中身をコピーしてメモアプリなどに貼ってください。",
+           text:text, yes:"中身をコピー", no:"閉じる", copy:true });
 }
 
 /* 実行 */
@@ -745,10 +777,10 @@ function renderLedger(){
       '<span class="tag ' + st[1] + '">' + st[0] + '</span><button class="btn sm" data-del="' + x.id + '" style="flex:none">消す</button></div>';
   }).join("") : '<p class="muted">まだ記事がありません。「書く」から始めてください。</p>';
   $("list").querySelectorAll(".item").forEach(function(el){
-    el.onclick = function(ev){
+    el.onclick = async function(ev){
       if(ev.target.dataset.del){
         var x = S.items.filter(function(y){ return y.id === ev.target.dataset.del; })[0];
-        if(!confirm("「" + (x.product.name || "名前なし") + "」を台帳から消します。元に戻せません。よろしいですか?")) return;
+        if(!(await dialog({ msg:"「" + (x.product.name || "名前なし") + "」を台帳から消します。元に戻せません。", yes:"消す" })).ok) return;
         S.items = S.items.filter(function(y){ return y.id !== x.id; }); saveItems();
         if(S.cur === x.id){ S.cur = ""; lsSet(LS.cur, ""); }
         renderLedger(); return;
@@ -772,6 +804,8 @@ function sim(){
    9. 設定・ブレーキ・控え
    ================================================================ */
 function renderSet(){
+  $("bDaily").value = S.brake.daily; $("bSensitive").checked = S.brake.sensitive; $("bStrictNum").checked = S.brake.strictNum;
+  if(!$("setKey")) return;   // 埋め込み表示ではAIのつなぎ方の欄がない
   $("setKey").value = S.key;
   $("setModel").innerHTML = Object.keys(MODELS).map(function(k){ return '<option value="' + k + '"' + (k === S.model ? " selected" : "") + '>' + MODELS[k].label + '</option>'; }).join("");
   $("bDaily").value = S.brake.daily; $("bSensitive").checked = S.brake.sensitive; $("bStrictNum").checked = S.brake.strictNum;
@@ -852,9 +886,9 @@ document.querySelectorAll("[data-copy]").forEach(function(b){
   };
 });
 $("modeBtn").onclick = function(){ setMode(S.mode === "api" ? "manual" : "api"); if(S.mode === "api" && !S.key) toast("設定でAPIキーを登録してください"); };
-$("sampleBtn").onclick = function(){
+$("sampleBtn").onclick = async function(){
   var it = cur();
-  if((it.reviews.trim() || it.product.name) && !confirm("いま入っている商品名とレビューを見本で置き換えます。よろしいですか?")) return;
+  if((it.reviews.trim() || it.product.name) && !(await dialog({ msg:"いま入っている商品名とレビューを、見本(架空の商品)で置き換えます。", yes:"置き換える" })).ok) return;
   it.product.name = SAMPLE.name; it.product.genre = SAMPLE.genre; it.product.count = SAMPLE.count; it.product.rating = SAMPLE.rating;
   it.reviews = SAMPLE.reviews; touch(it); bindForm(); toast("見本を入れました(架空の商品です)");
 };
@@ -884,29 +918,41 @@ $("saveKey").onclick = async function(){
 };
 $("setModel").onchange = function(){ S.model = $("setModel").value; lsSet(LS.model, S.model); renderSet(); };
 $("clearKey").onclick = function(){ S.key = ""; lsSet(LS.key, ""); setMode("manual"); renderSet(); toast("キーを消しました"); };
-$("wipeBtn").onclick = function(){
-  if(!confirm("この端末の記事・設定・APIキーをすべて消します。元に戻せません。先に台帳の「控えを書き出す」をおすすめします。消しますか?")) return;
+$("wipeBtn").onclick = async function(){
+  if(!(await dialog({ msg:"この端末の記事・設定・APIキーをすべて消します。元に戻せません。\n先に台帳の「控えを書き出す」をおすすめします。", yes:"すべて消す" })).ok) return;
   Object.keys(LS).forEach(function(k){ try{ localStorage.removeItem(LS[k]); }catch(e){} });
   location.reload();
 };
 $("expBtn").onclick = function(){ readForm(); download("kaumae-note_" + ymd() + ".json", JSON.stringify({ v:1, items:S.items, brake:S.brake }, null, 2), "application/json"); };
-$("impBtn").onclick = function(){ $("impFile").click(); };
+async function importText(txt){
+  var d;
+  try{ d = JSON.parse(txt); if(!d || !Array.isArray(d.items)) throw 0; }
+  catch(e){ return toast("この控えは読み込めませんでした"); }
+  var have = {}; S.items.forEach(function(x){ have[x.id] = 1; });
+  var add = d.items.filter(function(x){ return x && x.id && x.product && !have[x.id]; });
+  var dup = d.items.length - add.length;
+  if(!(await dialog({ msg:add.length + " 件を追加します" + (dup ? "(同じIDの " + dup + " 件は今の端末の内容を残します)" : "") + "。", yes:"追加する" })).ok) return;
+  S.items = S.items.concat(add.map(function(x){ return Object.assign(blank(), x); })); saveItems(); renderLedger(); toast(add.length + " 件を読み込みました");
+}
+$("impBtn").onclick = async function(){
+  var r = await dialog({ msg:"書き出した控えの中身を、下に貼ってください。ファイルから読むときは「ファイルを選ぶ」。", edit:true, yes:"読み込む", no:"ファイルを選ぶ" });
+  if(r.ok){ if(r.text.trim()) importText(r.text.trim()); }
+  else $("impFile").click();
+};
 $("impFile").onchange = function(){
   var f = this.files[0]; if(!f) return;
   var r = new FileReader();
-  r.onload = function(){
-    try{
-      var d = JSON.parse(r.result); if(!d || !Array.isArray(d.items)) throw 0;
-      var have = {}; S.items.forEach(function(x){ have[x.id] = 1; });
-      var add = d.items.filter(function(x){ return x && x.id && x.product && !have[x.id]; });
-      var dup = d.items.length - add.length;
-      if(!confirm(add.length + " 件を追加します" + (dup ? "(同じIDの " + dup + " 件は今の端末の内容を残します)" : "") + "。よろしいですか?")) return;
-      S.items = S.items.concat(add.map(function(x){ return Object.assign(blank(), x); })); saveItems(); renderLedger(); toast(add.length + " 件を読み込みました");
-    }catch(e){ toast("この控えは読み込めませんでした"); }
-  };
+  r.onload = function(){ importText(r.result); };
   r.readAsText(f); this.value = "";
 };
 
+/* 埋め込み表示(claude.ai のリンクなど)では外部への通信が止められるため、自動モードは使えない */
+var EMBED = (function(){ try{ return window.self !== window.top; }catch(e){ return true; } })();
+if(EMBED){
+  $("modeBtn").hidden = true;
+  $("setKey").closest(".card").innerHTML = '<p class="muted">このリンク版は<b>手動モード専用</b>です。各工程の「依頼文をコピー」でClaudeアプリに貼り、返事を貼り戻してください。<br>自動モード(APIキー)を使うときは、<code>review.html</code> をブラウザで直接開いてください。</p>';
+  if(S.mode === "api") S.mode = "manual";
+}
 setMode(S.mode);
 bindForm();
 </script>
